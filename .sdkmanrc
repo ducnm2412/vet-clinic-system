@@ -1,0 +1,2 @@
+# Enable local SDKMAN env: `sdk env` (hoặc bật sdkman_auto_env=true trong ~/.sdkman/etc/config để tự áp dụng khi cd vào thư mục)
+java=17.0.9-tem

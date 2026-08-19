@@ -6,11 +6,13 @@ version: "3.8"
 services:
   eureka-server:
     build: ./eureka-server
+    container_name: eureka-server
     ports:
       - "8761:8761"
 
   api-gateway:
     build: ./api-gateway
+    container_name: api-gateway
     ports:
       - "8080:8080"
     depends_on:
@@ -18,54 +20,75 @@ services:
 
   auth-service:
     build: ./services/auth-service
+    container_name: auth-service
+    ports:
+      - "8081:8081"
+    environment:
+      DB_HOST: auth-db
+      DB_PORT: 5432
+      DB_NAME: auth_db
+      DB_USERNAME: ${AUTH_DB_USER:-postgres}
+      DB_PASSWORD: ${AUTH_DB_PASSWORD:?AUTH_DB_PASSWORD is required}
+      EUREKA_URI: http://eureka-server:8761/eureka/
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      JWT_ACCESS_EXPIRATION: ${JWT_ACCESS_EXPIRATION:-900000}
+      JWT_REFRESH_EXPIRATION: ${JWT_REFRESH_EXPIRATION:-604800000}
     depends_on:
       - eureka-server
       - auth-db
 
   booking-service:
     build: ./services/booking-service
+    container_name: booking-service
     depends_on:
       - eureka-server
       - booking-db
 
   pet-service:
     build: ./services/pet-service
+    container_name: pet-service
     depends_on:
       - eureka-server
       - pet-db
 
   product-service:
     build: ./services/product-service
+    container_name: product-service
     depends_on:
       - eureka-server
       - product-db
 
   order-service:
     build: ./services/order-service
+    container_name: order-service
     depends_on:
       - eureka-server
       - order-db
 
   staff-service:
     build: ./services/staff-service
+    container_name: staff-service
     depends_on:
       - eureka-server
       - staff-db
 
   notification-service:
     build: ./services/notification-service
+    container_name: notification-service
     depends_on:
       - eureka-server
       - rabbitmq
 
   reporting-service:
     build: ./services/reporting-service
+    container_name: reporting-service
     depends_on:
       - eureka-server
       - rabbitmq
 
   frontend:
     build: ./frontend
+    container_name: frontend
     ports:
       - "3000:3000"
     depends_on:
@@ -74,37 +97,49 @@ services:
   # --- Databases (Database per Service) ---
   auth-db:
     image: postgres:16
+    container_name: auth-db
+    ports:
+      - "5433:5432"
     environment:
       POSTGRES_DB: auth_db
+      POSTGRES_USER: ${AUTH_DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${AUTH_DB_PASSWORD:?AUTH_DB_PASSWORD is required}
   booking-db:
     image: postgres:16
+    container_name: booking-db
     environment:
       POSTGRES_DB: booking_db
   pet-db:
     image: postgres:16
+    container_name: pet-db
     environment:
       POSTGRES_DB: pet_db
   product-db:
     image: postgres:16
+    container_name: product-db
     environment:
       POSTGRES_DB: product_db
   order-db:
     image: postgres:16
+    container_name: order-db
     environment:
       POSTGRES_DB: order_db
   staff-db:
     image: postgres:16
+    container_name: staff-db
     environment:
       POSTGRES_DB: staff_db
 
   # --- Message broker & cache ---
   rabbitmq:
     image: rabbitmq:3-management
+    container_name: rabbitmq
     ports:
       - "5672:5672"
       - "15672:15672"
 
   redis:
     image: redis:7
+    container_name: redis
     ports:
       - "6379:6379"
