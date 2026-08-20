@@ -1,0 +1,17 @@
+server:
+  port: ${SERVER_PORT:8761}
+
+spring:
+  application:
+    name: eureka-server
+
+eureka:
+  client:
+    # Server không cần tự đăng ký với chính nó.
+    register-with-eureka: false
+    fetch-registry: false
+    service-url:
+      defaultZone: http://localhost:${server.port}/eureka/
+  server:
+    # Tắt cho môi trường dev — tránh cảnh báo "EMERGENCY MODE" khi service start/stop liên tục.
+    enable-self-preservation: false
