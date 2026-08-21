@@ -1,4 +1,4 @@
-package com.vetclinic.auth.security.jwt;
+package com.vetclinic.profile.security.jwt;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;

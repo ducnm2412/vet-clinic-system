@@ -1,7 +1,6 @@
-package com.vetclinic.auth.security.jwt;
+package com.vetclinic.profile.security.jwt;
 
 import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.JwtBuilder;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -10,7 +9,6 @@ import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
-import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
@@ -22,14 +20,6 @@ public class JwtUtil {
     private static final String USER_ID_CLAIM = "userId";
 
     private final JwtProperties jwtProperties;
-
-    public String generateAccessToken(UUID userId, String subject, List<String> roles) {
-        return buildToken(subject, userId, roles, jwtProperties.getAccessTokenExpiration());
-    }
-
-    public String generateRefreshToken(String subject) {
-        return buildToken(subject, null, List.of(), jwtProperties.getRefreshTokenExpiration());
-    }
 
     public Claims parseClaims(String token) {
         return Jwts.parser()
@@ -59,23 +49,6 @@ public class JwtUtil {
             throw new IllegalArgumentException("Token missing userId claim");
         }
         return UUID.fromString(raw);
-    }
-
-    private String buildToken(String subject, UUID userId, List<String> roles, long expirationMillis) {
-        Date now = new Date();
-        Date expiry = new Date(now.getTime() + expirationMillis);
-
-        JwtBuilder builder = Jwts.builder()
-                .subject(subject)
-                .claim(ROLES_CLAIM, roles)
-                .issuedAt(now)
-                .expiration(expiry);
-
-        if (userId != null) {
-            builder.claim(USER_ID_CLAIM, userId.toString());
-        }
-
-        return builder.signWith(signingKey()).compact();
     }
 
     private SecretKey signingKey() {

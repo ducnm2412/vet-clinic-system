@@ -10,6 +10,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -36,7 +37,7 @@ class AdminControllerTest {
 
     @Test
     void createStaffAccount_withCustomerToken_returns403() throws Exception {
-        String customerToken = jwtUtil.generateAccessToken("customer@example.com", List.of("CUSTOMER"));
+        String customerToken = jwtUtil.generateAccessToken(UUID.randomUUID(), "customer@example.com", List.of("CUSTOMER"));
 
         String body = """
                 {"firstName":"X","lastName":"Y","email":"blocked@example.com",
@@ -52,7 +53,7 @@ class AdminControllerTest {
 
     @Test
     void createStaffAccount_withAdminToken_createsActiveDoctorAccount() throws Exception {
-        String adminToken = jwtUtil.generateAccessToken("admin-caller@example.com", List.of("ADMIN"));
+        String adminToken = jwtUtil.generateAccessToken(UUID.randomUUID(), "admin-caller@example.com", List.of("ADMIN"));
 
         String body = """
                 {"firstName":"House","lastName":"MD","email":"it-doctor@example.com",
@@ -78,7 +79,7 @@ class AdminControllerTest {
 
     @Test
     void createStaffAccount_withCustomerRoleInBody_returns400() throws Exception {
-        String adminToken = jwtUtil.generateAccessToken("admin-caller2@example.com", List.of("ADMIN"));
+        String adminToken = jwtUtil.generateAccessToken(UUID.randomUUID(), "admin-caller2@example.com", List.of("ADMIN"));
 
         String body = """
                 {"firstName":"Sneaky","lastName":"User","email":"it-sneaky@example.com",

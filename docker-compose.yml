@@ -41,6 +41,24 @@ services:
       - eureka-server
       - auth-db
 
+  profile-service:
+    build: ./services/profile-service
+    container_name: profile-service
+    ports:
+      - "8083:8083"
+    environment:
+      DB_HOST: profile-db
+      DB_PORT: 5432
+      DB_NAME: profile_db
+      DB_USERNAME: ${PROFILE_DB_USER:-postgres}
+      DB_PASSWORD: ${PROFILE_DB_PASSWORD:?PROFILE_DB_PASSWORD is required}
+      EUREKA_URI: http://eureka-server:8761/eureka/
+      # Chung JWT_SECRET với auth-service để tự verify token, không gọi ngược auth-service.
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+    depends_on:
+      - eureka-server
+      - profile-db
+
   booking-service:
     build: ./services/booking-service
     container_name: booking-service
@@ -108,6 +126,15 @@ services:
       POSTGRES_DB: auth_db
       POSTGRES_USER: ${AUTH_DB_USER:-postgres}
       POSTGRES_PASSWORD: ${AUTH_DB_PASSWORD:?AUTH_DB_PASSWORD is required}
+  profile-db:
+    image: postgres:16
+    container_name: profile-db
+    ports:
+      - "5434:5432"
+    environment:
+      POSTGRES_DB: profile_db
+      POSTGRES_USER: ${PROFILE_DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${PROFILE_DB_PASSWORD:?PROFILE_DB_PASSWORD is required}
   booking-db:
     image: postgres:16
     container_name: booking-db
