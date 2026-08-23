@@ -33,6 +33,22 @@ public class CustomerProfileService {
         return toProfileResponse(getOrCreateProfile(userId));
     }
 
+    // Gọi từ UserDeletedListener khi auth-service báo user đã bị xoá — dọn dữ liệu mồ côi.
+    // Addresses/Pet tự xoá theo qua FK ON DELETE CASCADE trong DB, không cần xử lý riêng.
+    @Transactional
+    public void deleteByUserId(UUID userId) {
+        customerProfileRepository.findByUserId(userId).ifPresent(customerProfileRepository::delete);
+    }
+
+    // Dùng cho Staff/Admin tra cứu 1 khách hàng cụ thể — KHÔNG lazy-create như getMyProfile,
+    // vì id do người gọi tự cung cấp; nếu không tồn tại phải báo lỗi rõ ràng, không tự tạo hộ.
+    @Transactional(readOnly = true)
+    public CustomerProfileResponse getProfileById(UUID customerProfileId) {
+        CustomerProfile profile = customerProfileRepository.findById(customerProfileId)
+                .orElseThrow(() -> new ResourceNotFoundException("Customer profile not found: " + customerProfileId));
+        return toProfileResponse(profile);
+    }
+
     @Transactional
     public CustomerProfileResponse updateMyProfile(UUID userId, CustomerProfileRequest request) {
         CustomerProfile profile = getOrCreateProfile(userId);

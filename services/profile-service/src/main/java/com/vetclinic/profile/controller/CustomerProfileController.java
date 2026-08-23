@@ -18,7 +18,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -26,70 +25,76 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/profile/customer/me")
 @RequiredArgsConstructor
 public class CustomerProfileController {
 
     private final CustomerProfileService customerProfileService;
 
-    @GetMapping
+    @GetMapping("/profile/customer/me")
     public CustomerProfileResponse getMyProfile(@AuthenticationPrincipal AuthenticatedUser principal) {
         return customerProfileService.getMyProfile(principal.userId());
     }
 
-    @PutMapping
+    @PutMapping("/profile/customer/me")
     public CustomerProfileResponse updateMyProfile(@AuthenticationPrincipal AuthenticatedUser principal,
                                                      @Valid @RequestBody CustomerProfileRequest request) {
         return customerProfileService.updateMyProfile(principal.userId(), request);
     }
 
-    @GetMapping("/addresses")
+    @GetMapping("/profile/customer/me/addresses")
     public List<AddressResponse> listAddresses(@AuthenticationPrincipal AuthenticatedUser principal) {
         return customerProfileService.listAddresses(principal.userId());
     }
 
-    @PostMapping("/addresses")
+    @PostMapping("/profile/customer/me/addresses")
     @ResponseStatus(HttpStatus.CREATED)
     public AddressResponse createAddress(@AuthenticationPrincipal AuthenticatedUser principal,
                                           @Valid @RequestBody AddressRequest request) {
         return customerProfileService.createAddress(principal.userId(), request);
     }
 
-    @PutMapping("/addresses/{addressId}")
+    @PutMapping("/profile/customer/me/addresses/{addressId}")
     public AddressResponse updateAddress(@AuthenticationPrincipal AuthenticatedUser principal,
                                           @PathVariable UUID addressId,
                                           @Valid @RequestBody AddressRequest request) {
         return customerProfileService.updateAddress(principal.userId(), addressId, request);
     }
 
-    @DeleteMapping("/addresses/{addressId}")
+    @DeleteMapping("/profile/customer/me/addresses/{addressId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteAddress(@AuthenticationPrincipal AuthenticatedUser principal, @PathVariable UUID addressId) {
         customerProfileService.deleteAddress(principal.userId(), addressId);
     }
 
-    @GetMapping("/pets")
+    @GetMapping("/profile/customer/me/pets")
     public List<PetResponse> listPets(@AuthenticationPrincipal AuthenticatedUser principal) {
         return customerProfileService.listPets(principal.userId());
     }
 
-    @PostMapping("/pets")
+    @PostMapping("/profile/customer/me/pets")
     @ResponseStatus(HttpStatus.CREATED)
     public PetResponse createPet(@AuthenticationPrincipal AuthenticatedUser principal,
                                   @Valid @RequestBody PetRequest request) {
         return customerProfileService.createPet(principal.userId(), request);
     }
 
-    @PutMapping("/pets/{petId}")
+    @PutMapping("/profile/customer/me/pets/{petId}")
     public PetResponse updatePet(@AuthenticationPrincipal AuthenticatedUser principal,
                                   @PathVariable UUID petId,
                                   @Valid @RequestBody PetRequest request) {
         return customerProfileService.updatePet(principal.userId(), petId, request);
     }
 
-    @DeleteMapping("/pets/{petId}")
+    @DeleteMapping("/profile/customer/me/pets/{petId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deletePet(@AuthenticationPrincipal AuthenticatedUser principal, @PathVariable UUID petId) {
         customerProfileService.deletePet(principal.userId(), petId);
+    }
+
+    // Staff/Admin tra cứu hồ sơ 1 khách hàng cụ thể theo id — path "by-id" tách biệt hẳn khỏi
+    // "me" để SecurityConfig áp rule khác nhau cho 2 nhóm route không bị lẫn.
+    @GetMapping("/profile/customer/by-id/{customerProfileId}")
+    public CustomerProfileResponse getProfileById(@PathVariable UUID customerProfileId) {
+        return customerProfileService.getProfileById(customerProfileId);
     }
 }

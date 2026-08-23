@@ -30,6 +30,9 @@ public class SecurityConfig {
                         // chưa đăng nhập. Đây là endpoint /profile/doctors riêng (số nhiều), KHÔNG phải
                         // /profile/doctor/me — "me" luôn cần xác thực vì phải biết "me" là ai.
                         .requestMatchers(HttpMethod.GET, "/profile/doctors").permitAll()
+                        // Staff/Admin tra cứu 1 khách hàng cụ thể — path "by-id" tách biệt hẳn khỏi
+                        // "me" nên không lo bị rule /profile/customer/** phía dưới nuốt mất.
+                        .requestMatchers(HttpMethod.GET, "/profile/customer/by-id/**").hasAnyRole("STAFF", "ADMIN")
                         .requestMatchers("/profile/customer/**").hasRole("CUSTOMER")
                         .requestMatchers("/profile/doctor/**").hasRole("DOCTOR")
                         // Danh sách nhân viên chỉ Admin xem được — /profile/staff/** cũng khớp path

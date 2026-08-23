@@ -108,6 +108,24 @@ class CustomerProfileServiceTest {
     }
 
     @Test
+    void getProfileById_found_returnsProfile() {
+        UUID userId = UUID.randomUUID();
+        CustomerProfileResponse created = customerProfileService.updateMyProfile(userId,
+                new CustomerProfileRequest("0909000000", LocalDate.of(1990, 1, 1)));
+
+        CustomerProfileResponse found = customerProfileService.getProfileById(created.id());
+
+        assertThat(found.userId()).isEqualTo(userId);
+        assertThat(found.phone()).isEqualTo("0909000000");
+    }
+
+    @Test
+    void getProfileById_unknownId_throws() {
+        assertThatThrownBy(() -> customerProfileService.getProfileById(UUID.randomUUID()))
+                .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
     void deletePet_wrongOwner_throws() {
         UUID owner = UUID.randomUUID();
         UUID intruder = UUID.randomUUID();

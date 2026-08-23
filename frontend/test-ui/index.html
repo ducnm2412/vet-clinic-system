@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Vet Clinic — Test Auth API</title>
+<style>
+  :root {
+    color-scheme: light;
+    --border: #d9dde3;
+    --bg: #f5f6f8;
+    --card: #ffffff;
+    --primary: #2563eb;
+    --primary-hover: #1d4ed8;
+    --text: #1f2430;
+    --muted: #6b7280;
+    --ok-bg: #ecfdf3;
+    --ok-text: #027a48;
+    --err-bg: #fef3f2;
+    --err-text: #b42318;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 24px;
+  }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .sub { color: var(--muted); font-size: 14px; margin: 0 0 20px; }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 16px;
+    max-width: 1200px;
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px;
+  }
+  .card h2 { font-size: 16px; margin: 0 0 12px; }
+  label { display: block; font-size: 13px; color: var(--muted); margin: 10px 0 4px; }
+  input {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 14px;
+  }
+  button {
+    margin-top: 14px;
+    width: 100%;
+    padding: 9px 12px;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button:hover { background: var(--primary-hover); }
+  button.secondary {
+    background: transparent;
+    color: var(--primary);
+    border: 1px solid var(--primary);
+  }
+  button.secondary:hover { background: #eff4ff; }
+  .result {
+    margin-top: 12px;
+    padding: 10px;
+    border-radius: 6px;
+    font-size: 13px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    display: none;
+  }
+  .result.ok { display: block; background: var(--ok-bg); color: var(--ok-text); }
+  .result.err { display: block; background: var(--err-bg); color: var(--err-text); }
+  .status-bar {
+    max-width: 1200px;
+    margin-bottom: 16px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    background: #eef2ff;
+    font-size: 13px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+  }
+  .status-bar code { font-size: 12px; word-break: break-all; }
+</style>
+</head>
+<body>
+
+<h1>Vet Clinic System — Test Auth API</h1>
+<p class="sub">Trang test đơn giản gọi thẳng API auth-service qua proxy nội bộ (tránh CORS). Không phải giao diện sản phẩm cuối.</p>
+
+<div class="status-bar">
+  <span>Access token hiện tại: <code id="tokenPreview">(chưa đăng nhập)</code></span>
+  <button class="secondary" style="width:auto;margin:0;padding:6px 12px;" onclick="logout()">Xoá token</button>
+</div>
+
+<div class="grid">
+
+  <div class="card">
+    <h2>1. Đăng ký</h2>
+    <form id="registerForm">
+      <label>Họ</label>
+      <input name="lastName" required maxlength="100" placeholder="Nguyễn" />
+      <label>Tên</label>
+      <input name="firstName" required maxlength="100" placeholder="Văn A" />
+      <label>Email</label>
+      <input name="email" type="email" required placeholder="a@example.com" />
+      <label>Mật khẩu (8-100 ký tự)</label>
+      <input name="password" type="password" required minlength="8" maxlength="100" />
+      <label>Xác nhận mật khẩu</label>
+      <input name="confirmPassword" type="password" required minlength="8" maxlength="100" />
+      <button type="submit">Đăng ký</button>
+    </form>
+    <div class="result" id="registerResult"></div>
+  </div>
+
+  <div class="card">
+    <h2>2. Xác thực email</h2>
+    <p class="sub" style="margin-top:-6px;">Backend hiện chỉ log link xác thực ra console (chưa gửi email thật) — copy token từ log backend rồi dán vào đây.</p>
+    <form id="verifyForm">
+      <label>Token</label>
+      <input name="token" required placeholder="dán verification token..." />
+      <button type="submit">Xác thực</button>
+    </form>
+    <div class="result" id="verifyResult"></div>
+  </div>
+
+  <div class="card">
+    <h2>3. Đăng nhập</h2>
+    <form id="loginForm">
+      <label>Email</label>
+      <input name="email" type="email" required />
+      <label>Mật khẩu</label>
+      <input name="password" type="password" required />
+      <button type="submit">Đăng nhập</button>
+    </form>
+    <div class="result" id="loginResult"></div>
+  </div>
+
+  <div class="card">
+    <h2>4. Thông tin tài khoản (/auth/me)</h2>
+    <p class="sub" style="margin-top:-6px;">Cần đăng nhập trước (bước 3) để có access token.</p>
+    <button onclick="callMe()">Gọi GET /auth/me</button>
+    <div class="result" id="meResult"></div>
+  </div>
+
+  <div class="card">
+    <h2>5. Hồ sơ khách hàng (profile-service)</h2>
+    <p class="sub" style="margin-top:-6px;">Cần đăng nhập trước (bước 3). Hồ sơ tự tạo rỗng lần gọi đầu (lazy-create).</p>
+    <button onclick="getCustomerProfile()">Gọi GET /profile/customer/me</button>
+    <form id="profileForm">
+      <label>Số điện thoại</label>
+      <input name="phone" maxlength="20" placeholder="0901234567" />
+      <label>Ngày sinh</label>
+      <input name="dateOfBirth" type="date" />
+      <button type="submit">Cập nhật (PUT /profile/customer/me)</button>
+    </form>
+    <div class="result" id="profileResult"></div>
+  </div>
+
+  <div class="card">
+    <h2>6. Danh sách bác sĩ (public)</h2>
+    <p class="sub" style="margin-top:-6px;">Không cần đăng nhập.</p>
+    <button onclick="listDoctors()">Gọi GET /profile/doctors</button>
+    <div class="result" id="doctorsResult"></div>
+  </div>
+
+</div>
+
+<script>
+const TOKEN_KEY = "vetclinic_access_token";
+
+function getToken() {
+  return localStorage.getItem(TOKEN_KEY);
+}
+
+function setToken(token) {
+  localStorage.setItem(TOKEN_KEY, token);
+  refreshTokenPreview();
+}
+
+function logout() {
+  localStorage.removeItem(TOKEN_KEY);
+  refreshTokenPreview();
+}
+
+function refreshTokenPreview() {
+  const token = getToken();
+  document.getElementById("tokenPreview").textContent = token
+    ? token.slice(0, 24) + "..."
+    : "(chưa đăng nhập)";
+}
+
+function showResult(elId, ok, data) {
+  const el = document.getElementById(elId);
+  el.className = "result " + (ok ? "ok" : "err");
+  el.textContent = typeof data === "string" ? data : JSON.stringify(data, null, 2);
+}
+
+async function callApi(path, { method = "GET", body, auth = false } = {}) {
+  const headers = {};
+  if (body) headers["Content-Type"] = "application/json";
+  if (auth) {
+    const token = getToken();
+    if (!token) throw new Error("Chưa có access token — hãy đăng nhập ở bước 3 trước.");
+    headers["Authorization"] = "Bearer " + token;
+  }
+
+  const res = await fetch("/api-proxy" + path, {
+    method,
+    headers,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+
+  let data = null;
+  try {
+    data = await res.json();
+  } catch {
+    // no JSON body
+  }
+
+  if (!res.ok) {
+    const err = new Error((data && data.message) || `HTTP ${res.status}`);
+    err.data = data;
+    err.status = res.status;
+    throw err;
+  }
+
+  return data;
+}
+
+document.getElementById("registerForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const form = new FormData(e.target);
+  const payload = Object.fromEntries(form.entries());
+  try {
+    const data = await callApi("/auth/register", { method: "POST", body: payload });
+    showResult("registerResult", true, data);
+  } catch (err) {
+    showResult("registerResult", false, err.data || err.message);
+  }
+});
+
+document.getElementById("verifyForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const token = new FormData(e.target).get("token");
+  try {
+    const data = await callApi("/auth/verify-email?token=" + encodeURIComponent(token));
+    showResult("verifyResult", true, data);
+  } catch (err) {
+    showResult("verifyResult", false, err.data || err.message);
+  }
+});
+
+document.getElementById("loginForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const form = new FormData(e.target);
+  const payload = Object.fromEntries(form.entries());
+  try {
+    const data = await callApi("/auth/login", { method: "POST", body: payload });
+    setToken(data.accessToken);
+    showResult("loginResult", true, data);
+  } catch (err) {
+    showResult("loginResult", false, err.data || err.message);
+  }
+});
+
+async function callMe() {
+  try {
+    const data = await callApi("/auth/me", { auth: true });
+    showResult("meResult", true, data);
+  } catch (err) {
+    showResult("meResult", false, err.data || err.message);
+  }
+}
+
+async function getCustomerProfile() {
+  try {
+    const data = await callApi("/profile/customer/me", { auth: true });
+    showResult("profileResult", true, data);
+  } catch (err) {
+    showResult("profileResult", false, err.data || err.message);
+  }
+}
+
+document.getElementById("profileForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const form = new FormData(e.target);
+  const payload = {
+    phone: form.get("phone") || null,
+    dateOfBirth: form.get("dateOfBirth") || null,
+  };
+  try {
+    const data = await callApi("/profile/customer/me", { method: "PUT", body: payload, auth: true });
+    showResult("profileResult", true, data);
+  } catch (err) {
+    showResult("profileResult", false, err.data || err.message);
+  }
+});
+
+async function listDoctors() {
+  try {
+    const data = await callApi("/profile/doctors");
+    showResult("doctorsResult", true, data);
+  } catch (err) {
+    showResult("doctorsResult", false, err.data || err.message);
+  }
+}
+
+refreshTokenPreview();
+</script>
+
+</body>
+</html>

@@ -29,6 +29,12 @@ public class DoctorProfileService {
         return toProfileResponse(getOrCreateProfile(userId));
     }
 
+    // Gọi từ UserDeletedListener khi auth-service báo user đã bị xoá — dọn dữ liệu mồ côi.
+    @Transactional
+    public void deleteByUserId(UUID userId) {
+        doctorProfileRepository.findByUserId(userId).ifPresent(doctorProfileRepository::delete);
+    }
+
     @Transactional
     public DoctorProfileResponse updateMyProfile(UUID userId, DoctorProfileRequest request) {
         DoctorProfile profile = getOrCreateProfile(userId);

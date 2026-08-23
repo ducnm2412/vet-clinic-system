@@ -13,11 +13,14 @@ import com.vetclinic.auth.dto.UserResponse;
 import com.vetclinic.auth.exception.EmailAlreadyExistsException;
 import com.vetclinic.auth.exception.InvalidCredentialsException;
 import com.vetclinic.auth.exception.InvalidOrExpiredTokenException;
+import com.vetclinic.auth.exception.UserNotFoundException;
+import com.vetclinic.auth.messaging.UserDeletedEvent;
 import com.vetclinic.auth.repository.RoleRepository;
 import com.vetclinic.auth.repository.UserRepository;
 import com.vetclinic.auth.security.jwt.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,6 +32,7 @@ import java.util.Base64;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 @Slf4j
 @Service
@@ -41,6 +45,7 @@ public class AuthService {
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final ApplicationEventPublisher applicationEventPublisher;
     private final SecureRandom secureRandom = new SecureRandom();
 
     @Transactional
@@ -93,6 +98,20 @@ public class AuthService {
         userRepository.save(user);
 
         return new MessageResponse("Account created for " + request.email() + " with role " + request.role());
+    }
+
+    @Transactional
+    public MessageResponse deleteUser(UUID userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException(userId));
+
+        userRepository.delete(user);
+        // Publish event nội bộ (Spring, không phải RabbitMQ) — UserEventPublisher sẽ chỉ đẩy lên
+        // RabbitMQ thật SAU KHI transaction này commit thành công (@TransactionalEventListener
+        // AFTER_COMMIT), tránh trường hợp DB rollback nhưng message "đã xoá" vẫn lỡ bay đi.
+        applicationEventPublisher.publishEvent(new UserDeletedEvent(userId));
+
+        return new MessageResponse("User deleted: " + userId);
     }
 
     @Transactional

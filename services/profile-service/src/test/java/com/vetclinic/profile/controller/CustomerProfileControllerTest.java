@@ -111,4 +111,45 @@ class CustomerProfileControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.fieldErrors.weightKg").exists());
     }
+
+    @Test
+    void getById_withStaffToken_returns200() throws Exception {
+        String customerToken = customerToken();
+        String createResponse = mockMvc.perform(put("/profile/customer/me")
+                        .header("Authorization", "Bearer " + customerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"phone":"0909000000"}
+                                """))
+                .andReturn().getResponse().getContentAsString();
+        String profileId = createResponse.split("\"id\":\"")[1].split("\"")[0];
+
+        String staffToken = TestJwtSupport.token(jwtSecret, UUID.randomUUID(), List.of("STAFF"));
+
+        mockMvc.perform(get("/profile/customer/by-id/" + profileId).header("Authorization", "Bearer " + staffToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.phone").value("0909000000"));
+    }
+
+    @Test
+    void getById_withCustomerToken_returns403() throws Exception {
+        mockMvc.perform(get("/profile/customer/by-id/" + UUID.randomUUID())
+                        .header("Authorization", "Bearer " + customerToken()))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void getById_withoutToken_returns401() throws Exception {
+        mockMvc.perform(get("/profile/customer/by-id/" + UUID.randomUUID()))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void getById_unknownId_withAdminToken_returns404() throws Exception {
+        String adminToken = TestJwtSupport.token(jwtSecret, UUID.randomUUID(), List.of("ADMIN"));
+
+        mockMvc.perform(get("/profile/customer/by-id/" + UUID.randomUUID())
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isNotFound());
+    }
 }

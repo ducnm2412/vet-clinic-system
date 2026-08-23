@@ -37,9 +37,13 @@ services:
       JWT_REFRESH_EXPIRATION: ${JWT_REFRESH_EXPIRATION:-604800000}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USERNAME: ${RABBITMQ_USER:-guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
     depends_on:
       - eureka-server
       - auth-db
+      - rabbitmq
 
   profile-service:
     build: ./services/profile-service
@@ -55,9 +59,13 @@ services:
       EUREKA_URI: http://eureka-server:8761/eureka/
       # Chung JWT_SECRET với auth-service để tự verify token, không gọi ngược auth-service.
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USERNAME: ${RABBITMQ_USER:-guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
     depends_on:
       - eureka-server
       - profile-db
+      - rabbitmq
 
   booking-service:
     build: ./services/booking-service
@@ -168,6 +176,11 @@ services:
     ports:
       - "5672:5672"
       - "15672:15672"
+    environment:
+      # Đặt user riêng thay vì dùng "guest" mặc định — guest chỉ được phép kết nối từ
+      # localhost, mà các service khác kết nối qua network Docker thì không tính là localhost.
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
 
   redis:
     image: redis:7

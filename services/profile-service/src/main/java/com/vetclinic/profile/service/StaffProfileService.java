@@ -22,6 +22,12 @@ public class StaffProfileService {
         return toResponse(getOrCreateProfile(userId));
     }
 
+    // Gọi từ UserDeletedListener khi auth-service báo user đã bị xoá — dọn dữ liệu mồ côi.
+    @Transactional
+    public void deleteByUserId(UUID userId) {
+        staffProfileRepository.findByUserId(userId).ifPresent(staffProfileRepository::delete);
+    }
+
     @Transactional
     public StaffProfileResponse updateMyProfile(UUID userId, StaffProfileRequest request) {
         StaffProfile profile = getOrCreateProfile(userId);

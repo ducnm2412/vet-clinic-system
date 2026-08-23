@@ -69,6 +69,12 @@
             <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
         </dependency>
 
+        <!-- Messaging: subscribe user.deleted từ auth-service để tự dọn dữ liệu mồ côi -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-amqp</artifactId>
+        </dependency>
+
         <!-- JWT: tự verify token do auth-service phát hành (chung JWT_SECRET), không gọi ngược auth-service -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
