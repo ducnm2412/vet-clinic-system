@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Vet Clinic — Test Auth API</title>
+<title>Vet Clinic — Test API</title>
 <style>
   :root {
     color-scheme: light;
@@ -18,6 +18,8 @@
     --ok-text: #027a48;
     --err-bg: #fef3f2;
     --err-text: #b42318;
+    --warn-bg: #fffaeb;
+    --warn-text: #b54708;
   }
   * { box-sizing: border-box; }
   body {
@@ -29,6 +31,7 @@
   }
   h1 { font-size: 20px; margin: 0 0 4px; }
   .sub { color: var(--muted); font-size: 14px; margin: 0 0 20px; }
+  .wrap { max-width: 1200px; }
   .grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
@@ -41,14 +44,17 @@
     border-radius: 10px;
     padding: 18px;
   }
+  .card.wide { grid-column: 1 / -1; }
   .card h2 { font-size: 16px; margin: 0 0 12px; }
   label { display: block; font-size: 13px; color: var(--muted); margin: 10px 0 4px; }
-  input {
+  input, select {
     width: 100%;
     padding: 8px 10px;
     border: 1px solid var(--border);
     border-radius: 6px;
     font-size: 14px;
+    background: white;
+    color: var(--text);
   }
   button {
     margin-top: 14px;
@@ -69,6 +75,15 @@
     border: 1px solid var(--primary);
   }
   button.secondary:hover { background: #eff4ff; }
+  button.tiny {
+    width: auto;
+    margin: 0 4px 0 0;
+    padding: 4px 9px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+  button.danger { background: var(--err-text); }
+  button.danger:hover { background: #912018; }
   .result {
     margin-top: 12px;
     padding: 10px;
@@ -91,20 +106,106 @@
     justify-content: space-between;
     align-items: center;
     gap: 12px;
+    flex-wrap: wrap;
   }
   .status-bar code { font-size: 12px; word-break: break-all; }
+
+  /* --- Tabs --- */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    max-width: 1200px;
+    margin-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .tab {
+    width: auto;
+    margin: 0;
+    padding: 9px 16px;
+    background: transparent;
+    color: var(--muted);
+    border: none;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    font-weight: 600;
+    font-size: 14px;
+  }
+  .tab:hover { background: transparent; color: var(--text); }
+  .tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* --- Bảng --- */
+  .table-scroll { overflow-x: auto; margin-top: 12px; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  th, td {
+    text-align: left;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  th { color: var(--muted); font-weight: 600; background: #fafbfc; }
+  td.num, th.num { text-align: right; }
+  tr:last-child td { border-bottom: none; }
+  .empty { color: var(--muted); font-size: 13px; padding: 12px 0; }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .badge.ok { background: var(--ok-bg); color: var(--ok-text); }
+  .badge.warn { background: var(--warn-bg); color: var(--warn-text); }
+  .badge.off { background: #f2f4f7; color: var(--muted); }
+
+  .filters {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
+    align-items: end;
+  }
+  .filters label { margin-top: 0; }
+  .filters button { margin-top: 0; }
+  .pager {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 12px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .pager button { width: auto; margin: 0; padding: 5px 12px; font-size: 13px; }
+  .hint {
+    background: var(--warn-bg);
+    color: var(--warn-text);
+    padding: 9px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    margin: 0 0 12px;
+  }
+  .hint code { background: rgba(0,0,0,.06); padding: 1px 5px; border-radius: 3px; }
 </style>
 </head>
 <body>
 
-<h1>Vet Clinic System — Test Auth API</h1>
-<p class="sub">Trang test đơn giản gọi thẳng API auth-service qua proxy nội bộ (tránh CORS). Không phải giao diện sản phẩm cuối.</p>
+<h1>Vet Clinic System — Test API</h1>
+<p class="sub">Trang test gọi API qua proxy nội bộ sang API Gateway (tránh CORS). Không phải giao diện sản phẩm cuối.</p>
 
 <div class="status-bar">
-  <span>Access token hiện tại: <code id="tokenPreview">(chưa đăng nhập)</code></span>
+  <span>Access token: <code id="tokenPreview">(chưa đăng nhập)</code></span>
+  <span>Vai trò: <code id="rolePreview">—</code></span>
   <button class="secondary" style="width:auto;margin:0;padding:6px 12px;" onclick="logout()">Xoá token</button>
 </div>
 
+<div class="tabs">
+  <button class="tab active" data-panel="panel-auth">Tài khoản &amp; Hồ sơ</button>
+  <button class="tab" data-panel="panel-shop">Sản phẩm &amp; Kho</button>
+</div>
+
+<!-- ==================== TAB 1: AUTH & PROFILE ==================== -->
+<div class="panel active" id="panel-auth">
 <div class="grid">
 
   <div class="card">
@@ -177,9 +278,154 @@
   </div>
 
 </div>
+</div>
+
+<!-- ==================== TAB 2: PRODUCT & STOCK ==================== -->
+<div class="panel" id="panel-shop">
+
+<p class="hint">
+  Tra cứu (<code>GET</code>) không cần đăng nhập. Tạo/sửa/xoá cần vai trò <code>ADMIN</code>;
+  thao tác kho cần <code>STAFF</code> hoặc <code>ADMIN</code> — đăng nhập bằng tài khoản admin ở tab đầu trước.
+</p>
+
+<div class="grid">
+
+  <!-- CN-27 -->
+  <div class="card">
+    <h2>CN-27. Danh mục sản phẩm</h2>
+    <form id="categoryForm">
+      <label>Tên danh mục</label>
+      <input name="name" required maxlength="100" placeholder="Thức ăn cho chó" />
+      <label>Slug (chữ thường, số, gạch ngang)</label>
+      <input name="slug" required maxlength="120" pattern="[a-z0-9]+(-[a-z0-9]+)*" placeholder="thuc-an-cho-cho" />
+      <label>Mô tả</label>
+      <input name="description" maxlength="2000" placeholder="Hạt, pate, snack" />
+      <button type="submit">Tạo danh mục (ADMIN)</button>
+    </form>
+    <button class="secondary" onclick="loadCategories()">Tải lại danh sách</button>
+    <div class="table-scroll" id="categoryTable"></div>
+    <div class="result" id="categoryResult"></div>
+  </div>
+
+  <!-- CN-28 -->
+  <div class="card">
+    <h2>CN-28. Tạo sản phẩm</h2>
+    <form id="productForm">
+      <label>Danh mục</label>
+      <select name="categoryId" id="productCategorySelect" required></select>
+      <label>SKU (duy nhất)</label>
+      <input name="sku" required maxlength="64" placeholder="PET-001" />
+      <label>Tên sản phẩm</label>
+      <input name="name" required maxlength="200" placeholder="Hạt Royal Canin 2kg" />
+      <label>Giá (VNĐ)</label>
+      <input name="price" type="number" min="0" step="1000" required placeholder="450000" />
+      <label>Đơn vị tính</label>
+      <input name="unit" required maxlength="30" placeholder="túi" />
+      <label>Tồn kho ban đầu</label>
+      <input name="initialStock" type="number" min="0" value="0" />
+      <label>Ngưỡng cảnh báo sắp hết</label>
+      <input name="lowStockThreshold" type="number" min="0" value="0" />
+      <label>Mô tả</label>
+      <input name="description" maxlength="5000" />
+      <button type="submit">Tạo sản phẩm (ADMIN)</button>
+    </form>
+    <div class="result" id="productResult"></div>
+  </div>
+
+  <!-- CN-30 -->
+  <div class="card">
+    <h2>CN-30. Nhập / điều chỉnh kho</h2>
+    <p class="sub" style="margin-top:-6px;">Cần vai trò STAFF hoặc ADMIN. Chỉ ADJUSTMENT được nhận số âm.</p>
+    <form id="stockForm">
+      <label>Sản phẩm</label>
+      <select name="productId" id="stockProductSelect" required></select>
+      <label>Loại biến động</label>
+      <select name="type">
+        <option value="IMPORT">IMPORT — nhập từ nhà cung cấp (dương)</option>
+        <option value="ADJUSTMENT">ADJUSTMENT — điều chỉnh kiểm kê (âm/dương)</option>
+        <option value="RETURN">RETURN — hoàn kho khi trả đơn (dương)</option>
+      </select>
+      <label>Số lượng thay đổi (khác 0)</label>
+      <input name="quantityChange" type="number" required placeholder="12" />
+      <label>Ghi chú</label>
+      <input name="note" maxlength="500" placeholder="Nhập từ NCC" />
+      <button type="submit">Ghi nhận biến động</button>
+    </form>
+    <div class="result" id="stockResult"></div>
+  </div>
+
+  <!-- CN-30 low stock -->
+  <div class="card">
+    <h2>CN-30. Cảnh báo sắp hết hàng</h2>
+    <p class="sub" style="margin-top:-6px;">Liệt kê sản phẩm có tồn ≤ ngưỡng. Cần STAFF/ADMIN.</p>
+    <button onclick="loadLowStock()">Gọi GET /products/low-stock</button>
+    <div class="table-scroll" id="lowStockTable"></div>
+    <div class="result" id="lowStockResult"></div>
+  </div>
+
+  <!-- CN-29 -->
+  <div class="card wide">
+    <h2>CN-29. Tra cứu sản phẩm <span class="badge ok">công khai</span></h2>
+    <div class="filters">
+      <div>
+        <label>Từ khoá (theo tên)</label>
+        <input id="fKeyword" placeholder="hạt" />
+      </div>
+      <div>
+        <label>Danh mục</label>
+        <select id="fCategory"><option value="">— tất cả —</option></select>
+      </div>
+      <div>
+        <label>Giá từ</label>
+        <input id="fMinPrice" type="number" min="0" step="1000" />
+      </div>
+      <div>
+        <label>Giá đến</label>
+        <input id="fMaxPrice" type="number" min="0" step="1000" />
+      </div>
+      <div>
+        <label>Hiển thị</label>
+        <select id="fActive">
+          <option value="true">Chỉ hàng đang bán</option>
+          <option value="false">Cả hàng đã ẩn</option>
+        </select>
+      </div>
+      <div>
+        <label>Số dòng/trang</label>
+        <select id="fSize">
+          <option>5</option><option selected>10</option><option>20</option><option>50</option>
+        </select>
+      </div>
+      <div><button onclick="searchProducts(0)">Tìm kiếm</button></div>
+    </div>
+
+    <div class="table-scroll" id="productTable"></div>
+    <div class="pager" id="productPager"></div>
+    <div class="result" id="searchResult"></div>
+  </div>
+
+  <!-- Lịch sử kho -->
+  <div class="card wide">
+    <h2>Lịch sử biến động kho</h2>
+    <p class="sub" style="margin-top:-6px;">Bấm "Lịch sử" ở bảng trên, hoặc chọn sản phẩm rồi tải. Cần STAFF/ADMIN.</p>
+    <div class="filters">
+      <div>
+        <label>Sản phẩm</label>
+        <select id="historyProductSelect"></select>
+      </div>
+      <div><button onclick="loadHistory()">Xem lịch sử</button></div>
+    </div>
+    <div class="table-scroll" id="historyTable"></div>
+    <div class="result" id="historyResult"></div>
+  </div>
+
+</div>
+</div>
 
 <script>
 const TOKEN_KEY = "vetclinic_access_token";
+
+/* ==================== Tiện ích chung ==================== */
 
 function getToken() {
   return localStorage.getItem(TOKEN_KEY);
@@ -195,11 +441,24 @@ function logout() {
   refreshTokenPreview();
 }
 
+/** Đọc roles từ payload JWT để hiện lên thanh trạng thái — chỉ để tiện nhìn, không dùng để phân quyền. */
+function rolesFromToken(token) {
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    return payload.roles || [];
+  } catch {
+    return [];
+  }
+}
+
 function refreshTokenPreview() {
   const token = getToken();
   document.getElementById("tokenPreview").textContent = token
     ? token.slice(0, 24) + "..."
     : "(chưa đăng nhập)";
+  document.getElementById("rolePreview").textContent = token
+    ? (rolesFromToken(token).join(", ") || "(không có role)")
+    : "—";
 }
 
 function showResult(elId, ok, data) {
@@ -208,12 +467,30 @@ function showResult(elId, ok, data) {
   el.textContent = typeof data === "string" ? data : JSON.stringify(data, null, 2);
 }
 
+function clearResult(elId) {
+  document.getElementById(elId).className = "result";
+}
+
+function esc(value) {
+  return String(value === null || value === undefined ? "" : value)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+function money(value) {
+  return Number(value).toLocaleString("vi-VN") + " ₫";
+}
+
+function shortId(id) {
+  return String(id).slice(0, 8);
+}
+
 async function callApi(path, { method = "GET", body, auth = false } = {}) {
   const headers = {};
   if (body) headers["Content-Type"] = "application/json";
   if (auth) {
     const token = getToken();
-    if (!token) throw new Error("Chưa có access token — hãy đăng nhập ở bước 3 trước.");
+    if (!token) throw new Error("Chưa có access token — hãy đăng nhập ở tab \"Tài khoản & Hồ sơ\" trước.");
     headers["Authorization"] = "Bearer " + token;
   }
 
@@ -227,7 +504,7 @@ async function callApi(path, { method = "GET", body, auth = false } = {}) {
   try {
     data = await res.json();
   } catch {
-    // no JSON body
+    // 204 No Content hoặc body rỗng
   }
 
   if (!res.ok) {
@@ -240,13 +517,31 @@ async function callApi(path, { method = "GET", body, auth = false } = {}) {
   return data;
 }
 
+/* ==================== Tabs ==================== */
+
+document.querySelectorAll(".tab").forEach((tab) => {
+  tab.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach((t) => t.classList.remove("active"));
+    document.querySelectorAll(".panel").forEach((p) => p.classList.remove("active"));
+    tab.classList.add("active");
+    document.getElementById(tab.dataset.panel).classList.add("active");
+
+    // Lần đầu mở tab sản phẩm thì nạp sẵn danh mục và sản phẩm cho các ô chọn.
+    if (tab.dataset.panel === "panel-shop" && !shopLoaded) {
+      shopLoaded = true;
+      loadCategories();
+      searchProducts(0);
+    }
+  });
+});
+
+/* ==================== TAB 1: Auth & Profile ==================== */
+
 document.getElementById("registerForm").addEventListener("submit", async (e) => {
   e.preventDefault();
-  const form = new FormData(e.target);
-  const payload = Object.fromEntries(form.entries());
+  const payload = Object.fromEntries(new FormData(e.target).entries());
   try {
-    const data = await callApi("/auth/register", { method: "POST", body: payload });
-    showResult("registerResult", true, data);
+    showResult("registerResult", true, await callApi("/auth/register", { method: "POST", body: payload }));
   } catch (err) {
     showResult("registerResult", false, err.data || err.message);
   }
@@ -256,8 +551,7 @@ document.getElementById("verifyForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   const token = new FormData(e.target).get("token");
   try {
-    const data = await callApi("/auth/verify-email?token=" + encodeURIComponent(token));
-    showResult("verifyResult", true, data);
+    showResult("verifyResult", true, await callApi("/auth/verify-email?token=" + encodeURIComponent(token)));
   } catch (err) {
     showResult("verifyResult", false, err.data || err.message);
   }
@@ -265,8 +559,7 @@ document.getElementById("verifyForm").addEventListener("submit", async (e) => {
 
 document.getElementById("loginForm").addEventListener("submit", async (e) => {
   e.preventDefault();
-  const form = new FormData(e.target);
-  const payload = Object.fromEntries(form.entries());
+  const payload = Object.fromEntries(new FormData(e.target).entries());
   try {
     const data = await callApi("/auth/login", { method: "POST", body: payload });
     setToken(data.accessToken);
@@ -278,8 +571,7 @@ document.getElementById("loginForm").addEventListener("submit", async (e) => {
 
 async function callMe() {
   try {
-    const data = await callApi("/auth/me", { auth: true });
-    showResult("meResult", true, data);
+    showResult("meResult", true, await callApi("/auth/me", { auth: true }));
   } catch (err) {
     showResult("meResult", false, err.data || err.message);
   }
@@ -287,8 +579,7 @@ async function callMe() {
 
 async function getCustomerProfile() {
   try {
-    const data = await callApi("/profile/customer/me", { auth: true });
-    showResult("profileResult", true, data);
+    showResult("profileResult", true, await callApi("/profile/customer/me", { auth: true }));
   } catch (err) {
     showResult("profileResult", false, err.data || err.message);
   }
@@ -302,8 +593,7 @@ document.getElementById("profileForm").addEventListener("submit", async (e) => {
     dateOfBirth: form.get("dateOfBirth") || null,
   };
   try {
-    const data = await callApi("/profile/customer/me", { method: "PUT", body: payload, auth: true });
-    showResult("profileResult", true, data);
+    showResult("profileResult", true, await callApi("/profile/customer/me", { method: "PUT", body: payload, auth: true }));
   } catch (err) {
     showResult("profileResult", false, err.data || err.message);
   }
@@ -311,10 +601,308 @@ document.getElementById("profileForm").addEventListener("submit", async (e) => {
 
 async function listDoctors() {
   try {
-    const data = await callApi("/profile/doctors");
-    showResult("doctorsResult", true, data);
+    showResult("doctorsResult", true, await callApi("/profile/doctors"));
   } catch (err) {
     showResult("doctorsResult", false, err.data || err.message);
+  }
+}
+
+/* ==================== TAB 2: Product & Stock ==================== */
+
+let shopLoaded = false;
+let categoryCache = [];
+let productCache = [];
+
+/* ---------- CN-27: danh mục ---------- */
+
+async function loadCategories() {
+  clearResult("categoryResult");
+  try {
+    categoryCache = await callApi("/categories");
+    renderCategoryTable();
+    fillCategorySelects();
+  } catch (err) {
+    showResult("categoryResult", false, err.data || err.message);
+  }
+}
+
+function renderCategoryTable() {
+  const host = document.getElementById("categoryTable");
+  if (!categoryCache.length) {
+    host.innerHTML = '<p class="empty">Chưa có danh mục nào.</p>';
+    return;
+  }
+
+  host.innerHTML = `
+    <table>
+      <thead><tr><th>Tên</th><th>Slug</th><th></th></tr></thead>
+      <tbody>
+        ${categoryCache.map((c) => `
+          <tr>
+            <td>${esc(c.name)}</td>
+            <td><code>${esc(c.slug)}</code></td>
+            <td><button class="tiny danger" onclick="deleteCategory('${esc(c.id)}')">Xoá</button></td>
+          </tr>`).join("")}
+      </tbody>
+    </table>`;
+}
+
+function fillCategorySelects() {
+  const options = categoryCache.map((c) => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join("");
+
+  document.getElementById("productCategorySelect").innerHTML =
+    options || '<option value="">(chưa có danh mục — tạo một cái trước)</option>';
+  document.getElementById("fCategory").innerHTML = '<option value="">— tất cả —</option>' + options;
+}
+
+document.getElementById("categoryForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const form = new FormData(e.target);
+  const payload = {
+    name: form.get("name"),
+    slug: form.get("slug"),
+    description: form.get("description") || null,
+  };
+  try {
+    const data = await callApi("/categories", { method: "POST", body: payload, auth: true });
+    showResult("categoryResult", true, "Đã tạo danh mục: " + data.name);
+    e.target.reset();
+    loadCategories();
+  } catch (err) {
+    showResult("categoryResult", false, err.data || err.message);
+  }
+});
+
+async function deleteCategory(id) {
+  try {
+    await callApi("/categories/" + id, { method: "DELETE", auth: true });
+    showResult("categoryResult", true, "Đã xoá danh mục.");
+    loadCategories();
+  } catch (err) {
+    // 409 khi danh mục còn sản phẩm — đây là hành vi đúng, hiển thị nguyên thông báo.
+    showResult("categoryResult", false, err.data || err.message);
+  }
+}
+
+/* ---------- CN-28: tạo sản phẩm ---------- */
+
+document.getElementById("productForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const form = new FormData(e.target);
+  const payload = {
+    categoryId: form.get("categoryId"),
+    sku: form.get("sku"),
+    name: form.get("name"),
+    description: form.get("description") || null,
+    price: Number(form.get("price")),
+    unit: form.get("unit"),
+    initialStock: Number(form.get("initialStock") || 0),
+    lowStockThreshold: Number(form.get("lowStockThreshold") || 0),
+    active: true,
+  };
+  try {
+    const data = await callApi("/products", { method: "POST", body: payload, auth: true });
+    showResult("productResult", true, `Đã tạo "${data.name}" (SKU ${data.sku}), tồn kho ${data.stockQuantity}.`);
+    e.target.reset();
+    searchProducts(0);
+  } catch (err) {
+    showResult("productResult", false, err.data || err.message);
+  }
+});
+
+/* ---------- CN-29: tra cứu ---------- */
+
+async function searchProducts(page) {
+  clearResult("searchResult");
+
+  const params = new URLSearchParams();
+  const keyword = document.getElementById("fKeyword").value.trim();
+  const categoryId = document.getElementById("fCategory").value;
+  const minPrice = document.getElementById("fMinPrice").value;
+  const maxPrice = document.getElementById("fMaxPrice").value;
+
+  if (keyword) params.set("keyword", keyword);
+  if (categoryId) params.set("categoryId", categoryId);
+  if (minPrice) params.set("minPrice", minPrice);
+  if (maxPrice) params.set("maxPrice", maxPrice);
+  params.set("activeOnly", document.getElementById("fActive").value);
+  params.set("size", document.getElementById("fSize").value);
+  params.set("page", page);
+
+  try {
+    const data = await callApi("/products?" + params.toString());
+    productCache = data.content;
+    renderProductTable(data);
+    fillProductSelects();
+  } catch (err) {
+    showResult("searchResult", false, err.data || err.message);
+  }
+}
+
+function renderProductTable(page) {
+  const host = document.getElementById("productTable");
+  const pager = document.getElementById("productPager");
+
+  if (!page.content.length) {
+    host.innerHTML = '<p class="empty">Không tìm thấy sản phẩm nào khớp bộ lọc.</p>';
+    pager.innerHTML = "";
+    return;
+  }
+
+  host.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>SKU</th><th>Tên</th><th>Danh mục</th>
+          <th class="num">Giá</th><th>ĐVT</th>
+          <th class="num">Tồn</th><th>Trạng thái</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        ${page.content.map((p) => `
+          <tr>
+            <td><code>${esc(p.sku)}</code></td>
+            <td>${esc(p.name)}</td>
+            <td>${esc(p.categoryName)}</td>
+            <td class="num">${money(p.price)}</td>
+            <td>${esc(p.unit)}</td>
+            <td class="num">${p.stockQuantity}</td>
+            <td>
+              ${p.lowStock ? '<span class="badge warn">sắp hết</span>' : '<span class="badge ok">đủ hàng</span>'}
+              ${p.active ? "" : ' <span class="badge off">đã ẩn</span>'}
+            </td>
+            <td>
+              <button class="tiny secondary" onclick="pickForStock('${esc(p.id)}')">Nhập kho</button>
+              <button class="tiny secondary" onclick="pickForHistory('${esc(p.id)}')">Lịch sử</button>
+              <button class="tiny danger" onclick="deleteProduct('${esc(p.id)}')">Xoá</button>
+            </td>
+          </tr>`).join("")}
+      </tbody>
+    </table>`;
+
+  pager.innerHTML = `
+    <button class="secondary" ${page.page === 0 ? "disabled" : ""} onclick="searchProducts(${page.page - 1})">← Trước</button>
+    <span>Trang ${page.page + 1} / ${page.totalPages} — tổng ${page.totalElements} sản phẩm</span>
+    <button class="secondary" ${page.last ? "disabled" : ""} onclick="searchProducts(${page.page + 1})">Sau →</button>`;
+}
+
+function fillProductSelects() {
+  const options = productCache
+    .map((p) => `<option value="${esc(p.id)}">${esc(p.sku)} — ${esc(p.name)} (tồn ${p.stockQuantity})</option>`)
+    .join("");
+
+  const fallback = '<option value="">(chưa có sản phẩm)</option>';
+  document.getElementById("stockProductSelect").innerHTML = options || fallback;
+  document.getElementById("historyProductSelect").innerHTML = options || fallback;
+}
+
+async function deleteProduct(id) {
+  try {
+    await callApi("/products/" + id, { method: "DELETE", auth: true });
+    showResult("searchResult", true, "Đã xoá sản phẩm.");
+    searchProducts(0);
+  } catch (err) {
+    showResult("searchResult", false, err.data || err.message);
+  }
+}
+
+/* ---------- CN-30: tồn kho ---------- */
+
+function pickForStock(productId) {
+  document.getElementById("stockProductSelect").value = productId;
+  document.getElementById("stockProductSelect").scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+document.getElementById("stockForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const form = new FormData(e.target);
+  const productId = form.get("productId");
+  const payload = {
+    type: form.get("type"),
+    quantityChange: Number(form.get("quantityChange")),
+    note: form.get("note") || null,
+  };
+  try {
+    const data = await callApi(`/products/${productId}/stock`, { method: "POST", body: payload, auth: true });
+    showResult("stockResult", true, `"${data.name}" — tồn kho mới: ${data.stockQuantity}` +
+      (data.lowStock ? " (đã dưới ngưỡng cảnh báo)" : ""));
+    searchProducts(0);
+  } catch (err) {
+    showResult("stockResult", false, err.data || err.message);
+  }
+});
+
+async function loadLowStock() {
+  clearResult("lowStockResult");
+  const host = document.getElementById("lowStockTable");
+  try {
+    const items = await callApi("/products/low-stock", { auth: true });
+    if (!items.length) {
+      host.innerHTML = '<p class="empty">Không có sản phẩm nào dưới ngưỡng cảnh báo.</p>';
+      return;
+    }
+    host.innerHTML = `
+      <table>
+        <thead><tr><th>SKU</th><th>Tên</th><th class="num">Tồn</th><th class="num">Ngưỡng</th></tr></thead>
+        <tbody>
+          ${items.map((p) => `
+            <tr>
+              <td><code>${esc(p.sku)}</code></td>
+              <td>${esc(p.name)}</td>
+              <td class="num">${p.stockQuantity}</td>
+              <td class="num">${p.lowStockThreshold}</td>
+            </tr>`).join("")}
+        </tbody>
+      </table>`;
+  } catch (err) {
+    host.innerHTML = "";
+    showResult("lowStockResult", false, err.data || err.message);
+  }
+}
+
+/* ---------- Lịch sử kho ---------- */
+
+function pickForHistory(productId) {
+  document.getElementById("historyProductSelect").value = productId;
+  loadHistory();
+  document.getElementById("historyTable").scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+async function loadHistory() {
+  clearResult("historyResult");
+  const host = document.getElementById("historyTable");
+  const productId = document.getElementById("historyProductSelect").value;
+  if (!productId) {
+    showResult("historyResult", false, "Chưa chọn sản phẩm.");
+    return;
+  }
+
+  try {
+    const rows = await callApi(`/products/${productId}/stock-movements`, { auth: true });
+    if (!rows.length) {
+      host.innerHTML = '<p class="empty">Sản phẩm này chưa có biến động kho.</p>';
+      return;
+    }
+    host.innerHTML = `
+      <table>
+        <thead>
+          <tr><th>Thời điểm</th><th>Loại</th><th class="num">Thay đổi</th><th class="num">Tồn sau</th><th>Ghi chú</th><th>Mã đơn</th></tr>
+        </thead>
+        <tbody>
+          ${rows.map((m) => `
+            <tr>
+              <td>${new Date(m.createdAt).toLocaleString("vi-VN")}</td>
+              <td><span class="badge ${m.type === "SALE" ? "warn" : "ok"}">${esc(m.type)}</span></td>
+              <td class="num">${m.quantityChange > 0 ? "+" : ""}${m.quantityChange}</td>
+              <td class="num">${m.quantityAfter}</td>
+              <td>${esc(m.note)}</td>
+              <td>${m.referenceId ? "<code>" + esc(shortId(m.referenceId)) + "…</code>" : "—"}</td>
+            </tr>`).join("")}
+        </tbody>
+      </table>`;
+  } catch (err) {
+    host.innerHTML = "";
+    showResult("historyResult", false, err.data || err.message);
   }
 }
 
