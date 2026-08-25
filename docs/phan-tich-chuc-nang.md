@@ -74,11 +74,19 @@ Chú thích trạng thái: ✅ Đã hiện thực · ⚠️ Hiện thực một 
 
 | Mã CN | Tên chức năng | Tác nhân | Mô tả xử lý | Trạng thái |
 |---|---|---|---|---|
-| CN-27 | Quản lý danh mục sản phẩm | AC-04 | CRUD nhóm hàng (thức ăn, thuốc, phụ kiện) | ⏳ |
-| CN-28 | Quản lý sản phẩm | AC-04, AC-03 | CRUD sản phẩm: tên, giá, ảnh, mô tả, đơn vị tính | ⏳ |
-| CN-29 | Tìm kiếm & xem chi tiết sản phẩm | AC-01 | Lọc theo danh mục, khoảng giá, từ khoá; phân trang | ⏳ |
-| CN-30 | Quản lý tồn kho | AC-03 | Nhập kho, điều chỉnh số lượng, cảnh báo sắp hết hàng | ⏳ |
-| CN-31 | Tự động trừ tồn kho | Hệ thống | Lắng nghe sự kiện "Đơn hàng thành công" từ RabbitMQ → giảm số lượng tồn | ⏳ |
+| CN-27 | Quản lý danh mục sản phẩm | AC-04 | CRUD nhóm hàng (thức ăn, thuốc, phụ kiện); chặn xoá danh mục còn sản phẩm | ✅ |
+| CN-28 | Quản lý sản phẩm | AC-04 | CRUD sản phẩm: SKU, tên, giá, ảnh, mô tả, đơn vị tính | ✅ |
+| CN-29 | Tìm kiếm & xem chi tiết sản phẩm | AC-01 | Lọc theo danh mục, khoảng giá, từ khoá; phân trang; công khai không cần đăng nhập | ✅ |
+| CN-30 | Quản lý tồn kho | AC-03, AC-04 | Nhập kho, điều chỉnh sau kiểm kê, lịch sử biến động, cảnh báo sắp hết hàng | ✅ |
+| CN-31 | Tự động trừ tồn kho | Hệ thống | Lắng nghe `order.completed` từ RabbitMQ → giảm tồn; chống xử lý trùng message | ⚠️ Consumer đã sẵn sàng, chờ `order-service` phát sự kiện |
+
+> **Ghi chú thiết kế:** `products.stock_quantity` giữ tồn hiện tại để lọc/hiển thị nhanh, còn
+> `stock_movements` ghi vết từng lần biến động kèm `quantity_after` để đối soát. Đổi tồn kho
+> bắt buộc đi qua endpoint nhập/điều chỉnh, `PUT /products/{id}` không sửa được tồn.
+>
+> Service **không dùng prefix `/admin`** vì gateway đã dành đường đó cho `auth-service`;
+> phân quyền theo HTTP method trên cùng prefix tài nguyên (`GET` công khai, `POST/PUT/DELETE`
+> cần ADMIN, riêng thao tác kho cho STAFF/ADMIN).
 
 ### 2.6. Module Đơn hàng & Thanh toán (`order-service` — `order_db`)
 
