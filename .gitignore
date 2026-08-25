@@ -18,7 +18,11 @@ target/
 *.log
 
 # Env
+# Chan ca ho .env.* (.env.bak, .env.local, .env.prod...) vi chung chua secret;
+# rieng .env.example la template khong co gia tri that nen van commit.
 .env
+.env.*
+!.env.example
 
 # Node (frontend)
 node_modules/
