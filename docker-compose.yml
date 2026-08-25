@@ -163,6 +163,7 @@ services:
   # ==========================================================================
   # Duoi day la cac service chua duoc code (chi co README, chua co Dockerfile).
   # Profile "future" giu chung ngoai lenh `docker compose up` mac dinh.
+  # Da roi khoi danh sach nay: product-service (xem khoi cau hinh day du o tren).
   # ==========================================================================
 
   booking-service:
@@ -182,12 +183,29 @@ services:
       - pet-db
 
   product-service:
-    profiles: ["future"]
     build: ./services/product-service
     container_name: product-service
+    ports:
+      - "8084:8084"
+    environment:
+      DB_HOST: product-db
+      DB_PORT: 5432
+      DB_NAME: product_db
+      DB_USERNAME: ${PRODUCT_DB_USER:-postgres}
+      DB_PASSWORD: ${PRODUCT_DB_PASSWORD:?PRODUCT_DB_PASSWORD is required}
+      EUREKA_URI: http://eureka-server:8761/eureka/
+      # Chung JWT_SECRET voi auth-service de tu verify token.
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USERNAME: ${RABBITMQ_USER:-guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
     depends_on:
-      - eureka-server
-      - product-db
+      product-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
 
   order-service:
     profiles: ["future"]
@@ -234,11 +252,21 @@ services:
     environment:
       POSTGRES_DB: pet_db
   product-db:
-    profiles: ["future"]
     image: postgres:16
     container_name: product-db
+    ports:
+      - "5435:5432"
     environment:
       POSTGRES_DB: product_db
+      POSTGRES_USER: ${PRODUCT_DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${PRODUCT_DB_PASSWORD:?PRODUCT_DB_PASSWORD is required}
+    volumes:
+      - product-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PRODUCT_DB_USER:-postgres} -d product_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
   order-db:
     profiles: ["future"]
     image: postgres:16
@@ -255,3 +283,4 @@ services:
 volumes:
   auth-db-data:
   profile-db-data:
+  product-db-data:

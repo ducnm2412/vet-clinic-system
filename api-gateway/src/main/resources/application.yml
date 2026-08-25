@@ -22,6 +22,11 @@ spring:
           predicates:
             - Path=/profile/**
 
+        - id: product-service
+          uri: lb://product-service
+          predicates:
+            - Path=/products/**,/categories/**
+
 eureka:
   client:
     service-url:
