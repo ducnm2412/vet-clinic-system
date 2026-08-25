@@ -1,8 +1,7 @@
 // Server tối giản (không phụ thuộc npm package nào) để:
 // 1. Serve file index.html tĩnh.
-// 2. Proxy /api-proxy/auth/* và /api-proxy/admin/* sang api-gateway, và
-//    /api-proxy/profile/* thẳng sang profile-service (service này CHƯA có route
-//    qua gateway) — tránh lỗi CORS vì các service chưa cấu hình CORS cho browser.
+// 2. Proxy toàn bộ /api-proxy/* sang api-gateway — tránh lỗi CORS vì các service
+//    chưa cấu hình CORS cho browser.
 //
 // Chạy: node server.js  (mặc định http://localhost:3000)
 
@@ -12,7 +11,6 @@ const path = require("path");
 
 const PORT = process.env.PORT || 3000;
 const API_GATEWAY_URL = process.env.API_GATEWAY_URL || "http://localhost:8080";
-const PROFILE_SERVICE_URL = process.env.PROFILE_SERVICE_URL || "http://localhost:8083";
 
 const MIME_TYPES = {
   ".html": "text/html; charset=utf-8",
@@ -67,10 +65,6 @@ function serveStatic(req, res) {
 }
 
 const server = http.createServer((req, res) => {
-  if (req.url.startsWith("/api-proxy/profile/")) {
-    proxy(req, res, PROFILE_SERVICE_URL);
-    return;
-  }
   if (req.url.startsWith("/api-proxy/")) {
     proxy(req, res, API_GATEWAY_URL);
     return;
@@ -80,6 +74,5 @@ const server = http.createServer((req, res) => {
 
 server.listen(PORT, () => {
   console.log(`Test UI đang chạy tại http://localhost:${PORT}`);
-  console.log(`Proxy /auth,/admin sang api-gateway: ${API_GATEWAY_URL}`);
-  console.log(`Proxy /profile thẳng sang profile-service: ${PROFILE_SERVICE_URL}`);
+  console.log(`Proxy /auth, /admin, /profile sang api-gateway: ${API_GATEWAY_URL}`);
 });
