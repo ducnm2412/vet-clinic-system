@@ -98,7 +98,7 @@ export DB_HOST=localhost DB_PORT=5432 JWT_SECRET=<giống-auth-service>
 mvn spring-boot:run
 ```
 
-Qua Docker Compose: `docker compose up -d eureka-server profile-db profile-service` (chưa có `Dockerfile` — xem phần Hạn chế).
+Qua Docker Compose: `docker compose up -d eureka-server profile-db rabbitmq api-gateway profile-service`. Gọi qua gateway (`http://localhost:8080/profile/...`) thay vì gọi thẳng `:8083`.
 
 ## Test
 
@@ -113,6 +113,4 @@ mvn test
 
 ## Hạn chế hiện tại / việc còn thiếu
 
-- **Chưa có `Dockerfile`** — chưa chạy được qua `docker compose up profile-service`, chưa verify đăng ký Eureka. **`api-gateway` cũng chưa có route `/profile/**`** — dù có Dockerfile, gọi qua gateway (port 8080) vẫn không tới được service này (khác với `auth-service` đã làm đủ các bước này)
 - **Pet chưa có hồ sơ bệnh án** — dữ liệu lâm sàng theo lượt khám thuộc về `booking-service` (chưa code), sẽ tham chiếu `petId` sang đây
-- **Chưa có cơ chế dọn dữ liệu mồ côi** khi 1 user bị xoá bên `auth_db` — `profile_db` không tự biết để xoá theo (không có FK xuyên DB, chưa có event/RabbitMQ lắng nghe)
