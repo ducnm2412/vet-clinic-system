@@ -1,7 +1,13 @@
-# Khung docker-compose.yml — mỗi service build từ Dockerfile riêng, kết nối qua network chung.
-# Đây là bộ khung cấu trúc; cần bổ sung image build, biến môi trường, volume thật khi code từng service.
-
-version: "3.8"
+# Chay toan bo he thong bang mot lenh:
+#
+#   docker compose up -d --build
+#
+# Cac service chua code (booking, pet, product, order, staff, notification, reporting)
+# nam trong profile "future" nen KHONG chay mac dinh — chung chua co Dockerfile, neu
+# de chung o profile mac dinh thi ca lenh `up` se fail o buoc build.
+# Khi mot service duoc code xong: viet Dockerfile cho no roi xoa dong `profiles` tuong ung.
+#
+# Muon xem ca cac service chua code:  docker compose --profile future config
 
 services:
   eureka-server:
@@ -9,6 +15,12 @@ services:
     container_name: eureka-server
     ports:
       - "8761:8761"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8761/actuator/health || wget -qO- http://localhost:8761/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
 
   api-gateway:
     build: ./api-gateway
@@ -18,7 +30,8 @@ services:
     environment:
       EUREKA_URI: http://eureka-server:8761/eureka/
     depends_on:
-      - eureka-server
+      eureka-server:
+        condition: service_started
 
   auth-service:
     build: ./services/auth-service
@@ -41,9 +54,14 @@ services:
       RABBITMQ_USERNAME: ${RABBITMQ_USER:-guest}
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
     depends_on:
-      - eureka-server
-      - auth-db
-      - rabbitmq
+      # Cho Postgres that su nhan ket noi, khong chi cho container start —
+      # Flyway chay ngay luc khoi dong nen DB chua san sang la app chet.
+      auth-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
 
   profile-service:
     build: ./services/profile-service
@@ -57,7 +75,7 @@ services:
       DB_USERNAME: ${PROFILE_DB_USER:-postgres}
       DB_PASSWORD: ${PROFILE_DB_PASSWORD:?PROFILE_DB_PASSWORD is required}
       EUREKA_URI: http://eureka-server:8761/eureka/
-      # Chung JWT_SECRET với auth-service để tự verify token, không gọi ngược auth-service.
+      # Chung JWT_SECRET voi auth-service de tu verify token, khong goi nguoc auth-service.
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_USERNAME: ${RABBITMQ_USER:-guest}
@@ -136,6 +154,10 @@ services:
     container_name: frontend
     ports:
       - "3000:3000"
+    environment:
+      # Trong mang Docker goi nhau bang ten service, khong phai localhost.
+      # Moi request /api-proxy/* deu di qua gateway (ke ca /profile/**).
+      API_GATEWAY_URL: http://api-gateway:8080
     depends_on:
       - api-gateway
 
@@ -149,6 +171,14 @@ services:
       POSTGRES_DB: auth_db
       POSTGRES_USER: ${AUTH_DB_USER:-postgres}
       POSTGRES_PASSWORD: ${AUTH_DB_PASSWORD:?AUTH_DB_PASSWORD is required}
+    volumes:
+      - auth-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${AUTH_DB_USER:-postgres} -d auth_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   profile-db:
     image: postgres:16
     container_name: profile-db
@@ -196,13 +226,115 @@ services:
       - "5672:5672"
       - "15672:15672"
     environment:
-      # Đặt user riêng thay vì dùng "guest" mặc định — guest chỉ được phép kết nối từ
-      # localhost, mà các service khác kết nối qua network Docker thì không tính là localhost.
+      # Dat user rieng thay vi dung "guest" mac dinh — guest chi duoc phep ket noi tu
+      # localhost, ma cac service khac ket noi qua network Docker thi khong tinh la localhost.
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
 
   redis:
     image: redis:7
     container_name: redis
     ports:
       - "6379:6379"
+
+  # ==========================================================================
+  # Duoi day la cac service chua duoc code (chi co README, chua co Dockerfile).
+  # Profile "future" giu chung ngoai lenh `docker compose up` mac dinh.
+  # ==========================================================================
+
+  booking-service:
+    profiles: ["future"]
+    build: ./services/booking-service
+    container_name: booking-service
+    depends_on:
+      - eureka-server
+      - booking-db
+
+  pet-service:
+    profiles: ["future"]
+    build: ./services/pet-service
+    container_name: pet-service
+    depends_on:
+      - eureka-server
+      - pet-db
+
+  product-service:
+    profiles: ["future"]
+    build: ./services/product-service
+    container_name: product-service
+    depends_on:
+      - eureka-server
+      - product-db
+
+  order-service:
+    profiles: ["future"]
+    build: ./services/order-service
+    container_name: order-service
+    depends_on:
+      - eureka-server
+      - order-db
+
+  staff-service:
+    profiles: ["future"]
+    build: ./services/staff-service
+    container_name: staff-service
+    depends_on:
+      - eureka-server
+      - staff-db
+
+  notification-service:
+    profiles: ["future"]
+    build: ./services/notification-service
+    container_name: notification-service
+    depends_on:
+      - eureka-server
+      - rabbitmq
+
+  reporting-service:
+    profiles: ["future"]
+    build: ./services/reporting-service
+    container_name: reporting-service
+    depends_on:
+      - eureka-server
+      - rabbitmq
+
+  booking-db:
+    profiles: ["future"]
+    image: postgres:16
+    container_name: booking-db
+    environment:
+      POSTGRES_DB: booking_db
+  pet-db:
+    profiles: ["future"]
+    image: postgres:16
+    container_name: pet-db
+    environment:
+      POSTGRES_DB: pet_db
+  product-db:
+    profiles: ["future"]
+    image: postgres:16
+    container_name: product-db
+    environment:
+      POSTGRES_DB: product_db
+  order-db:
+    profiles: ["future"]
+    image: postgres:16
+    container_name: order-db
+    environment:
+      POSTGRES_DB: order_db
+  staff-db:
+    profiles: ["future"]
+    image: postgres:16
+    container_name: staff-db
+    environment:
+      POSTGRES_DB: staff_db
+
+volumes:
+  auth-db-data:
+  profile-db-data:
