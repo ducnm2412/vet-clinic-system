@@ -124,6 +124,15 @@ public class CustomerProfileService {
                 .toList();
     }
 
+    // KHÔNG readOnly: getOrCreateProfile có thể phải INSERT profile mới cho customer lần đầu gọi.
+    @Transactional
+    public PetResponse getPet(UUID userId, UUID petId) {
+        CustomerProfile profile = getOrCreateProfile(userId);
+        Pet pet = petRepository.findByIdAndCustomerProfileId(petId, profile.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Pet not found: " + petId));
+        return toPetResponse(pet);
+    }
+
     @Transactional
     public PetResponse createPet(UUID userId, PetRequest request) {
         CustomerProfile profile = getOrCreateProfile(userId);

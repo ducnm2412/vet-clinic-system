@@ -12,4 +12,6 @@ public interface PetRepository extends JpaRepository<Pet, UUID> {
     List<Pet> findByCustomerProfileId(UUID customerProfileId);
 
     Optional<Pet> findByIdAndCustomerProfileId(UUID id, UUID customerProfileId);
+
+    List<Pet> findAllByIdIn(List<UUID> ids);
 }

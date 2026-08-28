@@ -70,9 +70,24 @@ services:
   booking-service:
     build: ./services/booking-service
     container_name: booking-service
+    ports:
+      - "8084:8084"
+    environment:
+      DB_HOST: booking-db
+      DB_PORT: 5432
+      DB_NAME: booking_db
+      DB_USERNAME: ${BOOKING_DB_USER:-postgres}
+      DB_PASSWORD: ${BOOKING_DB_PASSWORD:?BOOKING_DB_PASSWORD is required}
+      EUREKA_URI: http://eureka-server:8761/eureka/
+      # Chung JWT_SECRET với auth-service/profile-service để tự verify token.
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USERNAME: ${RABBITMQ_USER:-guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
     depends_on:
       - eureka-server
       - booking-db
+      - rabbitmq
 
   pet-service:
     build: ./services/pet-service
@@ -146,8 +161,12 @@ services:
   booking-db:
     image: postgres:16
     container_name: booking-db
+    ports:
+      - "5435:5432"
     environment:
       POSTGRES_DB: booking_db
+      POSTGRES_USER: ${BOOKING_DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${BOOKING_DB_PASSWORD:?BOOKING_DB_PASSWORD is required}
   pet-db:
     image: postgres:16
     container_name: pet-db
