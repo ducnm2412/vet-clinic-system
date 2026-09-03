@@ -53,7 +53,8 @@ public class MedicalRecord {
     @Column(columnDefinition = "TEXT")
     private String notes;
 
-    // PENDING khi bác sĩ vừa kê xong — staff tiếp nhận (RECEIVED) để biết đơn nào cần xử lý.
+    // PENDING khi bác sĩ vừa kê xong (chờ thanh toán) -> PAID khi khách hàng thanh toán xong
+    // -> RECEIVED khi staff tiếp nhận để giao thuốc. Xem PrescriptionStatus.
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     @Builder.Default

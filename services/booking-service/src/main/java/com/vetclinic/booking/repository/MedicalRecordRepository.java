@@ -12,6 +12,6 @@ public interface MedicalRecordRepository extends JpaRepository<MedicalRecord, UU
 
     Optional<MedicalRecord> findByAppointmentId(UUID appointmentId);
 
-    // Hàng đợi đơn thuốc chờ staff tiếp nhận.
+    // Hàng đợi đơn thuốc (thường gọi với status = PAID) chờ staff tiếp nhận.
     List<MedicalRecord> findByStatusOrderByCreatedAtAsc(PrescriptionStatus status);
 }

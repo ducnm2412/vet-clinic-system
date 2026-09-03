@@ -15,11 +15,11 @@ import com.vetclinic.auth.exception.InvalidCredentialsException;
 import com.vetclinic.auth.exception.InvalidOrExpiredTokenException;
 import com.vetclinic.auth.exception.UserNotFoundException;
 import com.vetclinic.auth.messaging.UserDeletedEvent;
+import com.vetclinic.auth.messaging.UserRegisteredEvent;
 import com.vetclinic.auth.repository.RoleRepository;
 import com.vetclinic.auth.repository.UserRepository;
 import com.vetclinic.auth.security.jwt.JwtUtil;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -34,7 +34,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthService {
@@ -72,7 +71,11 @@ public class AuthService {
 
         userRepository.save(user);
 
-        sendVerificationEmail(user, verificationToken);
+        // Publish event nội bộ (Spring, không phải RabbitMQ) — UserEventPublisher sẽ chỉ đẩy lên
+        // RabbitMQ thật SAU KHI transaction này commit thành công (@TransactionalEventListener
+        // AFTER_COMMIT), tránh trường hợp DB rollback nhưng email "chào mừng" vẫn lỡ được gửi.
+        applicationEventPublisher.publishEvent(new UserRegisteredEvent(user.getId(), user.getEmail(),
+                user.getFirstName(), user.getLastName(), verificationToken, user.getVerificationTokenExpiresAt()));
 
         return new MessageResponse("Registration successful. Please check your email to verify your account.");
     }
@@ -172,10 +175,5 @@ public class AuthService {
         byte[] bytes = new byte[32];
         secureRandom.nextBytes(bytes);
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
-    }
-
-    // TODO: thay bằng publish message lên RabbitMQ để notification-service gửi email thật.
-    private void sendVerificationEmail(User user, String token) {
-        log.info("[DEV] Verification link for {}: GET /auth/verify-email?token={}", user.getEmail(), token);
     }
 }
