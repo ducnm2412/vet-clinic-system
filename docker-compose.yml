@@ -107,6 +107,62 @@ services:
       - booking-db
       - rabbitmq
 
+  payment-service:
+    build: ./services/payment-service
+    container_name: payment-service
+    ports:
+      - "8085:8085"
+    environment:
+      DB_HOST: payment-db
+      DB_PORT: 5432
+      DB_NAME: payment_db
+      DB_USERNAME: ${PAYMENT_DB_USER:-postgres}
+      DB_PASSWORD: ${PAYMENT_DB_PASSWORD:?PAYMENT_DB_PASSWORD is required}
+      EUREKA_URI: http://eureka-server:8761/eureka/
+      # Chung JWT_SECRET với auth-service/booking-service để tự verify token.
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USERNAME: ${RABBITMQ_USER:-guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
+    depends_on:
+      - eureka-server
+      - payment-db
+      - rabbitmq
+
+  notification-service:
+    build: ./services/notification-service
+    container_name: notification-service
+    ports:
+      - "8086:8086"
+    environment:
+      EUREKA_URI: http://eureka-server:8761/eureka/
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USERNAME: ${RABBITMQ_USER:-guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
+      # Dev: MailHog (container "mailhog" ở dưới, không cần auth). Đổi sang SMTP thật (Gmail app
+      # password, SendGrid...) sau bằng MAIL_HOST/MAIL_USERNAME/MAIL_PASSWORD (+ MAIL_SMTP_AUTH=true,
+      # MAIL_SMTP_STARTTLS=true) trong .env, không phải sửa code hay rebuild image.
+      MAIL_HOST: ${MAIL_HOST:-mailhog}
+      MAIL_PORT: ${MAIL_PORT:-1025}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-false}
+      MAIL_SMTP_STARTTLS: ${MAIL_SMTP_STARTTLS:-false}
+      # Link xác thực trong email phải là URL trình duyệt người dùng mở được — KHÔNG dùng tên
+      # service nội bộ Docker ("frontend"), phải là host thật (localhost khi dev, domain thật khi prod).
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+    depends_on:
+      - eureka-server
+      - rabbitmq
+      - mailhog
+
+  mailhog:
+    image: mailhog/mailhog
+    container_name: mailhog
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
   frontend:
     build: ./frontend
     container_name: frontend
@@ -156,6 +212,16 @@ services:
       POSTGRES_USER: ${BOOKING_DB_USER:-postgres}
       POSTGRES_PASSWORD: ${BOOKING_DB_PASSWORD:?BOOKING_DB_PASSWORD is required}
 
+  payment-db:
+    image: postgres:16
+    container_name: payment-db
+    ports:
+      - "5436:5432"
+    environment:
+      POSTGRES_DB: payment_db
+      POSTGRES_USER: ${PAYMENT_DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${PAYMENT_DB_PASSWORD:?PAYMENT_DB_PASSWORD is required}
+
   # --- Message broker & cache ---
   rabbitmq:
     image: rabbitmq:3-management
@@ -184,8 +250,8 @@ services:
   # ==========================================================================
   # Duoi day la cac service chua duoc code (chi co README, chua co Dockerfile).
   # Profile "future" giu chung ngoai lenh `docker compose up` mac dinh.
-  # booking-service/booking-db KHONG con o day nua - da code xong that,
-  # dinh nghia day du nam o dau file (~dong 88 va ~191).
+  # booking-service/booking-db, payment-service/payment-db va notification-service/mailhog
+  # KHONG con o day nua - da code xong that, dinh nghia day du nam o dau file.
   # ==========================================================================
 
   pet-service:
@@ -219,14 +285,6 @@ services:
     depends_on:
       - eureka-server
       - staff-db
-
-  notification-service:
-    profiles: ["future"]
-    build: ./services/notification-service
-    container_name: notification-service
-    depends_on:
-      - eureka-server
-      - rabbitmq
 
   reporting-service:
     profiles: ["future"]

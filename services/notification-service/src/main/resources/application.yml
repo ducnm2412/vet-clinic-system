@@ -1,0 +1,38 @@
+spring:
+  application:
+    name: notification-service
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+  mail:
+    # Dev: trỏ MailHog (SMTP giả lập, không cần auth, xem mail ở UI riêng của MailHog port 8025).
+    # Prod sau này đổi sang SMTP thật (Gmail app password, SendGrid...) chỉ bằng cách set
+    # MAIL_HOST/MAIL_USERNAME/MAIL_PASSWORD + MAIL_SMTP_AUTH=true/MAIL_SMTP_STARTTLS=true trong
+    # .env, không phải sửa code.
+    host: ${MAIL_HOST:mailhog}
+    port: ${MAIL_PORT:1025}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: ${MAIL_SMTP_AUTH:false}
+          starttls:
+            enable: ${MAIL_SMTP_STARTTLS:false}
+
+server:
+  port: ${SERVER_PORT:8086}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URI:http://localhost:8761/eureka/}
+  instance:
+    prefer-ip-address: true
+
+app:
+  # Base URL của frontend (không phải api-gateway) — email trỏ người dùng vào 1 trang frontend,
+  # trang đó tự gọi GET /auth/verify-email?token= qua gateway rồi hiển thị kết quả.
+  frontend-url: ${FRONTEND_URL:http://localhost:3000}
