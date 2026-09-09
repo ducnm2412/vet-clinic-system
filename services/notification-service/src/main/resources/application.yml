@@ -23,7 +23,7 @@ spring:
             enable: ${MAIL_SMTP_STARTTLS:false}
 
 server:
-  port: ${SERVER_PORT:8086}
+  port: ${SERVER_PORT:8088}
 
 eureka:
   client:
