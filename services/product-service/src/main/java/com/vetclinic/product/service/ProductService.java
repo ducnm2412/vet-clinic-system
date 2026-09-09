@@ -191,6 +191,25 @@ public class ProductService {
         return true;
     }
 
+    /**
+     * Hoàn hàng về kho khi đơn đã xác nhận bị huỷ. Cũng chống trùng như applySale, nhưng
+     * theo type RETURN nên một đơn có thể vừa có dòng SALE vừa có dòng RETURN.
+     */
+    @Transactional
+    public boolean applyReturn(UUID productId, int quantity, UUID orderId) {
+        if (stockMovementRepository.existsByProductIdAndReferenceIdAndType(
+                productId, orderId, StockMovementType.RETURN)) {
+            log.info("Bỏ qua sự kiện trùng: order={} product={} đã hoàn kho trước đó", orderId, productId);
+            return false;
+        }
+
+        Product product = findOrThrow(productId);
+        product.setStockQuantity(product.getStockQuantity() + quantity);
+        recordMovement(product, StockMovementType.RETURN, quantity, "Hoàn kho do huỷ đơn", orderId, null);
+
+        return true;
+    }
+
     // ---------- nội bộ ----------
 
     private void recordMovement(Product product, StockMovementType type, int change,

@@ -14,7 +14,9 @@ public class RabbitMQConfig {
 
     public static final String ORDER_EVENTS_EXCHANGE = "order.events";
     public static final String ORDER_COMPLETED_QUEUE = "product-service.order-completed";
+    public static final String ORDER_CANCELLED_QUEUE = "product-service.order-cancelled";
     private static final String ROUTING_KEY_ORDER_COMPLETED = "order.completed";
+    private static final String ROUTING_KEY_ORDER_CANCELLED = "order.cancelled";
 
     // Khai báo exchange ở phía consumer luôn: product-service có thể khởi động trước
     // order-service, lúc đó exchange chưa tồn tại thì binding sẽ lỗi. Khai báo hai đầu
@@ -32,6 +34,16 @@ public class RabbitMQConfig {
     @Bean
     public Binding orderCompletedBinding(Queue orderCompletedQueue, TopicExchange orderEventsExchange) {
         return BindingBuilder.bind(orderCompletedQueue).to(orderEventsExchange).with(ROUTING_KEY_ORDER_COMPLETED);
+    }
+
+    @Bean
+    public Queue orderCancelledQueue() {
+        return new Queue(ORDER_CANCELLED_QUEUE, true);
+    }
+
+    @Bean
+    public Binding orderCancelledBinding(Queue orderCancelledQueue, TopicExchange orderEventsExchange) {
+        return BindingBuilder.bind(orderCancelledQueue).to(orderEventsExchange).with(ROUTING_KEY_ORDER_CANCELLED);
     }
 
     @Bean
