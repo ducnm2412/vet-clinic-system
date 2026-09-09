@@ -21,6 +21,11 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.NOT_FOUND, ex.getMessage());
     }
 
+    @ExceptionHandler(PrescriptionNotPaidException.class)
+    public ResponseEntity<ErrorResponse> handlePrescriptionNotPaid(PrescriptionNotPaidException ex) {
+        return build(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
     @ExceptionHandler(SlotFullyBookedException.class)
     public ResponseEntity<SlotFullyBookedErrorResponse> handleSlotFullyBooked(SlotFullyBookedException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)

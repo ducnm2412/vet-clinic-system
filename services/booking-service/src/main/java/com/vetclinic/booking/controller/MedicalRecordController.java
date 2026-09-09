@@ -41,16 +41,17 @@ public class MedicalRecordController {
         return medicalRecordService.getMedicalRecord(id, principal.userId(), privileged);
     }
 
-    // Staff tiếp nhận đơn thuốc sau khi bác sĩ kê xong (PENDING -> RECEIVED).
+    // Staff tiếp nhận đơn thuốc sau khi khách hàng đã thanh toán (PAID -> RECEIVED).
+    // Trả lỗi 409 nếu đơn còn PENDING (chưa thanh toán).
     @PutMapping("/booking/appointments/{id}/medical-record/receive")
     @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
     public MedicalRecordResponse receivePrescription(@PathVariable UUID id) {
         return medicalRecordService.receivePrescription(id);
     }
 
-    // Hàng đợi cho staff: toàn bộ đơn thuốc đang PENDING chờ tiếp nhận, không gắn theo 1
-    // appointment cụ thể nên đặt ở path riêng /booking/medical-records/..., không lồng dưới
-    // /booking/appointments/{id}/...
+    // Hàng đợi cho staff: toàn bộ đơn thuốc đã PAID (đã thanh toán) chờ tiếp nhận, không gắn
+    // theo 1 appointment cụ thể nên đặt ở path riêng /booking/medical-records/..., không lồng
+    // dưới /booking/appointments/{id}/...
     @GetMapping("/booking/medical-records/pending")
     @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
     public List<MedicalRecordResponse> listPendingPrescriptions() {

@@ -9,6 +9,7 @@ import com.vetclinic.booking.dto.MedicalRecordRequest;
 import com.vetclinic.booking.dto.MedicalRecordResponse;
 import com.vetclinic.booking.dto.PetResponse;
 import com.vetclinic.booking.dto.PrescriptionItemRequest;
+import com.vetclinic.booking.exception.PrescriptionNotPaidException;
 import com.vetclinic.booking.exception.ResourceNotFoundException;
 import com.vetclinic.booking.repository.AppointmentRepository;
 import com.vetclinic.booking.repository.AppointmentSlotRepository;
@@ -112,11 +113,26 @@ class MedicalRecordServiceTest {
     }
 
     @Test
-    void receivePrescription_transitionsPendingToReceived_andIsIdempotent() {
+    void receivePrescription_beforePayment_throwsPrescriptionNotPaid() {
         when(profileServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
         AppointmentResponse appointment = bookAppointment(UUID.randomUUID(), LocalDate.of(2026, 12, 24), LocalTime.of(9, 0));
         medicalRecordService.createOrUpdateMedicalRecord(appointment.id(),
                 new MedicalRecordRequest("Diagnosis", null, null, null));
+
+        // Chưa thanh toán (vẫn PENDING) — staff không được phép tiếp nhận.
+        assertThatThrownBy(() -> medicalRecordService.receivePrescription(appointment.id()))
+                .isInstanceOf(PrescriptionNotPaidException.class);
+    }
+
+    @Test
+    void receivePrescription_afterPayment_transitionsPaidToReceived_andIsIdempotent() {
+        when(profileServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
+        AppointmentResponse appointment = bookAppointment(UUID.randomUUID(), LocalDate.of(2026, 12, 24), LocalTime.of(9, 0));
+        MedicalRecordResponse created = medicalRecordService.createOrUpdateMedicalRecord(appointment.id(),
+                new MedicalRecordRequest("Diagnosis", null, null, null));
+
+        // Giả lập payment-service báo đã thanh toán xong (payment.completed event).
+        medicalRecordService.markPrescriptionPaid(created.id());
 
         MedicalRecordResponse received = medicalRecordService.receivePrescription(appointment.id());
         assertThat(received.status()).isEqualTo(PrescriptionStatus.RECEIVED);
@@ -136,21 +152,33 @@ class MedicalRecordServiceTest {
     }
 
     @Test
-    void listPendingPrescriptions_excludesReceivedOnes() {
-        when(profileServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
-        AppointmentResponse stillPending = bookAppointment(UUID.randomUUID(), LocalDate.of(2026, 12, 26), LocalTime.of(9, 0));
-        AppointmentResponse alreadyReceived = bookAppointment(UUID.randomUUID(), LocalDate.of(2026, 12, 26), LocalTime.of(9, 30));
+    void markPrescriptionPaid_unknownMedicalRecordId_doesNotThrow() {
+        // Event trễ/sai id không được làm consumer crash (message sẽ không được requeue vô hạn).
+        medicalRecordService.markPrescriptionPaid(UUID.randomUUID());
+    }
 
-        medicalRecordService.createOrUpdateMedicalRecord(stillPending.id(),
-                new MedicalRecordRequest("Pending diagnosis", null, null, null));
-        medicalRecordService.createOrUpdateMedicalRecord(alreadyReceived.id(),
-                new MedicalRecordRequest("Received diagnosis", null, null, null));
+    @Test
+    void listPendingPrescriptions_onlyIncludesPaidOnes() {
+        when(profileServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
+        AppointmentResponse notYetPaid = bookAppointment(UUID.randomUUID(), LocalDate.of(2026, 12, 26), LocalTime.of(9, 0));
+        AppointmentResponse paidAndPending = bookAppointment(UUID.randomUUID(), LocalDate.of(2026, 12, 26), LocalTime.of(9, 30));
+        AppointmentResponse alreadyReceived = bookAppointment(UUID.randomUUID(), LocalDate.of(2026, 12, 26), LocalTime.of(10, 0));
+
+        medicalRecordService.createOrUpdateMedicalRecord(notYetPaid.id(),
+                new MedicalRecordRequest("Not paid yet", null, null, null));
+        MedicalRecordResponse paidRecord = medicalRecordService.createOrUpdateMedicalRecord(paidAndPending.id(),
+                new MedicalRecordRequest("Paid, waiting pickup", null, null, null));
+        MedicalRecordResponse receivedRecord = medicalRecordService.createOrUpdateMedicalRecord(alreadyReceived.id(),
+                new MedicalRecordRequest("Already received", null, null, null));
+        medicalRecordService.markPrescriptionPaid(paidRecord.id());
+        medicalRecordService.markPrescriptionPaid(receivedRecord.id());
         medicalRecordService.receivePrescription(alreadyReceived.id());
 
         List<MedicalRecordResponse> pending = medicalRecordService.listPendingPrescriptions();
 
-        assertThat(pending).extracting(MedicalRecordResponse::appointmentId).contains(stillPending.id());
-        assertThat(pending).extracting(MedicalRecordResponse::appointmentId).doesNotContain(alreadyReceived.id());
+        assertThat(pending).extracting(MedicalRecordResponse::appointmentId).contains(paidAndPending.id());
+        assertThat(pending).extracting(MedicalRecordResponse::appointmentId)
+                .doesNotContain(notYetPaid.id(), alreadyReceived.id());
     }
 
     private AppointmentResponse bookAppointment(UUID customerUserId, LocalDate date, LocalTime time) {
