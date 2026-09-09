@@ -163,7 +163,7 @@ services:
   # ==========================================================================
   # Duoi day la cac service chua duoc code (chi co README, chua co Dockerfile).
   # Profile "future" giu chung ngoai lenh `docker compose up` mac dinh.
-  # Da roi khoi danh sach nay: product-service (xem khoi cau hinh day du o tren).
+  # Da roi khoi danh sach nay: product-service, order-service (xem cau hinh day du o tren).
   # ==========================================================================
 
   booking-service:
@@ -208,12 +208,33 @@ services:
         condition: service_started
 
   order-service:
-    profiles: ["future"]
     build: ./services/order-service
     container_name: order-service
+    ports:
+      - "8085:8085"
+    environment:
+      DB_HOST: order-db
+      DB_PORT: 5432
+      DB_NAME: order_db
+      DB_USERNAME: ${ORDER_DB_USER:-postgres}
+      DB_PASSWORD: ${ORDER_DB_PASSWORD:?ORDER_DB_PASSWORD is required}
+      EUREKA_URI: http://eureka-server:8761/eureka/
+      # Chung JWT_SECRET voi auth-service de tu verify token.
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USERNAME: ${RABBITMQ_USER:-guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
+      ORDER_SHIPPING_FEE: ${ORDER_SHIPPING_FEE:-30000}
     depends_on:
-      - eureka-server
-      - order-db
+      order-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+      # Checkout goi product-service lay gia va kiem ton kho.
+      product-service:
+        condition: service_started
 
   staff-service:
     profiles: ["future"]
@@ -268,11 +289,21 @@ services:
       timeout: 5s
       retries: 10
   order-db:
-    profiles: ["future"]
     image: postgres:16
     container_name: order-db
+    ports:
+      - "5436:5432"
     environment:
       POSTGRES_DB: order_db
+      POSTGRES_USER: ${ORDER_DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${ORDER_DB_PASSWORD:?ORDER_DB_PASSWORD is required}
+    volumes:
+      - order-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${ORDER_DB_USER:-postgres} -d order_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
   staff-db:
     profiles: ["future"]
     image: postgres:16
@@ -284,3 +315,4 @@ volumes:
   auth-db-data:
   profile-db-data:
   product-db-data:
+  order-db-data:
