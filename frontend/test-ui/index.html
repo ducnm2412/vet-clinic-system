@@ -202,6 +202,7 @@
 <div class="tabs">
   <button class="tab active" data-panel="panel-auth">Tài khoản &amp; Hồ sơ</button>
   <button class="tab" data-panel="panel-shop">Sản phẩm &amp; Kho</button>
+  <button class="tab" data-panel="panel-order">Giỏ hàng &amp; Đơn hàng</button>
 </div>
 
 <!-- ==================== TAB 1: AUTH & PROFILE ==================== -->
@@ -422,6 +423,101 @@
 </div>
 </div>
 
+<!-- ==================== TAB 3: CART & ORDER ==================== -->
+<div class="panel" id="panel-order">
+
+<p class="hint">
+  Giỏ hàng chỉ dành cho vai trò <code>CUSTOMER</code>. Khối "Xử lý đơn" cần <code>STAFF</code>
+  hoặc <code>ADMIN</code> — đăng nhập hai tài khoản khác nhau (mở thêm cửa sổ ẩn danh) để thử
+  cả hai phía.
+</p>
+
+<div class="grid">
+
+  <!-- CN-32 -->
+  <div class="card wide">
+    <h2>CN-32. Giỏ hàng <span class="badge ok">CUSTOMER</span></h2>
+    <div class="filters">
+      <div>
+        <label>Chọn sản phẩm</label>
+        <select id="cartProductSelect"></select>
+      </div>
+      <div>
+        <label>Số lượng</label>
+        <input id="cartQty" type="number" min="1" value="1" />
+      </div>
+      <div><button onclick="addToCart()">Thêm vào giỏ</button></div>
+      <div><button class="secondary" onclick="loadCart()">Tải lại giỏ</button></div>
+      <div><button class="danger" onclick="clearCart()">Xoá sạch giỏ</button></div>
+    </div>
+    <div class="table-scroll" id="cartTable"></div>
+    <div class="result" id="cartResult"></div>
+  </div>
+
+  <!-- CN-33 -->
+  <div class="card">
+    <h2>CN-33. Đặt hàng (checkout)</h2>
+    <p class="sub" style="margin-top:-6px;">Tạo đơn từ toàn bộ giỏ. Giá lấy lại từ product-service, không tin giá phía trình duyệt.</p>
+    <form id="checkoutForm">
+      <label>Tên người nhận</label>
+      <input name="recipientName" required maxlength="200" placeholder="Nguyễn Văn A" />
+      <label>Số điện thoại (10 số, bắt đầu bằng 0)</label>
+      <input name="recipientPhone" required pattern="0[0-9]{9}" placeholder="0901234567" />
+      <label>Địa chỉ giao hàng</label>
+      <input name="shippingAddress" required maxlength="500" placeholder="12 Lê Lợi, Q1, TP.HCM" />
+      <label>Ghi chú</label>
+      <input name="note" maxlength="500" placeholder="Giao giờ hành chính" />
+      <label>Phương thức thanh toán</label>
+      <select name="paymentMethod">
+        <option value="COD">COD — thanh toán khi nhận hàng</option>
+      </select>
+      <button type="submit">Đặt hàng</button>
+    </form>
+    <div class="result" id="checkoutResult"></div>
+  </div>
+
+  <!-- CN-35 -->
+  <div class="card">
+    <h2>CN-35. Đơn hàng của tôi</h2>
+    <p class="sub" style="margin-top:-6px;">Khách chỉ huỷ được đơn còn "Chờ xác nhận".</p>
+    <button onclick="loadMyOrders()">Tải danh sách đơn</button>
+    <div class="table-scroll" id="myOrderTable"></div>
+    <div class="result" id="myOrderResult"></div>
+  </div>
+
+  <!-- CN-36 -->
+  <div class="card wide">
+    <h2>CN-36. Xử lý đơn <span class="badge warn">STAFF / ADMIN</span></h2>
+    <div class="filters">
+      <div>
+        <label>Lọc theo trạng thái</label>
+        <select id="manageStatus">
+          <option value="">— tất cả —</option>
+          <option value="PENDING">PENDING — chờ xác nhận</option>
+          <option value="CONFIRMED">CONFIRMED — đã xác nhận</option>
+          <option value="SHIPPING">SHIPPING — đang giao</option>
+          <option value="COMPLETED">COMPLETED — hoàn tất</option>
+          <option value="CANCELLED">CANCELLED — đã huỷ</option>
+        </select>
+      </div>
+      <div><button onclick="loadManageOrders()">Tải danh sách</button></div>
+    </div>
+    <div class="table-scroll" id="manageOrderTable"></div>
+    <div class="result" id="manageResult"></div>
+  </div>
+
+  <!-- Chi tiết + lịch sử -->
+  <div class="card wide">
+    <h2>Chi tiết đơn &amp; lịch sử trạng thái</h2>
+    <p class="sub" style="margin-top:-6px;">Bấm "Chi tiết" ở một trong hai bảng trên.</p>
+    <div class="table-scroll" id="orderDetailTable"></div>
+    <div class="table-scroll" id="orderHistoryTable"></div>
+    <div class="result" id="orderDetailResult"></div>
+  </div>
+
+</div>
+</div>
+
 <script>
 const TOKEN_KEY = "vetclinic_access_token";
 
@@ -531,6 +627,17 @@ document.querySelectorAll(".tab").forEach((tab) => {
       shopLoaded = true;
       loadCategories();
       searchProducts(0);
+    }
+
+    if (tab.dataset.panel === "panel-order" && !orderLoaded) {
+      orderLoaded = true;
+      // Ô chọn sản phẩm của giỏ dùng chung dữ liệu với tab sản phẩm.
+      if (!productCache.length) {
+        searchProducts(0).then(fillCartProductSelect);
+      } else {
+        fillCartProductSelect();
+      }
+      loadCart();
     }
   });
 });
@@ -794,6 +901,11 @@ function fillProductSelects() {
   const fallback = '<option value="">(chưa có sản phẩm)</option>';
   document.getElementById("stockProductSelect").innerHTML = options || fallback;
   document.getElementById("historyProductSelect").innerHTML = options || fallback;
+
+  // Ô chọn của giỏ hàng ở tab 3 cũng lấy từ cùng danh sách này.
+  if (orderLoaded) {
+    fillCartProductSelect();
+  }
 }
 
 async function deleteProduct(id) {
@@ -903,6 +1015,351 @@ async function loadHistory() {
   } catch (err) {
     host.innerHTML = "";
     showResult("historyResult", false, err.data || err.message);
+  }
+}
+
+/* ==================== TAB 3: Cart & Order ==================== */
+
+let orderLoaded = false;
+
+const STATUS_LABEL = {
+  PENDING: "Chờ xác nhận",
+  CONFIRMED: "Đã xác nhận",
+  SHIPPING: "Đang giao",
+  COMPLETED: "Hoàn tất",
+  CANCELLED: "Đã huỷ",
+};
+
+function statusBadge(status) {
+  const cls = status === "CANCELLED" ? "off" : (status === "COMPLETED" ? "ok" : "warn");
+  return `<span class="badge ${cls}">${esc(STATUS_LABEL[status] || status)}</span>`;
+}
+
+function fillCartProductSelect() {
+  const options = productCache
+    .map((p) => `<option value="${esc(p.id)}">${esc(p.sku)} — ${esc(p.name)} (${money(p.price)}, tồn ${p.stockQuantity})</option>`)
+    .join("");
+  document.getElementById("cartProductSelect").innerHTML =
+    options || '<option value="">(chưa có sản phẩm — tạo ở tab "Sản phẩm & Kho")</option>';
+}
+
+/* ---------- CN-32: giỏ hàng ---------- */
+
+async function loadCart() {
+  clearResult("cartResult");
+  const host = document.getElementById("cartTable");
+  try {
+    const cart = await callApi("/cart", { auth: true });
+    renderCart(cart);
+  } catch (err) {
+    host.innerHTML = "";
+    showResult("cartResult", false, err.data || err.message);
+  }
+}
+
+function renderCart(cart) {
+  const host = document.getElementById("cartTable");
+
+  if (!cart.items.length) {
+    host.innerHTML = '<p class="empty">Giỏ hàng đang trống.</p>';
+    return;
+  }
+
+  host.innerHTML = `
+    <table>
+      <thead>
+        <tr><th>SKU</th><th>Tên</th><th class="num">Đơn giá</th><th class="num">SL</th>
+            <th class="num">Thành tiền</th><th>Tình trạng</th><th></th></tr>
+      </thead>
+      <tbody>
+        ${cart.items.map((i) => `
+          <tr>
+            <td><code>${esc(i.sku)}</code></td>
+            <td>${esc(i.name)}</td>
+            <td class="num">${i.price === null ? "—" : money(i.price)}</td>
+            <td class="num">${i.quantity}</td>
+            <td class="num">${i.lineTotal === null ? "—" : money(i.lineTotal)}</td>
+            <td>${i.available
+              ? '<span class="badge ok">mua được</span>'
+              : `<span class="badge warn">${esc(i.unavailableReason || "không mua được")}</span>`}</td>
+            <td>
+              <button class="tiny secondary" onclick="changeQty('${esc(i.productId)}', ${i.quantity})">Sửa SL</button>
+              <button class="tiny danger" onclick="removeFromCart('${esc(i.productId)}')">Xoá</button>
+            </td>
+          </tr>`).join("")}
+      </tbody>
+      <tfoot>
+        <tr>
+          <th colspan="4">Tạm tính (${cart.totalItems} dòng)</th>
+          <th class="num">${money(cart.subtotal)}</th>
+          <th colspan="2">${cart.checkoutable
+            ? '<span class="badge ok">đặt hàng được</span>'
+            : '<span class="badge warn">chưa đặt được</span>'}</th>
+        </tr>
+      </tfoot>
+    </table>`;
+}
+
+async function addToCart() {
+  const productId = document.getElementById("cartProductSelect").value;
+  const quantity = Number(document.getElementById("cartQty").value);
+  if (!productId) {
+    showResult("cartResult", false, "Chưa chọn sản phẩm.");
+    return;
+  }
+
+  try {
+    renderCart(await callApi("/cart/items", { method: "POST", body: { productId, quantity }, auth: true }));
+    showResult("cartResult", true, "Đã thêm vào giỏ. Thêm lại cùng sản phẩm sẽ cộng dồn số lượng.");
+  } catch (err) {
+    showResult("cartResult", false, err.data || err.message);
+  }
+}
+
+async function changeQty(productId, current) {
+  const input = prompt("Số lượng mới (muốn bỏ hẳn thì bấm Xoá):", current);
+  if (input === null) return;
+
+  const quantity = Number(input);
+  if (!Number.isInteger(quantity) || quantity < 1) {
+    showResult("cartResult", false, "Số lượng phải là số nguyên từ 1 trở lên.");
+    return;
+  }
+
+  try {
+    renderCart(await callApi("/cart/items/" + productId, { method: "PUT", body: { quantity }, auth: true }));
+    clearResult("cartResult");
+  } catch (err) {
+    showResult("cartResult", false, err.data || err.message);
+  }
+}
+
+async function removeFromCart(productId) {
+  try {
+    renderCart(await callApi("/cart/items/" + productId, { method: "DELETE", auth: true }));
+    clearResult("cartResult");
+  } catch (err) {
+    showResult("cartResult", false, err.data || err.message);
+  }
+}
+
+async function clearCart() {
+  try {
+    await callApi("/cart", { method: "DELETE", auth: true });
+    loadCart();
+  } catch (err) {
+    showResult("cartResult", false, err.data || err.message);
+  }
+}
+
+/* ---------- CN-33: checkout ---------- */
+
+document.getElementById("checkoutForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const form = new FormData(e.target);
+  const payload = {
+    recipientName: form.get("recipientName"),
+    recipientPhone: form.get("recipientPhone"),
+    shippingAddress: form.get("shippingAddress"),
+    note: form.get("note") || null,
+    paymentMethod: form.get("paymentMethod"),
+  };
+
+  try {
+    const order = await callApi("/orders", { method: "POST", body: payload, auth: true });
+    showResult("checkoutResult", true,
+      `Đã tạo đơn ${order.orderCode} — ${STATUS_LABEL[order.status]}\n` +
+      `Tạm tính ${money(order.subtotal)} + phí ship ${money(order.shippingFee)} = ${money(order.total)}\n` +
+      `Tồn kho chưa bị trừ, phải chờ nhân viên xác nhận.`);
+    loadCart();
+    loadMyOrders();
+  } catch (err) {
+    showResult("checkoutResult", false, err.data || err.message);
+  }
+});
+
+/* ---------- CN-35: đơn của khách ---------- */
+
+async function loadMyOrders() {
+  clearResult("myOrderResult");
+  const host = document.getElementById("myOrderTable");
+  try {
+    const page = await callApi("/orders?size=20", { auth: true });
+    if (!page.content.length) {
+      host.innerHTML = '<p class="empty">Chưa có đơn hàng nào.</p>';
+      return;
+    }
+    host.innerHTML = orderTableHtml(page.content, false);
+  } catch (err) {
+    host.innerHTML = "";
+    showResult("myOrderResult", false, err.data || err.message);
+  }
+}
+
+/* ---------- CN-36: nhân viên xử lý ---------- */
+
+async function loadManageOrders() {
+  clearResult("manageResult");
+  const host = document.getElementById("manageOrderTable");
+  const status = document.getElementById("manageStatus").value;
+
+  try {
+    const page = await callApi("/orders/manage?size=20" + (status ? "&status=" + status : ""), { auth: true });
+    if (!page.content.length) {
+      host.innerHTML = '<p class="empty">Không có đơn nào khớp bộ lọc.</p>';
+      return;
+    }
+    host.innerHTML = orderTableHtml(page.content, true);
+  } catch (err) {
+    host.innerHTML = "";
+    showResult("manageResult", false, err.data || err.message);
+  }
+}
+
+/** Bảng dùng chung cho cả hai phía; staff=true thì hiện thêm nút chuyển trạng thái. */
+function orderTableHtml(orders, staff) {
+  return `
+    <table>
+      <thead>
+        <tr><th>Mã đơn</th><th>Trạng thái</th><th class="num">Số dòng</th>
+            <th class="num">Tổng tiền</th><th>Người nhận</th><th>Ngày đặt</th><th></th></tr>
+      </thead>
+      <tbody>
+        ${orders.map((o) => `
+          <tr>
+            <td><code>${esc(o.orderCode)}</code></td>
+            <td>${statusBadge(o.status)}</td>
+            <td class="num">${o.totalItems}</td>
+            <td class="num">${money(o.total)}</td>
+            <td>${esc(o.recipientName)}</td>
+            <td>${new Date(o.createdAt).toLocaleString("vi-VN")}</td>
+            <td>${rowActions(o, staff)}</td>
+          </tr>`).join("")}
+      </tbody>
+    </table>`;
+}
+
+function rowActions(order, staff) {
+  const id = esc(order.id);
+  let html = `<button class="tiny secondary" onclick="showOrderDetail('${id}', ${staff})">Chi tiết</button>`;
+
+  if (staff) {
+    // Chỉ hiện nút ứng với bước tiếp theo hợp lệ — luật luồng nằm ở backend, đây chỉ là gợi ý.
+    if (order.status === "PENDING") {
+      html += `<button class="tiny" onclick="orderAction('${id}','confirm')">Xác nhận</button>`;
+    }
+    if (order.status === "CONFIRMED") {
+      html += `<button class="tiny" onclick="orderAction('${id}','ship')">Giao hàng</button>`;
+    }
+    if (order.status === "SHIPPING") {
+      html += `<button class="tiny" onclick="orderAction('${id}','complete')">Hoàn tất</button>`;
+    }
+    if (order.status === "PENDING" || order.status === "CONFIRMED") {
+      html += `<button class="tiny danger" onclick="cancelOrder('${id}', true)">Huỷ</button>`;
+    }
+  } else if (order.status === "PENDING") {
+    html += `<button class="tiny danger" onclick="cancelOrder('${id}', false)">Huỷ đơn</button>`;
+  }
+
+  return html;
+}
+
+async function orderAction(orderId, action) {
+  const note = prompt("Ghi chú (bỏ trống cũng được):", "");
+  if (note === null) return;
+
+  try {
+    const order = await callApi(`/orders/manage/${orderId}/${action}`, {
+      method: "POST", body: { note: note || null }, auth: true,
+    });
+
+    let msg = `Đơn ${order.orderCode} → ${STATUS_LABEL[order.status]}`;
+    if (action === "confirm") {
+      msg += "\nĐã phát sự kiện order.completed — product-service đang trừ tồn kho.";
+    }
+    showResult("manageResult", true, msg);
+    loadManageOrders();
+  } catch (err) {
+    showResult("manageResult", false, err.data || err.message);
+  }
+}
+
+async function cancelOrder(orderId, staff) {
+  const reason = prompt("Lý do huỷ:", "");
+  if (reason === null) return;
+  if (!reason.trim()) {
+    showResult(staff ? "manageResult" : "myOrderResult", false, "Phải nhập lý do huỷ.");
+    return;
+  }
+
+  const path = staff ? `/orders/manage/${orderId}/cancel` : `/orders/${orderId}/cancel`;
+  const target = staff ? "manageResult" : "myOrderResult";
+
+  try {
+    const order = await callApi(path, { method: "POST", body: { reason }, auth: true });
+    showResult(target, true, `Đã huỷ đơn ${order.orderCode}.` +
+      (staff ? "\nNếu đơn đã xác nhận, hàng được hoàn lại kho qua sự kiện order.cancelled." : ""));
+    staff ? loadManageOrders() : loadMyOrders();
+  } catch (err) {
+    showResult(target, false, err.data || err.message);
+  }
+}
+
+/* ---------- Chi tiết đơn + lịch sử ---------- */
+
+async function showOrderDetail(orderId, staff) {
+  clearResult("orderDetailResult");
+  const detailHost = document.getElementById("orderDetailTable");
+  const historyHost = document.getElementById("orderHistoryTable");
+
+  try {
+    const order = await callApi(staff ? `/orders/manage/${orderId}` : `/orders/${orderId}`, { auth: true });
+
+    detailHost.innerHTML = `
+      <p style="font-size:13px;margin:0 0 10px;">
+        <strong>${esc(order.orderCode)}</strong> · ${statusBadge(order.status)} ·
+        ${esc(order.recipientName)} — ${esc(order.recipientPhone)}<br />
+        ${esc(order.shippingAddress)}${order.note ? " · Ghi chú: " + esc(order.note) : ""}
+        ${order.cancelReason ? "<br />Lý do huỷ: " + esc(order.cancelReason) : ""}
+      </p>
+      <table>
+        <thead><tr><th>SKU</th><th>Tên</th><th class="num">Đơn giá</th><th class="num">SL</th><th class="num">Thành tiền</th></tr></thead>
+        <tbody>
+          ${order.items.map((i) => `
+            <tr>
+              <td><code>${esc(i.sku)}</code></td>
+              <td>${esc(i.productName)}</td>
+              <td class="num">${money(i.unitPrice)}</td>
+              <td class="num">${i.quantity}</td>
+              <td class="num">${money(i.lineTotal)}</td>
+            </tr>`).join("")}
+        </tbody>
+        <tfoot>
+          <tr><th colspan="4">Tạm tính</th><th class="num">${money(order.subtotal)}</th></tr>
+          <tr><th colspan="4">Phí giao hàng</th><th class="num">${money(order.shippingFee)}</th></tr>
+          <tr><th colspan="4">Tổng cộng</th><th class="num">${money(order.total)}</th></tr>
+        </tfoot>
+      </table>`;
+
+    const history = await callApi(`/orders/${orderId}/history`, { auth: true });
+    historyHost.innerHTML = `
+      <table>
+        <thead><tr><th>Thời điểm</th><th>Chuyển trạng thái</th><th>Ghi chú</th></tr></thead>
+        <tbody>
+          ${history.map((h) => `
+            <tr>
+              <td>${new Date(h.createdAt).toLocaleString("vi-VN")}</td>
+              <td>${h.fromStatus ? esc(STATUS_LABEL[h.fromStatus] || h.fromStatus) : "(mới tạo)"} → ${statusBadge(h.toStatus)}</td>
+              <td>${esc(h.note)}</td>
+            </tr>`).join("")}
+        </tbody>
+      </table>`;
+
+    detailHost.scrollIntoView({ behavior: "smooth", block: "center" });
+  } catch (err) {
+    detailHost.innerHTML = "";
+    historyHost.innerHTML = "";
+    showResult("orderDetailResult", false, err.data || err.message);
   }
 }
 

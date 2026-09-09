@@ -14,7 +14,7 @@ triển backend. Đây **không phải giao diện sản phẩm cuối** và s�
 - Chạy tại http://localhost:3000 (đi kèm `docker compose up`)
 - `server.js`: server Node thuần, không phụ thuộc npm package nào. Serve `index.html` và
   proxy mọi `/api-proxy/*` sang API Gateway để tránh lỗi CORS.
-- `index.html`: một trang, hai tab.
+- `index.html`: một trang, ba tab.
 
 ### Tab "Tài khoản & Hồ sơ"
 
@@ -45,6 +45,26 @@ Tra cứu không cần đăng nhập. Tạo/sửa/xoá cần `ADMIN`, thao tác 
 
 Bảng sản phẩm có nút tắt "Nhập kho" và "Lịch sử" để nhảy thẳng sang khối tương ứng, khỏi
 phải copy id thủ công.
+
+### Tab "Giỏ hàng & Đơn hàng"
+
+| Khối | Chức năng | Quyền |
+|---|---|---|
+| Giỏ hàng | Thêm, sửa số lượng, xoá, xoá sạch; hiện cảnh báo hết hàng theo từng dòng (CN-32) | CUSTOMER |
+| Đặt hàng | Form người nhận + địa chỉ, thanh toán COD (CN-33) | CUSTOMER |
+| Đơn hàng của tôi | Danh sách, xem chi tiết, huỷ đơn còn chờ xác nhận (CN-35) | CUSTOMER |
+| Xử lý đơn | Lọc theo trạng thái; xác nhận → giao hàng → hoàn tất, hoặc huỷ (CN-36) | STAFF/ADMIN |
+| Chi tiết đơn & lịch sử | Từng dòng hàng, tổng tiền, và vết chuyển trạng thái | cả hai |
+
+Bảng đơn chỉ hiện nút ứng với bước hợp lệ tiếp theo — luật luồng nằm ở backend, nút chỉ là
+gợi ý. Bấm "Xác nhận" là `order-service` phát `order.completed` và `product-service` trừ tồn
+kho ngay; sang tab "Sản phẩm & Kho" bấm "Lịch sử" của sản phẩm đó sẽ thấy dòng `SALE`.
+
+Huỷ đơn **đã xác nhận** thì hàng được hoàn lại kho qua sự kiện `order.cancelled` — lịch sử
+kho sẽ có thêm dòng `RETURN`.
+
+Muốn thử cả hai phía cùng lúc thì mở thêm một cửa sổ ẩn danh: một bên đăng nhập khách, một
+bên đăng nhập admin (token lưu trong `localStorage` nên hai cửa sổ thường sẽ ghi đè nhau).
 
 ### Lưu ý khi vừa `docker compose up --build`
 
