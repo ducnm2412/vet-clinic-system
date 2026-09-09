@@ -71,6 +71,11 @@ public class CustomerProfileController {
         return customerProfileService.listPets(principal.userId());
     }
 
+    @GetMapping("/profile/customer/me/pets/{petId}")
+    public PetResponse getPet(@AuthenticationPrincipal AuthenticatedUser principal, @PathVariable UUID petId) {
+        return customerProfileService.getPet(principal.userId(), petId);
+    }
+
     @PostMapping("/profile/customer/me/pets")
     @ResponseStatus(HttpStatus.CREATED)
     public PetResponse createPet(@AuthenticationPrincipal AuthenticatedUser principal,

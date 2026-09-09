@@ -11,6 +11,7 @@ import com.vetclinic.profile.exception.ResourceNotFoundException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -123,6 +124,24 @@ class CustomerProfileServiceTest {
     void getProfileById_unknownId_throws() {
         assertThatThrownBy(() -> customerProfileService.getProfileById(UUID.randomUUID()))
                 .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    // KHÔNG dùng transaction rollback của lớp test (Propagation.NOT_SUPPORTED) — cố tình để
+    // getPet() tự mở transaction thật của riêng nó, y hệt lúc chạy production, vì bug gốc
+    // (@Transactional(readOnly = true) nhưng getOrCreateProfile lại INSERT) chỉ lộ ra khi
+    // đây thực sự là transaction ngoài cùng, không bị transaction bọc ngoài của test che mất.
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void getPet_newCustomer_lazyCreatesProfileThenThrowsNotFoundForUnrelatedPet() {
+        UUID userId = UUID.randomUUID();
+        UUID unrelatedPetId = UUID.randomUUID();
+
+        try {
+            assertThatThrownBy(() -> customerProfileService.getPet(userId, unrelatedPetId))
+                    .isInstanceOf(ResourceNotFoundException.class);
+        } finally {
+            customerProfileService.deleteByUserId(userId);
+        }
     }
 
     @Test
