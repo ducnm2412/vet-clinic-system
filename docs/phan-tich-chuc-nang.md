@@ -4,6 +4,8 @@
 **Kiến trúc:** Microservices (Spring Boot + Spring Cloud), Database per Service
 **Ngày lập:** 23/08/2026
 
+> Nợ kỹ thuật và các chức năng còn thiếu được ghi riêng ở [van-de-ton-dong.md](van-de-ton-dong.md).
+
 ---
 
 ## 1. Bảng tác nhân (Actor)
@@ -78,7 +80,7 @@ Chú thích trạng thái: ✅ Đã hiện thực · ⚠️ Hiện thực một 
 | CN-28 | Quản lý sản phẩm | AC-04 | CRUD sản phẩm: SKU, tên, giá, ảnh, mô tả, đơn vị tính | ✅ |
 | CN-29 | Tìm kiếm & xem chi tiết sản phẩm | AC-01 | Lọc theo danh mục, khoảng giá, từ khoá; phân trang; công khai không cần đăng nhập | ✅ |
 | CN-30 | Quản lý tồn kho | AC-03, AC-04 | Nhập kho, điều chỉnh sau kiểm kê, lịch sử biến động, cảnh báo sắp hết hàng | ✅ |
-| CN-31 | Tự động trừ tồn kho | Hệ thống | Lắng nghe `order.completed` từ RabbitMQ → giảm tồn; chống xử lý trùng message | ⚠️ Consumer đã sẵn sàng, chờ `order-service` phát sự kiện |
+| CN-31 | Tự động trừ tồn kho | Hệ thống | Lắng nghe `order.completed` → giảm tồn, `order.cancelled` → hoàn kho; chống xử lý trùng message | ✅ |
 
 > **Ghi chú thiết kế:** `products.stock_quantity` giữ tồn hiện tại để lọc/hiển thị nhanh, còn
 > `stock_movements` ghi vết từng lần biến động kèm `quantity_after` để đối soát. Đổi tồn kho
@@ -92,12 +94,24 @@ Chú thích trạng thái: ✅ Đã hiện thực · ⚠️ Hiện thực một 
 
 | Mã CN | Tên chức năng | Tác nhân | Mô tả xử lý | Trạng thái |
 |---|---|---|---|---|
-| CN-32 | Quản lý giỏ hàng | AC-01 | Thêm / sửa số lượng / xoá sản phẩm khỏi giỏ | ⏳ |
-| CN-33 | Đặt hàng (checkout) | AC-01 | Chọn địa chỉ giao hàng, phương thức thanh toán, tạo đơn | ⏳ |
-| CN-34 | Thanh toán trực tuyến | AC-01, AC-05 | Tích hợp VNPay/Momo, xử lý callback IPN cập nhật trạng thái thanh toán | ⏳ |
-| CN-35 | Theo dõi trạng thái đơn hàng | AC-01 | Luồng: Chờ thanh toán → Đã thanh toán → Đang giao → Hoàn tất / Đã huỷ | ⏳ |
-| CN-36 | Xử lý đơn hàng | AC-03 | Xác nhận, đóng gói, cập nhật trạng thái giao hàng | ⏳ |
-| CN-37 | Phát sự kiện đơn hàng thành công | Hệ thống | Publish RabbitMQ → Product Service (trừ kho), Notification, Reporting | ⏳ |
+| CN-32 | Quản lý giỏ hàng | AC-01 | Thêm / sửa số lượng / xoá sản phẩm khỏi giỏ; giá và tồn kho lấy trực tiếp từ product-service | ✅ |
+| CN-33 | Đặt hàng (checkout) | AC-01 | Nhập người nhận + địa chỉ, tạo đơn từ giỏ, chốt cứng giá tại thời điểm đặt | ✅ |
+| CN-34 | Thanh toán trực tuyến | AC-01, AC-05 | Tích hợp VNPay/Momo, xử lý callback IPN | ⏳ Mới có COD; cần tài khoản merchant và URL công khai để nhận IPN |
+| CN-35 | Theo dõi trạng thái đơn hàng | AC-01 | Luồng: Chờ xác nhận → Đã xác nhận → Đang giao → Hoàn tất / Đã huỷ, kèm lịch sử chuyển trạng thái | ✅ |
+| CN-36 | Xử lý đơn hàng | AC-03, AC-04 | Nhân viên xác nhận, giao hàng, hoàn tất, huỷ đơn | ✅ |
+| CN-37 | Phát sự kiện đơn hàng | Hệ thống | Publish `order.completed` (trừ kho) và `order.cancelled` (hoàn kho) lên RabbitMQ | ✅ |
+
+> **Ghi chú thiết kế:** luồng dùng COD nên không có bước "chờ thanh toán" của cổng trực tuyến.
+> Kho bị trừ **lúc nhân viên xác nhận đơn**, không phải lúc đặt hay lúc giao xong — nếu đợi
+> tới lúc giao xong thì hàng đã hứa cho đơn này vẫn bán tiếp được cho khách khác. Huỷ đơn đã
+> xác nhận sẽ phát `order.cancelled` để hoàn hàng về kho.
+>
+> Đơn **chụp lại** giá, tên sản phẩm và địa chỉ người nhận tại thời điểm đặt, nên shop đổi giá
+> hay khách sửa sổ địa chỉ về sau đều không làm thay đổi đơn cũ. Giá luôn hỏi `product-service`
+> lúc checkout, không bao giờ tin con số client gửi lên.
+>
+> Đường dẫn quản trị đặt ở `/orders/manage/**` chứ không phải `/admin/**` vì gateway đã dành
+> `/admin/**` cho `auth-service`.
 
 ### 2.7. Module Nhân sự & Chấm công (`staff-service` — `staff_db`)
 
