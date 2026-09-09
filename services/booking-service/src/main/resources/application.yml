@@ -21,7 +21,7 @@ spring:
     password: ${RABBITMQ_PASSWORD:guest}
 
 server:
-  port: ${SERVER_PORT:8084}
+  port: ${SERVER_PORT:8086}
 
 eureka:
   client:
