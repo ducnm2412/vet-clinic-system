@@ -24,6 +24,7 @@ export const productApi = {
         maxPrice: filter.maxPrice,
         page: filter.page ?? 0,
         size: filter.size ?? 20,
+        sort: filter.sort,
       })}`,
       true,
     ),

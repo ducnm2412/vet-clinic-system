@@ -7,6 +7,7 @@ import { LogOut, Menu, X } from "lucide-react";
 import { SidebarNav } from "./Sidebar";
 import { IconButton } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
+import { homeFor } from "@/config/nav";
 import { ROLE_LABEL } from "@/lib/api";
 import type { Role } from "@/types";
 
@@ -26,7 +27,7 @@ export function DashboardShell({ role, children }: { role: Role; children: React
   return (
     <div className="flex min-h-dvh">
       <aside className="hidden w-60 shrink-0 border-r border-line bg-surface lg:block">
-        <Brand />
+        <Brand role={role} />
         <SidebarNav role={role} />
       </aside>
 
@@ -39,7 +40,7 @@ export function DashboardShell({ role, children }: { role: Role; children: React
           />
           <div className="absolute inset-y-0 left-0 w-64 overflow-y-auto border-r border-line bg-surface">
             <div className="flex items-center justify-between pr-2">
-              <Brand />
+              <Brand role={role} />
               <IconButton label="Đóng menu" variant="ghost" size="sm" onClick={() => setDrawerOpen(false)}>
                 <X aria-hidden className="size-4" />
               </IconButton>
@@ -88,10 +89,14 @@ export function DashboardShell({ role, children }: { role: Role; children: React
   );
 }
 
-function Brand() {
+/**
+ * Bấm vào tên phòng khám thì về trang chính của vai trò mình, không về website khách hàng —
+ * người đang làm việc mà rơi ra mặt tiền thì phải bấm ngược lại một lần nữa.
+ */
+function Brand({ role }: { role: Role }) {
   return (
     <div className="flex h-14 items-center border-b border-line px-5">
-      <Link href="/" className="text-[15px] font-semibold tracking-tight text-ink">
+      <Link href={homeFor([role])} className="text-[15px] font-semibold tracking-tight text-ink">
         <span className="text-moss">Thú y</span> Vet Clinic
       </Link>
     </div>

@@ -10,7 +10,6 @@ import {
   PackageSearch,
   PawPrint,
   Receipt,
-  ShoppingCart,
   Stethoscope,
   UserRound,
   Users,
@@ -94,24 +93,12 @@ export const NAV: Record<Role, NavSection[]> = {
     { title: "Cá nhân", items: [{ href: "/staff/profile", label: "Hồ sơ", icon: UserRound }] },
   ],
 
-  CUSTOMER: [
-    { items: [{ href: "/customer", label: "Tổng quan", icon: LayoutDashboard }] },
-    {
-      title: "Khám bệnh",
-      items: [
-        { href: "/customer/pets", label: "Thú cưng", icon: PawPrint },
-        { href: "/customer/appointments", label: "Lịch khám", icon: CalendarDays },
-      ],
-    },
-    {
-      title: "Mua sắm",
-      items: [
-        { href: "/customer/shop", label: "Sản phẩm", icon: PackageSearch },
-        { href: "/customer/cart", label: "Giỏ hàng", icon: ShoppingCart },
-        { href: "/customer/orders", label: "Đơn hàng", icon: Receipt },
-      ],
-    },
-  ],
+  /*
+    Khách hàng không dùng dashboard nữa: từ khi có website ở nhóm route (site), họ đi bằng
+    đầu trang thương mại chứ không phải thanh bên quản trị. Để mảng rỗng thay vì bỏ khoá,
+    vì kiểu Record<Role, …> vẫn đòi đủ bốn vai trò.
+  */
+  CUSTOMER: [],
 };
 
 /** Nơi đưa người dùng tới ngay sau khi đăng nhập, theo vai trò cao nhất. */
@@ -119,14 +106,19 @@ export function homeFor(roles: Role[]): string {
   if (roles.includes("ADMIN")) return "/admin";
   if (roles.includes("DOCTOR")) return "/doctor";
   if (roles.includes("STAFF")) return "/staff";
-  if (roles.includes("CUSTOMER")) return "/customer";
+  // Khách hàng về trang chủ của website, không phải một dashboard.
   return "/";
 }
 
-/** Vai trò nào được vào nhánh đường dẫn nào. Dùng cho RouteGuard. */
+/**
+ * Vai trò nào được vào nhánh đường dẫn nào.
+ *
+ * Các trang của khách (/cart, /orders, /pets, /appointments) tự bọc <CustomerOnly>, còn
+ * "/" và "/products" mở cho tất cả kể cả người chưa đăng nhập — nên chúng không có mặt
+ * ở đây. Bảng này chỉ còn ba nhánh dashboard.
+ */
 export const ROLE_PREFIX: Record<string, Role[]> = {
   "/admin": ["ADMIN"],
   "/doctor": ["DOCTOR"],
   "/staff": ["STAFF", "ADMIN"],
-  "/customer": ["CUSTOMER"],
 };

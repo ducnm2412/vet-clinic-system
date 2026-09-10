@@ -9,7 +9,8 @@ import { z } from "zod";
 import { ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { homeFor } from "@/config/nav";
-import { Button, ErrorState, TextField } from "@/components/ui";
+import { SiteButton } from "@/components/site/primitives";
+import { SiteInput } from "@/components/site/fields";
 
 const schema = z.object({
   email: z.string().min(1, "Nhập email").email("Email không đúng định dạng"),
@@ -54,22 +55,22 @@ function LoginForm() {
 
   return (
     <>
-      <h1 className="font-[family-name:var(--font-display)] text-[25px] text-ink">Đăng nhập</h1>
-      <p className="mt-1 text-sm text-bark">
+      <h1 className="t-h2">Đăng nhập</h1>
+      <p className="mt-3 text-stone">
         Chưa có tài khoản?{" "}
-        <Link href="/register" className="text-moss underline underline-offset-2">
+        <Link href="/register" className="text-teal-deep underline underline-offset-4">
           Đăng ký
         </Link>
       </p>
 
       {expired && (
-        <p className="mt-4 rounded-[var(--radius-control)] bg-amber-wash px-3 py-2 text-sm text-ink">
+        <p className="mt-6 rounded-[var(--radius-card)] bg-peach px-4 py-3 text-[15px]">
           Phiên làm việc đã hết hạn. Đăng nhập lại để tiếp tục.
         </p>
       )}
 
-      <form onSubmit={handleSubmit(onSubmit)} className="mt-6 space-y-4" noValidate>
-        <TextField
+      <form onSubmit={handleSubmit(onSubmit)} className="mt-8 space-y-5" noValidate>
+        <SiteInput
           label="Email"
           type="email"
           autoComplete="email"
@@ -77,7 +78,7 @@ function LoginForm() {
           error={errors.email?.message}
           {...register("email")}
         />
-        <TextField
+        <SiteInput
           label="Mật khẩu"
           type="password"
           autoComplete="current-password"
@@ -86,11 +87,15 @@ function LoginForm() {
           {...register("password")}
         />
 
-        {formError && <ErrorState message={formError} />}
+        {formError && (
+          <p role="alert" className="rounded-[var(--radius-card)] bg-peach px-4 py-3 text-[15px] text-coral-deep">
+            {formError}
+          </p>
+        )}
 
-        <Button type="submit" size="lg" loading={isSubmitting} className="w-full">
+        <SiteButton type="submit" size="lg" loading={isSubmitting} className="w-full">
           Đăng nhập
-        </Button>
+        </SiteButton>
       </form>
     </>
   );

@@ -62,9 +62,30 @@ function getServerSnapshot(): string | null {
   return null;
 }
 
+/*
+  `ready` phải đi cùng nhịp với `token`, và cũng phải lấy qua useSyncExternalStore.
+
+  Trước đây chỗ này là `typeof window !== "undefined"`, tức là ngay lần commit đầu tiên
+  trên trình duyệt nó đã true — nhưng lần commit đó React vẫn đang dùng ảnh chụp phía máy
+  chủ, nên `token` còn null. Effect của RouteGuard chạy đúng vào lúc đó, thấy "sẵn sàng mà
+  chưa đăng nhập", và đá người dùng về trang đăng nhập dù họ đang đăng nhập tử tế. Lỗi chỉ
+  lộ ra khi mở thẳng một địa chỉ cần quyền, không lộ khi bấm chuyển trang trong ứng dụng.
+
+  Lấy chung một nguồn thì hai giá trị đổi cùng một lần render: commit đầu là (false, null)
+  nên RouteGuard đứng yên, commit sau là (true, token thật) nên nó xử đúng.
+*/
+function getReady(): boolean {
+  return true;
+}
+
+function getServerReady(): boolean {
+  return false;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const token = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const ready = useSyncExternalStore(subscribe, getReady, getServerReady);
 
   // auth-service không có endpoint làm mới token (VD-05) nên không gia hạn ngầm được.
   // Bất kỳ 401 nào cũng đưa người dùng về trang đăng nhập, giữ lại đường dẫn đang xem.
@@ -102,13 +123,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email: claims?.sub ?? null,
       userId: claims?.userId ?? null,
       roles,
-      // Chỉ client mới đọc được localStorage, nên coi là sẵn sàng khi đã ra khỏi máy chủ.
-      ready: typeof window !== "undefined",
+      ready,
       signIn,
       signOut,
       hasRole,
     }),
-    [claims, roles, signIn, signOut, hasRole],
+    [claims, roles, ready, signIn, signOut, hasRole],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -34,6 +34,28 @@
   --ease: cubic-bezier(0.2, 0, 0, 1);
 }
 
+/*
+  Website khách hàng dùng bảng màu riêng, rút thẳng từ logo có sẵn của dự án
+  (assets/logo/vet_clinic_icon.svg): dấu chân trắng trên nền mòng két, chữ thập san hô.
+  Mòng két nói chuyện tin cậy, san hô là màu của hành động — mỗi màn hình chỉ một nút
+  mang màu san hô đậm, nên mắt luôn tìm ra nó ngay.
+  Xem docs/thiet-ke-website-khach-hang.md.
+*/
+:root {
+  --pine: #134e4a;
+  --teal: #0e9b8e;
+  --teal-deep: #0a7b70;
+  --coral: #ff6b5e;
+  --coral-deep: #ce3f26;
+  --peach: #fff3ef;
+  --mint: #f2faf9;
+  --mist: #dcefec;
+  --stone: #5c6f6b;
+
+  --radius-card: 16px;
+  --shadow-lift: 0 14px 34px -14px rgb(19 78 74 / 0.28);
+}
+
 @theme inline {
   --color-ink: var(--ink);
   --color-ink-soft: var(--ink-soft);
@@ -52,8 +74,22 @@
   --color-info: var(--info);
   --color-info-wash: var(--info-wash);
 
+  --color-pine: var(--pine);
+  --color-teal: var(--teal);
+  --color-teal-deep: var(--teal-deep);
+  --color-coral: var(--coral);
+  --color-coral-deep: var(--coral-deep);
+  --color-peach: var(--peach);
+  --color-mint: var(--mint);
+  --color-mist: var(--mist);
+  --color-stone: var(--stone);
+
   --font-sans: var(--font-sans);
   --font-display: var(--font-display);
+  --font-brand: var(--font-brand);
+
+  --radius-card: var(--radius-card);
+  --shadow-lift: var(--shadow-lift);
 
   --radius-control: var(--radius-control);
   --radius-badge: var(--radius-badge);
@@ -61,9 +97,106 @@
 }
 
 body {
-  background: var(--paper);
+  background: var(--surface);
   color: var(--ink);
   font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+/* ---------------------------------------------------------------------------
+   Website khách hàng
+   --------------------------------------------------------------------------- */
+
+/*
+  Mô-típ duy nhất của cả trang: khung ảnh bo thành mái vòm. Vòm là cửa, là mái che —
+  đúng thứ phòng khám muốn nói. Nó cũng cứu những sản phẩm chưa có ảnh: một mái vòm màu
+  phẳng trông vẫn cố ý, còn ô chữ nhật rỗng trông như hỏng.
+*/
+.arch {
+  border-radius: 999px 999px var(--radius-card) var(--radius-card);
+  overflow: hidden;
+}
+
+.arch-sm {
+  border-radius: 999px 999px 8px 8px;
+  overflow: hidden;
+}
+
+/*
+  Thang cỡ chữ đặt ở đây chứ không rải clamp() khắp JSX — sửa một chỗ là cả trang đổi
+  theo. Body 17px và line-height 1.7 rộng hơn mức thường dùng, vì dấu tiếng Việt chồng
+  hai tầng (ế, ộ, ữ) cần thêm chỗ thở.
+*/
+.t-display {
+  font-family: var(--font-brand), Georgia, serif;
+  font-size: clamp(2.75rem, 6vw, 4.5rem);
+  line-height: 1.02;
+  letter-spacing: -0.022em;
+  font-weight: 600;
+}
+
+.t-h2 {
+  font-family: var(--font-brand), Georgia, serif;
+  font-size: clamp(1.75rem, 3vw, 2.5rem);
+  line-height: 1.12;
+  letter-spacing: -0.015em;
+  font-weight: 600;
+}
+
+.t-h3 {
+  font-family: var(--font-brand), Georgia, serif;
+  font-size: 1.375rem;
+  line-height: 1.25;
+  font-weight: 600;
+}
+
+.t-lede {
+  font-size: 1.125rem;
+  line-height: 1.7;
+}
+
+.t-body {
+  font-size: 1.0625rem;
+  line-height: 1.7;
+}
+
+/* Đoạn văn không bao giờ dài quá 68 ký tự, kể cả trên màn hình rộng. */
+.measure {
+  max-width: 34em;
+}
+
+/*
+  Khoảnh khắc chuyển động duy nhất của trang: lúc mở trang chủ, các phần của hero hiện
+  lần lượt. Cố tình không làm hiệu ứng trôi lên cho từng dải khi cuộn — đó là mặc định
+  của giao diện máy sinh và nó làm trang đọc chậm hơn chứ không đẹp hơn.
+*/
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes arch-in {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.enter {
+  animation: rise 0.55s var(--ease) both;
+}
+
+.enter-arch {
+  animation: arch-in 0.7s var(--ease) both;
 }
 
 /* Số tiền và tồn kho phải thẳng cột khi xếp chồng trong bảng. */

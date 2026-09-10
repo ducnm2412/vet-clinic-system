@@ -1,12 +1,12 @@
 "use client";
 
-import Link from "next/link";
+
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { CheckCircle2, XCircle } from "lucide-react";
 import { ApiError, authApi } from "@/lib/api";
-import { Button, Spinner } from "@/components/ui";
+import { ButtonLink } from "@/components/site/primitives";
 
 /**
  * Đích đến của link trong email xác minh. notification-service dựng link bằng
@@ -33,7 +33,7 @@ function VerifyEmail() {
     );
   }
 
-  if (verify.isPending) return <Spinner label="Đang xác minh tài khoản" />;
+  if (verify.isPending) return <Waiting label="Đang xác minh tài khoản" />;
 
   if (verify.isError) {
     // Token dùng rồi, hết hạn, hoặc sai — backend trả cùng một lỗi cho cả ba.
@@ -63,19 +63,32 @@ function Result({ ok, title, message }: { ok: boolean; title: string; message: s
   const Icon = ok ? CheckCircle2 : XCircle;
   return (
     <div>
-      <Icon aria-hidden className={`size-7 ${ok ? "text-moss" : "text-danger"}`} />
-      <h1 className="mt-4 font-[family-name:var(--font-display)] text-[25px] text-ink">{title}</h1>
-      <p className="mt-2 text-sm leading-relaxed text-bark">{message}</p>
-      <Link href="/login" className="mt-6 inline-block">
-        <Button size="lg">Tới trang đăng nhập</Button>
-      </Link>
+      <Icon aria-hidden className={ok ? "size-9 text-teal" : "size-9 text-coral-deep"} />
+      <h1 className="t-h2 mt-5">{title}</h1>
+      <p className="mt-4 text-stone">{message}</p>
+      <ButtonLink href="/login" size="lg" className="mt-8">
+        Tới trang đăng nhập
+      </ButtonLink>
+    </div>
+  );
+}
+
+/** Vòng quay chờ, cùng màu thương hiệu với phần còn lại của mặt tiền. */
+function Waiting({ label }: { label: string }) {
+  return (
+    <div role="status" className="flex items-center gap-3 text-stone">
+      <span
+        aria-hidden
+        className="size-5 animate-spin rounded-full border-2 border-teal border-t-transparent"
+      />
+      {label}
     </div>
   );
 }
 
 export default function VerifyEmailPage() {
   return (
-    <Suspense fallback={<Spinner label="Đang mở trang xác minh" />}>
+    <Suspense fallback={<Waiting label="Đang mở trang xác minh" />}>
       <VerifyEmail />
     </Suspense>
   );

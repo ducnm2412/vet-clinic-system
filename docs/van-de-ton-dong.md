@@ -214,7 +214,7 @@ Rà khi dựng frontend Next.js. Các màn hình dưới đây không có endpoi
 | Thông báo trong ứng dụng | `notification-service` không có REST endpoint |
 
 Frontend đang để placeholder có đánh dấu `TODO` và tầng mock riêng (`lib/api/mock/`), không
-nhúng dữ liệu giả vào component. Khi API có thật thì chỉ thay tầng đó.
+nhúng dữ liệu giả vào component (`lib/api/missing.ts`). Khi API có thật thì chỉ thay tầng đó.
 
 Hai mục đầu bảng là rẻ nhất và chặn nhiều màn hình nhất — nên làm trước.
 
@@ -241,3 +241,60 @@ nhung 500 thi roi vao thong bao loi chung.
 
 **Huong sua:** `ProductClient` bat `FeignException` va nem ra loi map sang 503, hoac
 them retry co backoff. Cung nen ap dung cho moi cho service goi cheo nhau.
+
+
+### 🟡 VD-20. `GET /profile/doctors` không trả họ tên và ảnh bác sĩ
+
+Phát hiện khi dựng dải "Bác sĩ phụ trách" trên website khách hàng.
+
+`DoctorPublicResponse` chỉ có `id`, `userId`, `specialty`, `bio`, `yearsOfExperience`.
+Không có tên, không có ảnh. Cố ý bỏ `phone` là đúng — đó là dữ liệu liên hệ cá nhân.
+Nhưng bỏ luôn cả họ tên thì một trang giới thiệu phòng khám không giới thiệu được ai.
+
+Frontend đang lấy **chuyên môn làm tiêu đề thẻ** và dùng mái vòm màu kèm ống nghe thay
+cho ảnh chân dung. Không lấy ảnh người lạ gán tên bác sĩ của phòng khám: đó là dựng chuyện.
+
+**Hướng sửa:** thêm `fullName` (ghép từ `firstName`/`lastName` bên auth-service) và
+`photoUrl` vào `DoctorPublicResponse`. Tên bác sĩ là thông tin công khai ở mọi phòng khám,
+không phải dữ liệu nhạy cảm như số điện thoại.
+
+### 🟡 VD-21. `AppointmentRequest` không có trường dịch vụ
+
+Phát hiện khi dựng luồng đặt lịch cho khách.
+
+Khách chỉ gửi được `petId`, `date`, `startTime`, `reason`. Không có cách nào nói "tôi cần
+tiêm phòng" hay "tôi cần triệt sản" thành một mục có cấu trúc — trong khi đó chính là thứ
+quyết định phòng khám cần chuẩn bị gì và ca kéo dài bao lâu.
+
+Cũng không có service nào quản lý danh mục dịch vụ, nên bốn dịch vụ hiện trên trang chủ là
+nội dung tĩnh trong `frontend/web/src/config/clinic.ts`.
+
+Frontend tạm hướng dẫn khách ghi vào ô lý do khám.
+
+**Hướng sửa:** một bảng `services` (tên, mô tả, thời lượng, giá tham khảo) và thêm
+`serviceId` vào `AppointmentRequest`. Thời lượng còn dùng để chia slot cho đúng — hiện mọi
+ca đều cố định 30 phút bất kể làm gì.
+
+### 🟡 VD-22. `PetResponse` thiếu ảnh, dị ứng và ghi chú
+
+Phát hiện khi dựng trang hồ sơ thú cưng cho khách.
+
+`Pet` hiện có: tên, loài, giống, giới tính, ngày sinh, cân nặng. Thiếu ba thứ mà chủ nuôi
+lẫn bác sĩ đều cần:
+
+- `photoUrl` — trong danh sách nhiều bé, ảnh phân biệt nhanh hơn chữ. Frontend đang dùng
+  mái vòm màu theo loài kèm hình con vật tương ứng để thay thế.
+- `allergies` — dị ứng thuốc là thông tin an toàn, phải đập vào mắt bác sĩ trước khi kê đơn.
+- `notes` — thói quen, tính nết, những thứ dặn người khám.
+
+**Hướng sửa:** thêm ba trường vào `PetRequest`/`PetResponse`. Riêng `allergies` nên hiện
+nổi bật ở màn hình khám của bác sĩ, không chỉ nằm trong hồ sơ.
+
+### 🟢 VD-23. Bệnh án chưa có trả 404, trình duyệt vẫn ghi lỗi ra console
+
+Không phải lỗi chức năng. `GET /booking/appointments/{id}/medical-record` trả 404 khi bác
+sĩ chưa lập bệnh án — frontend bắt và hiểu đúng là "chưa có", nhưng trình duyệt vẫn ghi một
+dòng 404 đỏ vào console. Ai mở DevTools lên xem sẽ tưởng có lỗi.
+
+**Hướng sửa (khi rảnh):** trả 200 kèm thân rỗng, hoặc thêm `GET .../medical-record/exists`.
+Không gấp.

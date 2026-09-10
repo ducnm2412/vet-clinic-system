@@ -14,6 +14,27 @@ const nextConfig: NextConfig = {
   async rewrites() {
     return [{ source: "/api/:path*", destination: `${gateway}/:path*` }];
   },
+
+  /*
+    Khách hàng từng dùng dashboard ở /customer/*; giờ họ có website riêng ở gốc.
+    Giữ lại đường chuyển hướng để link cũ ai đó đã lưu hoặc gửi cho nhau không chết.
+    Dùng 307 (tạm thời) chứ không phải 308: nếu sau này cấu trúc còn đổi nữa thì trình
+    duyệt không nhớ cứng đường cũ.
+  */
+  async redirects() {
+    const moved: Array<[string, string]> = [
+      ["/customer/shop", "/products"],
+      ["/customer/cart", "/cart"],
+      ["/customer/orders/:id", "/orders/:id"],
+      ["/customer/orders", "/orders"],
+      ["/customer/pets", "/pets"],
+      ["/customer/appointments/create", "/appointments/create"],
+      ["/customer/appointments", "/appointments"],
+      ["/customer", "/"],
+    ];
+
+    return moved.map(([source, destination]) => ({ source, destination, permanent: false }));
+  },
 };
 
 export default nextConfig;

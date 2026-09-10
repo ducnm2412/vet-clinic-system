@@ -76,6 +76,11 @@ export interface ProductFilter {
   maxPrice?: number;
   page?: number;
   size?: number;
+  /**
+   * Dạng "trường,chiều" — ví dụ "price,asc". Không phải tham số riêng của product-service
+   * mà do Spring Pageable đọc, nên chỉ nhận đúng tên cột của entity: name, price, createdAt.
+   */
+  sort?: string;
 }
 
 /** Trạng thái tồn suy ra từ product, dùng chung cho badge và bộ lọc. */
