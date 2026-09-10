@@ -4,21 +4,20 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { Boxes, CalendarDays, PackageSearch, Receipt } from "lucide-react";
 import { MISSING, bookingApi, orderManageApi, productApi } from "@/lib/api";
-import { APPOINTMENT_STATUS, ORDER_STATUS } from "@/lib/utils/status";
-import { formatDateTime, formatPrice, formatTime, todayISO } from "@/lib/utils/format";
+import { todayISO } from "@/lib/utils/format";
 import { PageHeader } from "@/components/layout/DashboardShell";
 import { Metric, MetricRow } from "@/components/dashboard/Metric";
+import { appointmentColumns, orderColumns } from "@/components/dashboard/columns";
 import {
   DataTable,
   EmptyState,
   ErrorState,
   PendingApi,
-  StatusTag,
   TableFrame,
   TableSkeleton,
   type Column,
 } from "@/components/ui";
-import type { OrderSummary, Product, Appointment } from "@/types";
+import type { Product } from "@/types";
 
 export default function AdminDashboard() {
   const today = todayISO();
@@ -92,7 +91,7 @@ export default function AdminDashboard() {
               caption="Lịch khám trong ngày"
               rows={appointments.data ?? []}
               keyOf={(a) => a.id}
-              columns={APPOINTMENT_COLUMNS}
+              columns={appointmentColumns()}
               empty={<EmptyState title="Hôm nay chưa có lịch khám nào" />}
             />
           )}
@@ -118,7 +117,7 @@ export default function AdminDashboard() {
               caption="Đơn hàng mới nhất"
               rows={orders.data?.content ?? []}
               keyOf={(o) => o.id}
-              columns={ORDER_COLUMNS}
+              columns={orderColumns({ showCreated: true })}
               empty={<EmptyState title="Chưa có đơn hàng nào" />}
             />
           )}
@@ -153,32 +152,7 @@ export default function AdminDashboard() {
   );
 }
 
-const APPOINTMENT_COLUMNS: Column<Appointment>[] = [
-  { key: "time", header: "Giờ", cell: (a) => formatTime(a.startTime) },
-  {
-    key: "status",
-    header: "Trạng thái",
-    cell: (a) => <StatusTag status={APPOINTMENT_STATUS[a.status]} />,
-  },
-  {
-    key: "reason",
-    header: "Lý do khám",
-    hideBelow: "lg",
-    cell: (a) => <span className="text-ink-soft">{a.reason || "Không ghi"}</span>,
-  },
-];
 
-const ORDER_COLUMNS: Column<OrderSummary>[] = [
-  { key: "code", header: "Mã đơn", cell: (o) => o.orderCode },
-  { key: "status", header: "Trạng thái", cell: (o) => <StatusTag status={ORDER_STATUS[o.status]} /> },
-  {
-    key: "created",
-    header: "Đặt lúc",
-    hideBelow: "lg",
-    cell: (o) => <span className="text-bark">{formatDateTime(o.createdAt)}</span>,
-  },
-  { key: "total", header: "Tổng tiền", numeric: true, cell: (o) => formatPrice(o.total) },
-];
 
 const LOW_STOCK_COLUMNS: Column<Product>[] = [
   { key: "name", header: "Sản phẩm", cell: (p) => p.name },

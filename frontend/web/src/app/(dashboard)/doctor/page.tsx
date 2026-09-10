@@ -3,10 +3,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { CalendarCheck, CircleDot, ClipboardPlus, Clock } from "lucide-react";
 import { bookingApi, medicalRecordApi } from "@/lib/api";
-import { APPOINTMENT_STATUS, PRESCRIPTION_STATUS } from "@/lib/utils/status";
-import { formatTime, todayISO } from "@/lib/utils/format";
+import { PRESCRIPTION_STATUS } from "@/lib/utils/status";
+import { todayISO } from "@/lib/utils/format";
 import { PageHeader } from "@/components/layout/DashboardShell";
 import { Metric, MetricRow } from "@/components/dashboard/Metric";
+import { appointmentColumns } from "@/components/dashboard/columns";
 import {
   DataTable,
   EmptyState,
@@ -16,7 +17,7 @@ import {
   TableSkeleton,
   type Column,
 } from "@/components/ui";
-import type { Appointment, MedicalRecord } from "@/types";
+import type { MedicalRecord } from "@/types";
 
 export default function DoctorDashboard() {
   const today = todayISO();
@@ -70,7 +71,7 @@ export default function DoctorDashboard() {
               caption="Ca khám của bác sĩ trong ngày"
               rows={list}
               keyOf={(a) => a.id}
-              columns={TODAY_COLUMNS}
+              columns={appointmentColumns()}
               empty={<EmptyState title="Hôm nay bạn chưa có ca nào" />}
             />
           )}
@@ -101,20 +102,6 @@ export default function DoctorDashboard() {
   );
 }
 
-const TODAY_COLUMNS: Column<Appointment>[] = [
-  { key: "time", header: "Giờ", cell: (a) => formatTime(a.startTime) },
-  {
-    key: "status",
-    header: "Trạng thái",
-    cell: (a) => <StatusTag status={APPOINTMENT_STATUS[a.status]} />,
-  },
-  {
-    key: "reason",
-    header: "Lý do khám",
-    hideBelow: "lg",
-    cell: (a) => <span className="text-ink-soft">{a.reason || "Không ghi"}</span>,
-  },
-];
 
 const RECORD_COLUMNS: Column<MedicalRecord>[] = [
   { key: "diagnosis", header: "Chẩn đoán", cell: (r) => r.diagnosis },

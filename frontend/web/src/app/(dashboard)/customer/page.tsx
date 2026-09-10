@@ -4,22 +4,20 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { CalendarDays, PawPrint, Receipt } from "lucide-react";
 import { bookingApi, customerApi, orderApi } from "@/lib/api";
-import { APPOINTMENT_STATUS, ORDER_STATUS, speciesStripe } from "@/lib/utils/status";
-import { formatAge, formatDate, formatPrice, formatTime } from "@/lib/utils/format";
+import { speciesStripe } from "@/lib/utils/status";
+import { formatAge } from "@/lib/utils/format";
 import { PageHeader } from "@/components/layout/DashboardShell";
 import { Metric, MetricRow } from "@/components/dashboard/Metric";
+import { appointmentColumns, orderColumns } from "@/components/dashboard/columns";
 import { cn } from "@/lib/utils/cn";
 import {
   Button,
   DataTable,
   EmptyState,
   ErrorState,
-  StatusTag,
   TableFrame,
   TableSkeleton,
-  type Column,
 } from "@/components/ui";
-import type { Appointment, OrderSummary } from "@/types";
 
 export default function CustomerDashboard() {
   const pets = useQuery({ queryKey: ["pets", "mine"], queryFn: customerApi.pets });
@@ -85,7 +83,7 @@ export default function CustomerDashboard() {
               caption="Lịch khám sắp tới"
               rows={upcoming}
               keyOf={(a) => a.id}
-              columns={APPOINTMENT_COLUMNS}
+              columns={appointmentColumns({ showDate: true })}
               empty={
                 <EmptyState
                   title="Chưa có lịch khám nào"
@@ -121,7 +119,7 @@ export default function CustomerDashboard() {
               caption="Đơn hàng gần đây"
               rows={orders.data?.content ?? []}
               keyOf={(o) => o.id}
-              columns={ORDER_COLUMNS}
+              columns={orderColumns()}
               empty={<EmptyState title="Bạn chưa đặt đơn nào" />}
             />
           )}
@@ -180,27 +178,4 @@ export default function CustomerDashboard() {
   );
 }
 
-const APPOINTMENT_COLUMNS: Column<Appointment>[] = [
-  {
-    key: "when",
-    header: "Thời gian",
-    cell: (a) => `${formatDate(a.date)} lúc ${formatTime(a.startTime)}`,
-  },
-  {
-    key: "status",
-    header: "Trạng thái",
-    cell: (a) => <StatusTag status={APPOINTMENT_STATUS[a.status]} />,
-  },
-  {
-    key: "reason",
-    header: "Lý do khám",
-    hideBelow: "lg",
-    cell: (a) => <span className="text-ink-soft">{a.reason || "Không ghi"}</span>,
-  },
-];
 
-const ORDER_COLUMNS: Column<OrderSummary>[] = [
-  { key: "code", header: "Mã đơn", cell: (o) => o.orderCode },
-  { key: "status", header: "Trạng thái", cell: (o) => <StatusTag status={ORDER_STATUS[o.status]} /> },
-  { key: "total", header: "Tổng tiền", numeric: true, cell: (o) => formatPrice(o.total) },
-];

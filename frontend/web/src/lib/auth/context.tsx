@@ -6,7 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useState,
+  useSyncExternalStore,
   type ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
@@ -17,7 +17,7 @@ interface AuthState {
   email: string | null;
   userId: string | null;
   roles: Role[];
-  /** false cho tới khi đọc xong token từ localStorage — tránh nhấp nháy nội dung sai. */
+  /** false trong lần render đầu vì token nằm ở localStorage, chỉ client mới đọc được. */
   ready: boolean;
   signIn: (email: string, password: string) => Promise<Role[]>;
   signOut: () => void;
@@ -26,28 +26,51 @@ interface AuthState {
 
 const AuthContext = createContext<AuthState | null>(null);
 
+/**
+ * Token nằm trong localStorage — một kho dữ liệu bên ngoài React. Dùng
+ * `useSyncExternalStore` thay vì đọc trong effect rồi setState: cách này không gây thêm
+ * một vòng render, và mọi tab/thành phần cùng đọc một nguồn.
+ */
+const listeners = new Set<() => void>();
+
+function notify() {
+  for (const l of listeners) l();
+}
+
+function subscribe(onChange: () => void) {
+  listeners.add(onChange);
+  // Đăng xuất ở tab khác cũng phải phản ánh sang tab này.
+  window.addEventListener("storage", onChange);
+  return () => {
+    listeners.delete(onChange);
+    window.removeEventListener("storage", onChange);
+  };
+}
+
+function getSnapshot(): string | null {
+  const stored = getToken();
+  // Token hết hạn coi như không có, khỏi để giao diện tưởng còn đăng nhập rồi mọi request 401.
+  if (stored && isExpired(readToken(stored))) {
+    setToken(null);
+    return null;
+  }
+  return stored;
+}
+
+/** Máy chủ không có localStorage; luôn coi là chưa đăng nhập để HTML hai bên khớp nhau. */
+function getServerSnapshot(): string | null {
+  return null;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [token, setTokenState] = useState<string | null>(null);
-  const [ready, setReady] = useState(false);
   const router = useRouter();
+  const token = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
-  useEffect(() => {
-    const stored = getToken();
-    // Token hết hạn thì dọn luôn, khỏi để giao diện tưởng còn đăng nhập rồi mọi request 401.
-    if (stored && isExpired(readToken(stored))) {
-      setToken(null);
-      setTokenState(null);
-    } else {
-      setTokenState(stored);
-    }
-    setReady(true);
-  }, []);
-
-  // auth-service không có endpoint refresh (VD-05) nên không gia hạn ngầm được.
+  // auth-service không có endpoint làm mới token (VD-05) nên không gia hạn ngầm được.
   // Bất kỳ 401 nào cũng đưa người dùng về trang đăng nhập, giữ lại đường dẫn đang xem.
   useEffect(() => {
     function onExpired() {
-      setTokenState(null);
+      notify();
       const here = window.location.pathname + window.location.search;
       router.replace(`/login?next=${encodeURIComponent(here)}&expired=1`);
     }
@@ -60,13 +83,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = useCallback(async (email: string, password: string) => {
     const res = await authApi.login(email, password);
-    setTokenState(res.accessToken);
+    notify();
     return readToken(res.accessToken)?.roles ?? [];
   }, []);
 
   const signOut = useCallback(() => {
     setToken(null);
-    setTokenState(null);
+    notify();
   }, []);
 
   const hasRole = useCallback(
@@ -79,12 +102,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email: claims?.sub ?? null,
       userId: claims?.userId ?? null,
       roles,
-      ready,
+      // Chỉ client mới đọc được localStorage, nên coi là sẵn sàng khi đã ra khỏi máy chủ.
+      ready: typeof window !== "undefined",
       signIn,
       signOut,
       hasRole,
     }),
-    [claims, roles, ready, signIn, signOut, hasRole],
+    [claims, roles, signIn, signOut, hasRole],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

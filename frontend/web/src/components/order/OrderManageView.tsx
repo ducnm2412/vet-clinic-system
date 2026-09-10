@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError, nextActions, orderManageApi } from "@/lib/api";
 import { ORDER_STATUS } from "@/lib/utils/status";
 import { formatDateTime, formatPrice } from "@/lib/utils/format";
-import type { Order, OrderStatus, OrderSummary } from "@/types";
+import type { OrderStatus, OrderSummary } from "@/types";
 import {
   Button,
   DataTable,

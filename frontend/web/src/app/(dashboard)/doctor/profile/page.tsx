@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Trash2 } from "lucide-react";
 import { ApiError, doctorApi } from "@/lib/api";
 import { formatDate } from "@/lib/utils/format";
+import type { DoctorProfile } from "@/types";
 import { PageHeader } from "@/components/layout/DashboardShell";
 import {
   Button,
@@ -19,26 +20,41 @@ import {
 } from "@/components/ui";
 
 export default function DoctorProfilePage() {
+  const profile = useQuery({ queryKey: ["doctor", "me"], queryFn: doctorApi.me });
+
+  if (profile.isLoading) return <Skeleton className="h-64" />;
+  if (profile.isError || !profile.data) {
+    return <ErrorState message="Không tải được hồ sơ." onRetry={() => profile.refetch()} />;
+  }
+
+  return (
+    <>
+      <PageHeader
+        title="Hồ sơ của tôi"
+        description="Thông tin này hiện trên trang tra cứu bác sĩ công khai."
+      />
+      {/*
+        Biểu mẫu chỉ dựng khi đã có dữ liệu, `key` theo id để hồ sơ đổi thì React dựng lại
+        với giá trị mới — không cần effect đồng bộ state.
+      */}
+      <ProfileBody key={profile.data.id} profile={profile.data} />
+    </>
+  );
+}
+
+function ProfileBody({ profile }: { profile: DoctorProfile }) {
   const qc = useQueryClient();
   const toast = useToast();
 
-  const profile = useQuery({ queryKey: ["doctor", "me"], queryFn: doctorApi.me });
   const licenses = useQuery({ queryKey: ["doctor", "licenses"], queryFn: doctorApi.licenses });
 
-  const [specialty, setSpecialty] = useState("");
-  const [phone, setPhone] = useState("");
-  const [bio, setBio] = useState("");
-  const [years, setYears] = useState("");
+  const [specialty, setSpecialty] = useState(profile.specialty ?? "");
+  const [phone, setPhone] = useState(profile.phone ?? "");
+  const [bio, setBio] = useState(profile.bio ?? "");
+  const [years, setYears] = useState(
+    profile.yearsOfExperience != null ? String(profile.yearsOfExperience) : "",
+  );
   const [addOpen, setAddOpen] = useState(false);
-
-  useEffect(() => {
-    const d = profile.data;
-    if (!d) return;
-    setSpecialty(d.specialty ?? "");
-    setPhone(d.phone ?? "");
-    setBio(d.bio ?? "");
-    setYears(d.yearsOfExperience != null ? String(d.yearsOfExperience) : "");
-  }, [profile.data]);
 
   const save = useMutation({
     mutationFn: () =>
@@ -64,18 +80,8 @@ export default function DoctorProfilePage() {
     },
   });
 
-  if (profile.isLoading) return <Skeleton className="h-64" />;
-  if (profile.isError) {
-    return <ErrorState message="Không tải được hồ sơ." onRetry={() => profile.refetch()} />;
-  }
-
   return (
     <>
-      <PageHeader
-        title="Hồ sơ của tôi"
-        description="Thông tin này hiện trên trang tra cứu bác sĩ công khai."
-      />
-
       <div className="grid gap-5 lg:grid-cols-2">
         <section className="rounded-[var(--radius-control)] border border-line bg-surface p-4">
           <h2 className="mb-3 font-medium text-ink">Thông tin chuyên môn</h2>

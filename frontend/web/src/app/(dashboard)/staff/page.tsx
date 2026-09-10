@@ -4,10 +4,11 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { Boxes, CalendarDays, CreditCard, Receipt } from "lucide-react";
 import { MISSING, bookingApi, orderManageApi, paymentApi, productApi } from "@/lib/api";
-import { ORDER_STATUS, PAYMENT_STATUS } from "@/lib/utils/status";
+import { PAYMENT_STATUS } from "@/lib/utils/status";
 import { formatPrice, todayISO } from "@/lib/utils/format";
 import { PageHeader } from "@/components/layout/DashboardShell";
 import { Metric, MetricRow } from "@/components/dashboard/Metric";
+import { orderColumns } from "@/components/dashboard/columns";
 import {
   DataTable,
   EmptyState,
@@ -18,7 +19,7 @@ import {
   TableSkeleton,
   type Column,
 } from "@/components/ui";
-import type { OrderSummary, Payment } from "@/types";
+import type { Payment } from "@/types";
 
 export default function StaffDashboard() {
   const today = todayISO();
@@ -115,7 +116,7 @@ export default function StaffDashboard() {
               caption="Đơn hàng chờ xác nhận"
               rows={orders.data?.content ?? []}
               keyOf={(o) => o.id}
-              columns={ORDER_COLUMNS}
+              columns={orderColumns({ showRecipient: true })}
               empty={<EmptyState title="Không có đơn nào chờ xác nhận" />}
             />
           )}
@@ -146,9 +147,3 @@ const PAYMENT_COLUMNS: Column<Payment>[] = [
   },
 ];
 
-const ORDER_COLUMNS: Column<OrderSummary>[] = [
-  { key: "code", header: "Mã đơn", cell: (o) => o.orderCode },
-  { key: "recipient", header: "Người nhận", hideBelow: "lg", cell: (o) => o.recipientName },
-  { key: "status", header: "Trạng thái", cell: (o) => <StatusTag status={ORDER_STATUS[o.status]} /> },
-  { key: "total", header: "Tổng tiền", numeric: true, cell: (o) => formatPrice(o.total) },
-];

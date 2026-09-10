@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { LogOut, Menu, X } from "lucide-react";
 import { SidebarNav } from "./Sidebar";
 import { IconButton } from "@/components/ui";
@@ -18,11 +18,10 @@ import type { Role } from "@/types";
 export function DashboardShell({ role, children }: { role: Role; children: ReactNode }) {
   const { email, roles, signOut } = useAuth();
   const router = useRouter();
-  const pathname = usePathname();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  // Chuyển trang thì đóng ngăn kéo, khỏi phải bấm thêm một lần.
-  useEffect(() => setDrawerOpen(false), [pathname]);
+  // Ngăn kéo tự đóng khi bấm một mục trong menu — SidebarNav gọi onNavigate,
+  // nên không cần theo dõi pathname bằng effect.
 
   return (
     <div className="flex min-h-dvh">
