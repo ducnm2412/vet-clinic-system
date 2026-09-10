@@ -29,3 +29,9 @@ node_modules/
 .next/
 dist/
 build/
+
+# Skill cai bang `npx skills add` — cau hinh cong cu cua tung nguoi, khong phai
+# ma nguon du an. Ai muon dung thi tu cai, khong ep ca nhom theo.
+.agents/
+.claude/
+skills-lock.json
