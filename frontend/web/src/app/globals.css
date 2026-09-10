@@ -1,0 +1,88 @@
+@import "tailwindcss";
+
+/*
+  Bảng màu lấy từ hồ sơ bệnh án thú y giấy: rêu sâu cho hành động, nâu vỏ cây cho chữ phụ,
+  nền xanh xám lạnh thay vì trắng tinh để đỡ mỏi mắt khi nhìn cả ngày. Hổ phách là điểm
+  nhấn duy nhất — dùng càng ít càng mạnh.
+*/
+:root {
+  --ink: #1a2420;
+  --ink-soft: #3d4a44;
+  --moss: #2d4739;
+  --moss-hover: #223729;
+  --moss-wash: #e8efe9;
+  --bark: #6f6455;
+  --paper: #f1f4f0;
+  --surface: #ffffff;
+  --line: #dde3dd;
+  --line-strong: #c2ccc2;
+
+  --amber: #b87514;
+  --amber-wash: #fbf1de;
+  --danger: #a33a2e;
+  --danger-wash: #fbeae7;
+  --info: #3a6b8a;
+  --info-wash: #e9f0f5;
+
+  --radius-control: 6px;
+  --radius-badge: 4px;
+  --radius-overlay: 10px;
+
+  --shadow-dropdown: 0 4px 12px rgb(26 36 32 / 0.1);
+  --shadow-dialog: 0 16px 40px rgb(26 36 32 / 0.18);
+
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+}
+
+@theme inline {
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-moss: var(--moss);
+  --color-moss-hover: var(--moss-hover);
+  --color-moss-wash: var(--moss-wash);
+  --color-bark: var(--bark);
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-amber: var(--amber);
+  --color-amber-wash: var(--amber-wash);
+  --color-danger: var(--danger);
+  --color-danger-wash: var(--danger-wash);
+  --color-info: var(--info);
+  --color-info-wash: var(--info-wash);
+
+  --font-sans: var(--font-sans);
+  --font-display: var(--font-display);
+
+  --radius-control: var(--radius-control);
+  --radius-badge: var(--radius-badge);
+  --radius-overlay: var(--radius-overlay);
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+/* Số tiền và tồn kho phải thẳng cột khi xếp chồng trong bảng. */
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Ổ khoá bàn phím luôn nhìn thấy, cùng một kiểu trên mọi control. */
+:focus-visible {
+  outline: 2px solid var(--moss);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
