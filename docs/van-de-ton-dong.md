@@ -133,6 +133,43 @@ Entity `Pet` đang nằm trong `profile-service` (thuộc hồ sơ khách hàng)
 
 ---
 
+## booking-service
+
+### 🔴 VD-16. Lịch hẹn không cho biết bác sĩ nào khám
+
+`AppointmentRequest` chỉ nhận `{petId, date, startTime, reason}` — khách không chọn được bác
+sĩ, hệ thống tự gán slot. Bản thân điều đó là một quyết định hợp lệ.
+
+Vấn đề nằm ở chiều ngược lại: **`AppointmentResponse` và `AppointmentDetailResponse` không
+trả về `doctorUserId`**, chỉ có `slotId`. Trong khi đó `GET /booking/appointments` lại *lọc*
+được theo `doctorUserId`.
+
+Hệ quả:
+
+```
+Lọc lịch theo bác sĩ        -> lam duoc
+Hiện tên bác sĩ trên lịch   -> KHONG lam duoc
+```
+
+Nên không màn hình nào — của khách, của bác sĩ hay của quản trị — nói được ai phụ trách ca
+khám. Bác sĩ mở `/booking/appointments/doctor/me` thì biết đó là ca của mình, nhưng lễ tân
+nhìn danh sách chung thì không phân biệt được.
+
+**Hướng sửa:** thêm `doctorUserId` (và tên bác sĩ nếu tiện) vào hai response trên. Dữ liệu đã
+có sẵn qua `slotId`, chỉ là chưa trả ra.
+
+### 🟡 VD-17. Bệnh án chỉ tra được theo lịch hẹn, không theo thú cưng
+
+Bệnh án truy cập qua `GET /booking/appointments/{id}/medical-record`. Không có endpoint nào
+lấy lịch sử khám của **một thú cưng** qua nhiều lần hẹn.
+
+Đây đúng là chức năng CN-24 "tra cứu lịch sử khám bệnh" và là thứ bác sĩ cần nhất khi khám:
+con vật này trước đây bị gì, đã dùng thuốc nào.
+
+**Hướng sửa:** thêm `GET /booking/pets/{petId}/medical-records`.
+
+---
+
 ## Toàn hệ thống
 
 ### 🟡 VD-11. CN-22 và CN-39 chồng lấn — chưa chốt
@@ -161,3 +198,23 @@ broker, nhưng vẫn cần Postgres.
 
 Spring Cloud LoadBalancer cache danh sách instance từ Eureka theo chu kỳ. Không phải lỗi,
 nhưng dễ làm mất công debug nhầm. Đã ghi trong `frontend/README.md`.
+
+### 🟡 VD-18. Bảy mảng giao diện quản trị chưa có API
+
+Rà khi dựng frontend Next.js. Các màn hình dưới đây không có endpoint nào phục vụ:
+
+| Màn hình | Thiếu gì |
+|---|---|
+| Danh sách tài khoản | Chỉ có `POST` và `DELETE /admin/users`, không có `GET` |
+| Danh sách khách hàng | Chỉ có `GET /profile/customer/by-id/{id}`, không có endpoint liệt kê |
+| Số liệu tổng quan | Không có API thống kê nào (doanh thu, số ca hôm nay, số khách) |
+| Biểu đồ báo cáo | `reporting-service` chưa tồn tại |
+| Chấm công | `staff-service` chưa tồn tại |
+| Lịch sử khám của thú cưng | Xem VD-17 |
+| Thông báo trong ứng dụng | `notification-service` không có REST endpoint |
+
+Frontend đang để placeholder có đánh dấu `TODO` và tầng mock riêng (`lib/api/mock/`), không
+nhúng dữ liệu giả vào component. Khi API có thật thì chỉ thay tầng đó.
+
+Hai mục đầu bảng là rẻ nhất và chặn nhiều màn hình nhất — nên làm trước.
+
