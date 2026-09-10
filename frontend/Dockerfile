@@ -9,8 +9,12 @@ FROM node:22-alpine AS build
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY web/ ./
-# Rewrite /api/* doc API_GATEWAY_URL luc server khoi dong, khong phai luc build,
-# nen khong can truyen bien nao o buoc nay.
+# QUAN TRONG: voi output "standalone", Next tinh rewrites() LUC BUILD roi nhung ket qua
+# vao manifest — no KHONG doc lai bien moi truong luc server khoi dong. Khong truyen bien
+# o day thi next.config.ts roi ve mac dinh http://localhost:8080, tuc la localhost BEN
+# TRONG container, va moi request /api/* se ECONNREFUSED.
+ARG API_GATEWAY_URL=http://api-gateway:8080
+ENV API_GATEWAY_URL=$API_GATEWAY_URL
 RUN npm run build
 
 FROM node:22-alpine
