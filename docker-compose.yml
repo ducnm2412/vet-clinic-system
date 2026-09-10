@@ -173,7 +173,7 @@ services:
       - "3000:3000"
     environment:
       # Trong mang Docker goi nhau bang ten service, khong phai localhost.
-      # Moi request /api-proxy/* deu di qua gateway (ke ca /profile/**).
+      # Next rewrite moi request /api/* sang gateway (xem frontend/web/next.config.ts).
       API_GATEWAY_URL: http://api-gateway:8080
     depends_on:
       - api-gateway

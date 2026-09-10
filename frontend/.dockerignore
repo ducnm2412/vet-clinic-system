@@ -1,0 +1,13 @@
+# Khong nap nhung thu nay vao build context. Thieu file nay thi Docker phai chuyen ca
+# node_modules sang daemon truoc khi build — do chinh la 8 phut "load build context".
+# node_modules duoc cai lai trong image bang `npm ci`, va .next duoc build lai tu dau.
+web/node_modules
+web/.next
+web/out
+
+# Build tu package-lock.json nen bien moi truong o may khong duoc lot vao image.
+web/.env
+web/.env.*
+
+npm-debug.log*
+.DS_Store

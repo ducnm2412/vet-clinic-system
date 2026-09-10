@@ -1,72 +1,84 @@
 # Frontend
 
-Giao diện khách hàng và admin.
+Giao diện web của hệ thống, dùng chung cho cả bốn vai trò: quản trị, bác sĩ, nhân viên và
+khách hàng.
 
-- Công nghệ dự kiến: React.js / Next.js
-- Giao tiếp: gọi REST API qua API Gateway
-- Cấu trúc dự kiến: `pages/` hoặc `app/`, `components/`, `Dockerfile`
+- **Công nghệ:** Next.js 16 (App Router) · TypeScript · Tailwind CSS 4 · TanStack Query ·
+  React Hook Form + Zod · Recharts · Lucide
+- **Mã nguồn:** `web/`
+- **Cổng:** 3000 khi chạy bằng `docker compose`, 3001 khi chạy `npm run dev` ở máy
 
-## `test-ui/` — trang test API tạm thời
+> `test-ui/` — trang thử API bằng HTML thuần — đã bị gỡ bỏ khi giao diện thật thay thế nó.
+> Lịch sử vẫn còn trong git nếu cần tra lại.
 
-Chưa có frontend thật, nên `test-ui/` đóng vai trò công cụ thử API bằng tay trong lúc phát
-triển backend. Đây **không phải giao diện sản phẩm cuối** và sẽ bị thay khi làm React/Next.js.
+## Chạy ở máy
 
-- Chạy tại http://localhost:3000 (đi kèm `docker compose up`)
-- `server.js`: server Node thuần, không phụ thuộc npm package nào. Serve `index.html` và
-  proxy mọi `/api-proxy/*` sang API Gateway để tránh lỗi CORS.
-- `index.html`: một trang, ba tab.
-
-### Tab "Tài khoản & Hồ sơ"
-
-Đăng ký → xác thực email → đăng nhập → xem `/auth/me` → hồ sơ khách hàng → danh sách bác sĩ.
-
-Access token lưu trong `localStorage` và tự đính vào các request cần xác thực. Thanh trạng
-thái phía trên hiển thị token rút gọn cùng vai trò đọc được từ JWT.
-
-Chưa có `notification-service` nên email xác thực không gửi đi đâu. Lấy link trong log:
-
-```powershell
-docker compose logs auth-service | Select-String "Verification link"
+```bash
+cd frontend/web
+npm install
+npm run dev          # http://localhost:3001
 ```
 
-### Tab "Sản phẩm & Kho"
+Cần backend chạy sẵn (`docker compose up` ở thư mục gốc). Next gọi gateway qua biến
+`API_GATEWAY_URL`, mặc định `http://localhost:8080`.
 
-| Khối | Chức năng |
-|---|---|
-| Danh mục | Tạo, liệt kê, xoá (CN-27) |
-| Tạo sản phẩm | Form đầy đủ, chọn danh mục từ danh sách đã nạp (CN-28) |
-| Tra cứu sản phẩm | Lọc theo từ khoá/danh mục/khoảng giá, phân trang, bảng kết quả (CN-29) |
-| Nhập / điều chỉnh kho | IMPORT, ADJUSTMENT, RETURN kèm ghi chú (CN-30) |
-| Cảnh báo sắp hết hàng | Danh sách tồn ≤ ngưỡng (CN-30) |
-| Lịch sử biến động kho | Toàn bộ biến động của một sản phẩm, có cả dòng `SALE` sinh từ RabbitMQ |
+Nếu `npm run dev` báo lỗi `0xc0000142` trên Windows thì máy đang cạn tiến trình — tắt bớt
+container hoặc dùng bản production:
 
-Tra cứu không cần đăng nhập. Tạo/sửa/xoá cần `ADMIN`, thao tác kho cần `STAFF` hoặc `ADMIN`
-— đăng nhập bằng tài khoản admin ở tab đầu trước khi thử.
+```bash
+npm run build && npm start
+```
 
-Bảng sản phẩm có nút tắt "Nhập kho" và "Lịch sử" để nhảy thẳng sang khối tương ứng, khỏi
-phải copy id thủ công.
+## Vì sao mọi request đi qua `/api/*`
 
-### Tab "Giỏ hàng & Đơn hàng"
+Trình duyệt gọi thẳng `localhost:8080` sẽ dính CORS. Thay vì mở CORS ở backend, Next nhận
+request tại `/api/*` của chính nó rồi chuyển tiếp sang gateway (`next.config.ts`) — cùng
+origin với trang nên không có yêu cầu preflight nào.
 
-| Khối | Chức năng | Quyền |
-|---|---|---|
-| Giỏ hàng | Thêm, sửa số lượng, xoá, xoá sạch; hiện cảnh báo hết hàng theo từng dòng (CN-32) | CUSTOMER |
-| Đặt hàng | Form người nhận + địa chỉ, thanh toán COD (CN-33) | CUSTOMER |
-| Đơn hàng của tôi | Danh sách, xem chi tiết, huỷ đơn còn chờ xác nhận (CN-35) | CUSTOMER |
-| Xử lý đơn | Lọc theo trạng thái; xác nhận → giao hàng → hoàn tất, hoặc huỷ (CN-36) | STAFF/ADMIN |
-| Chi tiết đơn & lịch sử | Từng dòng hàng, tổng tiền, và vết chuyển trạng thái | cả hai |
+Trong Docker, `API_GATEWAY_URL` là `http://api-gateway:8080`: các container gọi nhau bằng
+tên service, không phải `localhost`.
 
-Bảng đơn chỉ hiện nút ứng với bước hợp lệ tiếp theo — luật luồng nằm ở backend, nút chỉ là
-gợi ý. Bấm "Xác nhận" là `order-service` phát `order.completed` và `product-service` trừ tồn
-kho ngay; sang tab "Sản phẩm & Kho" bấm "Lịch sử" của sản phẩm đó sẽ thấy dòng `SALE`.
+## Cấu trúc
 
-Huỷ đơn **đã xác nhận** thì hàng được hoàn lại kho qua sự kiện `order.cancelled` — lịch sử
-kho sẽ có thêm dòng `RETURN`.
+```
+web/src/
+├── app/
+│   ├── (auth)/           đăng nhập, đăng ký
+│   ├── (dashboard)/      admin · doctor · staff · customer
+│   └── unauthorized/
+├── components/
+│   ├── ui/               primitive: Button, Field, DataTable, Dialog, Toast…
+│   ├── layout/           Sidebar, DashboardShell
+│   └── dashboard/        Metric
+├── lib/
+│   ├── api/              một file cho mỗi service backend
+│   ├── auth/             AuthProvider, RouteGuard
+│   └── utils/            format tiền/ngày, nhãn trạng thái
+├── config/nav.ts         menu theo vai trò
+└── types/                khớp 1-1 với DTO backend
+```
 
-Muốn thử cả hai phía cùng lúc thì mở thêm một cửa sổ ẩn danh: một bên đăng nhập khách, một
-bên đăng nhập admin (token lưu trong `localStorage` nên hai cửa sổ thường sẽ ghi đè nhau).
+## Phân quyền
 
-### Lưu ý khi vừa `docker compose up --build`
+`RouteGuard` chặn bốn nhánh `/admin`, `/doctor`, `/staff`, `/customer` theo vai trò đọc từ
+JWT. Đây **chỉ là lớp trải nghiệm** — backend vẫn kiểm quyền trên từng request, và mọi
+endpoint đều tự trả 401/403.
 
-API Gateway trả `503` trong khoảng 30 giây đầu: Spring Cloud LoadBalancer cache danh sách
-instance từ Eureka theo chu kỳ, phải chờ nó refresh. Đợi rồi tải lại trang, không phải lỗi.
+Không có endpoint làm mới token (xem `docs/van-de-ton-dong.md` — VD-05), nên khi access
+token hết hạn sau 15 phút, mọi 401 sẽ đưa người dùng về trang đăng nhập kèm `?next=` để
+quay lại đúng chỗ đang dở.
+
+## Màn hình chưa có dữ liệu
+
+Một số mục trong menu có **chấm vàng**: backend chưa có API cho chúng (VD-18). Các trang đó
+hiển thị đúng endpoint còn thiếu thay vì dựng số liệu giả. Khai báo tập trung ở
+`lib/api/missing.ts`; khi backend bổ sung endpoint thì sửa ở đó, không phải sửa component.
+
+## Lưu ý khi vừa `docker compose up --build`
+
+API Gateway trả `503` trong khoảng 30 giây đầu vì Spring Cloud LoadBalancer còn chờ Eureka
+đẩy danh sách instance xuống. Giao diện hiểu mã này và hiện "Dịch vụ đang khởi động, thử lại
+sau vài giây" thay vì báo hỏng.
+
+Trên Windows, nếu gõ thẳng `localhost:8080` mà không vào được thì dùng `127.0.0.1:8080` —
+`localhost` phân giải sang IPv6 còn Docker chỉ publish trên IPv4.
