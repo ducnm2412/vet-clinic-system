@@ -218,3 +218,26 @@ nhúng dữ liệu giả vào component. Khi API có thật thì chỉ thay tầ
 
 Hai mục đầu bảng là rẻ nhất và chặn nhiều màn hình nhất — nên làm trước.
 
+### 🟡 VD-19. Service goi nhau luc khoi dong tra 500 thay vi 503
+
+Phat hien khi chay kiem chung tu dong ngay sau `docker compose up`.
+
+`POST /cart/items` tra **500**. Log `order-service`:
+
+```
+feign.RetryableException -> java.net.ConnectException
+```
+
+`order-service` goi `product-service` de lay gia va kiem ton kho — dung nhu thiet ke
+"khong tin so lieu client gui len". Nhung neu `product-service` chua dang ky xong voi
+Eureka thi loi goi do chet, va nguoi dung nhan **500**.
+
+VD-13 moi noi gateway tra 503 khoang 30 giay sau khi khoi dong lai. Thuc te **cac
+service goi nhau cung co cua so tuong tu**, va o do loi hien ra duoi dang 500.
+
+Voi nguoi dung, 500 la "he thong hong" con 503 la "cho chut" — hai thong diep rat khac
+nhau. Frontend dien giai 503 thanh "Dich vu dang khoi dong, thu lai sau vai giay",
+nhung 500 thi roi vao thong bao loi chung.
+
+**Huong sua:** `ProductClient` bat `FeignException` va nem ra loi map sang 503, hoac
+them retry co backoff. Cung nen ap dung cho moi cho service goi cheo nhau.
