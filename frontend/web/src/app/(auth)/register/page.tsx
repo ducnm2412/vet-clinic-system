@@ -63,18 +63,21 @@ export default function RegisterPage() {
           Đã gửi liên kết xác minh tới <strong className="text-ink">{registeredEmail}</strong>. Mở
           liên kết đó rồi quay lại đăng nhập.
         </p>
-        <p className="mt-3 text-sm leading-relaxed text-bark">
-          Khi chạy môi trường phát triển, thư không ra Internet mà vào hòm thư giả{" "}
-          <a
-            href="http://localhost:8025"
-            target="_blank"
-            rel="noreferrer"
-            className="text-moss underline underline-offset-2"
-          >
-            MailHog
-          </a>
-          .
-        </p>
+        {/* Chỉ nhắc hòm thư giả khi chạy dev — người dùng thật không cần biết MailHog là gì. */}
+        {process.env.NODE_ENV !== "production" && (
+          <p className="mt-3 text-sm leading-relaxed text-bark">
+            Đang chạy môi trường phát triển nên thư không ra Internet mà vào hòm thư giả{" "}
+            <a
+              href={process.env.NEXT_PUBLIC_MAILHOG_URL ?? "http://127.0.0.1:8025"}
+              target="_blank"
+              rel="noreferrer"
+              className="text-moss underline underline-offset-2"
+            >
+              MailHog
+            </a>
+            .
+          </p>
+        )}
         <Link href="/login" className="mt-6 inline-block text-sm text-moss underline underline-offset-2">
           Tới trang đăng nhập
         </Link>
