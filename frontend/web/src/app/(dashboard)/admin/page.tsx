@@ -8,6 +8,7 @@ import { todayISO } from "@/lib/utils/format";
 import { PageHeader } from "@/components/layout/DashboardShell";
 import { Metric, MetricRow } from "@/components/dashboard/Metric";
 import { appointmentColumns, orderColumns } from "@/components/dashboard/columns";
+import { useDoctorDirectory } from "@/lib/useDoctors";
 import {
   DataTable,
   EmptyState,
@@ -27,6 +28,7 @@ export default function AdminDashboard() {
     queryKey: ["orders", "manage", { page: 0 }],
     queryFn: () => orderManageApi.list({ page: 0, size: 8 }),
   });
+  const doctors = useDoctorDirectory();
   const appointments = useQuery({
     queryKey: ["appointments", { date: today }],
     queryFn: () => bookingApi.search({ date: today }),
@@ -91,7 +93,7 @@ export default function AdminDashboard() {
               caption="Lịch khám trong ngày"
               rows={appointments.data ?? []}
               keyOf={(a) => a.id}
-              columns={appointmentColumns()}
+              columns={appointmentColumns({ doctorLabel: doctors.label })}
               empty={<EmptyState title="Hôm nay chưa có lịch khám nào" />}
             />
           )}

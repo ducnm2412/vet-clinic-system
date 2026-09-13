@@ -4,11 +4,12 @@ import { useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarDays, ChevronLeft, Clock3, MapPin, Pill } from "lucide-react";
+import { CalendarDays, ChevronLeft, Clock3, MapPin, Pill, Stethoscope } from "lucide-react";
 import { ApiError, bookingApi, customerApi, medicalRecordApi } from "@/lib/api";
 import { formatDate, formatTime, todayISO } from "@/lib/utils/format";
 import { useToast } from "@/components/ui";
 import { CLINIC } from "@/config/clinic";
+import { useDoctorDirectory } from "@/lib/useDoctors";
 import type { Appointment, MedicalRecord } from "@/types";
 import { ButtonLink, Container, SiteButton } from "@/components/site/primitives";
 import { CustomerOnly } from "@/components/site/CustomerOnly";
@@ -34,6 +35,7 @@ function AppointmentDetailBody() {
 
   const appointments = useQuery({ queryKey: ["appointments", "mine"], queryFn: bookingApi.mine });
   const pets = useQuery({ queryKey: ["pets", "mine"], queryFn: customerApi.pets });
+  const doctors = useDoctorDirectory();
 
   const appointment = (appointments.data ?? []).find((a) => a.id === id) ?? null;
 
@@ -85,12 +87,18 @@ function AppointmentDetailBody() {
               {pet ? `Lịch khám của ${pet.name}` : "Lịch khám"}
             </h1>
 
-            <dl className="mt-8 grid max-w-2xl gap-6 sm:grid-cols-3">
+            <dl className="mt-8 grid max-w-3xl gap-6 sm:grid-cols-2 lg:grid-cols-4">
               <IconItem icon={CalendarDays} label="Ngày khám" value={formatDate(appointment.date)} />
               <IconItem
                 icon={Clock3}
                 label="Giờ"
                 value={`${formatTime(appointment.startTime)} đến ${formatTime(appointment.endTime)}`}
+              />
+              {/* Hệ thống tự xếp bác sĩ lúc đặt lịch — đây là chỗ khách biết mình được xếp cho ai. */}
+              <IconItem
+                icon={Stethoscope}
+                label="Người khám"
+                value={doctors.label(appointment.doctorUserId)}
               />
               <IconItem icon={MapPin} label="Tại" value={CLINIC.address} />
             </dl>

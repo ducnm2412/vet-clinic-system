@@ -10,6 +10,9 @@ import java.util.UUID;
 public record AppointmentDetailResponse(
         UUID id,
         UUID slotId,
+        // VD-16: bác sĩ phụ trách. Lấy từ slot — khách không chọn bác sĩ, hệ thống tự xếp, nên
+        // response là chỗ duy nhất người ta biết được mình được xếp cho ai.
+        UUID doctorUserId,
         LocalDate date,
         LocalTime startTime,
         LocalTime endTime,

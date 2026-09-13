@@ -14,7 +14,8 @@ import type {
 
 export const bookingApi = {
   /**
-   * Khách chỉ chọn thú cưng và giờ — không chọn bác sĩ, hệ thống tự gán slot (VD-16).
+   * Khách chỉ chọn thú cưng và giờ — không chọn bác sĩ, hệ thống tự gán slot. Bác sĩ được
+   * xếp nằm trong `doctorUserId` của response.
    * Khi khung giờ đã kín, backend trả 409 kèm tối đa 3 gợi ý; dùng `suggestionsFrom`
    * để lấy chúng ra thay vì chỉ hiện thông báo lỗi chung.
    */

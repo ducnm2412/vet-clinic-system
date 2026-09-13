@@ -10,8 +10,13 @@ import type { Appointment, OrderSummary } from "@/types";
  */
 
 export function appointmentColumns(
-  options: { showDate?: boolean } = {},
+  options: {
+    showDate?: boolean;
+    /** Truyền vào thì có cột bác sĩ. Màn hình của chính bác sĩ không cần cột này. */
+    doctorLabel?: (doctorUserId: string) => string;
+  } = {},
 ): Column<Appointment>[] {
+  const { doctorLabel } = options;
   return [
     {
       key: "when",
@@ -25,6 +30,15 @@ export function appointmentColumns(
           <span className="tnum font-medium text-ink">{formatTime(a.startTime)}</span>
         ),
     },
+    ...(doctorLabel
+      ? [
+          {
+            key: "doctor",
+            header: "Bác sĩ",
+            cell: (a: Appointment) => <span className="text-ink">{doctorLabel(a.doctorUserId)}</span>,
+          },
+        ]
+      : []),
     {
       key: "status",
       header: "Trạng thái",

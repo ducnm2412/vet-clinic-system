@@ -12,7 +12,7 @@ export type PrescriptionStatus = "PENDING" | "PAID" | "RECEIVED";
 
 /**
  * Khách chỉ chọn thú cưng và giờ — hệ thống tự gán slot, không chọn bác sĩ.
- * Xem VD-16: response cũng không trả về bác sĩ nào phụ trách.
+ * Bác sĩ được xếp trả về trong `Appointment.doctorUserId`.
  */
 export interface AppointmentRequest {
   petId: string;
@@ -24,6 +24,8 @@ export interface AppointmentRequest {
 export interface Appointment {
   id: string;
   slotId: string;
+  /** Bác sĩ phụ trách, lấy từ slot (VD-16). Tên bác sĩ chưa có ở backend — xem VD-20. */
+  doctorUserId: string;
   date: string;
   startTime: string;
   endTime: string;
@@ -48,10 +50,7 @@ export interface AvailableTime {
 
 export type SlotStatus = "AVAILABLE" | "BOOKED" | "CANCELLED";
 
-/**
- * Slot là nơi duy nhất biết bác sĩ nào phụ trách. `Appointment` chỉ giữ `slotId` mà không
- * trả kèm `doctorUserId` (VD-16), nên hiện tại không tra ngược được từ lịch hẹn ra bác sĩ.
- */
+/** Khung giờ khám của một bác sĩ trong một ngày. */
 export interface AppointmentSlot {
   id: string;
   doctorUserId: string;

@@ -142,15 +142,16 @@ public class AppointmentService {
 
     private AppointmentResponse toResponse(Appointment appointment) {
         AppointmentSlot slot = appointment.getSlot();
-        return new AppointmentResponse(appointment.getId(), slot.getId(), slot.getDate(), slot.getStartTime(),
-                slot.getEndTime(), appointment.getCustomerUserId(), appointment.getPetId(), appointment.getReason(),
-                appointment.getStatus(), appointment.getCreatedAt(), appointment.getUpdatedAt());
+        return new AppointmentResponse(appointment.getId(), slot.getId(), slot.getDoctorUserId(), slot.getDate(),
+                slot.getStartTime(), slot.getEndTime(), appointment.getCustomerUserId(), appointment.getPetId(),
+                appointment.getReason(), appointment.getStatus(), appointment.getCreatedAt(), appointment.getUpdatedAt());
     }
 
     private AppointmentDetailResponse toDetailResponse(Appointment appointment, PetResponse pet) {
         AppointmentSlot slot = appointment.getSlot();
-        return new AppointmentDetailResponse(appointment.getId(), slot.getId(), slot.getDate(), slot.getStartTime(),
-                slot.getEndTime(), appointment.getCustomerUserId(), appointment.getPetId(), appointment.getReason(),
-                appointment.getStatus(), appointment.getCreatedAt(), appointment.getUpdatedAt(), pet);
+        return new AppointmentDetailResponse(appointment.getId(), slot.getId(), slot.getDoctorUserId(), slot.getDate(),
+                slot.getStartTime(), slot.getEndTime(), appointment.getCustomerUserId(), appointment.getPetId(),
+                appointment.getReason(), appointment.getStatus(), appointment.getCreatedAt(), appointment.getUpdatedAt(),
+                pet);
     }
 }

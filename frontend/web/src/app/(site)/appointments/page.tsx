@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { CalendarDays, Clock3, MapPin } from "lucide-react";
+import { CalendarDays, Clock3, MapPin, Stethoscope } from "lucide-react";
 import { bookingApi, customerApi } from "@/lib/api";
 import { formatDate, formatTime, todayISO } from "@/lib/utils/format";
 import { CLINIC } from "@/config/clinic";
+import { useDoctorDirectory } from "@/lib/useDoctors";
 import type { Appointment, Pet } from "@/types";
 import { ButtonLink, Container, SiteButton } from "@/components/site/primitives";
 import { CustomerOnly } from "@/components/site/CustomerOnly";
@@ -24,6 +25,7 @@ function AppointmentsBody() {
   const appointments = useQuery({ queryKey: ["appointments", "mine"], queryFn: bookingApi.mine });
   // Lịch hẹn chỉ mang `petId`, nên phải tra tên bé từ danh sách thú cưng của chính khách.
   const pets = useQuery({ queryKey: ["pets", "mine"], queryFn: customerApi.pets });
+  const doctors = useDoctorDirectory();
 
   const petById = new Map((pets.data ?? []).map((p) => [p.id, p]));
   const today = todayISO();
@@ -80,7 +82,11 @@ function AppointmentsBody() {
                 <ul className="mt-6 space-y-5">
                   {upcoming.map((a) => (
                     <li key={a.id}>
-                      <UpcomingCard appointment={a} pet={petById.get(a.petId) ?? null} />
+                      <UpcomingCard
+                        appointment={a}
+                        pet={petById.get(a.petId) ?? null}
+                        doctor={doctors.label(a.doctorUserId)}
+                      />
                     </li>
                   ))}
                 </ul>
@@ -92,7 +98,12 @@ function AppointmentsBody() {
                 <h2 className="t-h3">Đã qua</h2>
                 <ul className="mt-6 divide-y divide-mist border-y border-mist">
                   {past.map((a) => (
-                    <PastRow key={a.id} appointment={a} pet={petById.get(a.petId) ?? null} />
+                    <PastRow
+                      key={a.id}
+                      appointment={a}
+                      pet={petById.get(a.petId) ?? null}
+                      doctor={doctors.label(a.doctorUserId)}
+                    />
                   ))}
                 </ul>
               </section>
@@ -108,7 +119,15 @@ function AppointmentsBody() {
  * Lịch sắp tới là thứ khách vào trang này để tìm, nên nó được một tấm thẻ lớn với đủ
  * thông tin cần khi ra khỏi nhà: bé nào, mấy giờ, ở đâu.
  */
-function UpcomingCard({ appointment: a, pet }: { appointment: Appointment; pet: Pet | null }) {
+function UpcomingCard({
+  appointment: a,
+  pet,
+  doctor,
+}: {
+  appointment: Appointment;
+  pet: Pet | null;
+  doctor: string;
+}) {
   return (
     <Link
       href={`/appointments/${a.id}`}
@@ -143,6 +162,13 @@ function UpcomingCard({ appointment: a, pet }: { appointment: Appointment; pet: 
             </div>
           </div>
           <div className="flex gap-3">
+            <Stethoscope aria-hidden className="mt-0.5 size-4 shrink-0 text-teal" />
+            <div>
+              <dt className="text-stone">Người khám</dt>
+              <dd className="font-medium">{doctor}</dd>
+            </div>
+          </div>
+          <div className="flex gap-3">
             <MapPin aria-hidden className="mt-0.5 size-4 shrink-0 text-teal" />
             <div>
               <dt className="text-stone">Tại</dt>
@@ -155,7 +181,15 @@ function UpcomingCard({ appointment: a, pet }: { appointment: Appointment; pet: 
   );
 }
 
-function PastRow({ appointment: a, pet }: { appointment: Appointment; pet: Pet | null }) {
+function PastRow({
+  appointment: a,
+  pet,
+  doctor,
+}: {
+  appointment: Appointment;
+  pet: Pet | null;
+  doctor: string;
+}) {
   return (
     <li>
       <Link
@@ -167,6 +201,7 @@ function PastRow({ appointment: a, pet }: { appointment: Appointment; pet: Pet |
           <p className="font-medium">{pet?.name ?? "Không rõ bé nào"}</p>
           <p className="text-[15px] text-stone">{formatDate(a.date)}</p>
         </div>
+        <p className="min-w-44 text-[15px] text-stone">{doctor}</p>
         <p className="tnum min-w-28 text-[15px] text-stone">
           {formatTime(a.startTime)} đến {formatTime(a.endTime)}
         </p>

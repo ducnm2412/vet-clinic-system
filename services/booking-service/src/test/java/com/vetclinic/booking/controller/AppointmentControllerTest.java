@@ -97,7 +97,9 @@ class AppointmentControllerTest {
                                 {"petId":"%s","date":"%s","startTime":"%s","reason":"Checkup"}
                                 """.formatted(UUID.randomUUID(), date, targetTime)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.slotId").value(freeDoctorSlot.getId().toString()));
+                .andExpect(jsonPath("$.slotId").value(freeDoctorSlot.getId().toString()))
+                // VD-16: JSON trả về phải nêu tên bác sĩ được xếp, không chỉ slotId.
+                .andExpect(jsonPath("$.doctorUserId").value(freeDoctor.toString()));
 
         AppointmentSlot reloadedBusySlot = appointmentSlotRepository.findById(busyDoctorSlot.getId()).orElseThrow();
         assertThat(reloadedBusySlot.getStatus()).isEqualTo(SlotStatus.AVAILABLE);

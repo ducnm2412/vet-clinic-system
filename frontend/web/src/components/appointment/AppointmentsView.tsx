@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError, bookingApi } from "@/lib/api";
 import { APPOINTMENT_STATUS } from "@/lib/utils/status";
 import { formatDate, formatTime, todayISO } from "@/lib/utils/format";
+import { useDoctorDirectory } from "@/lib/useDoctors";
 import type { Appointment, AppointmentStatus } from "@/types";
 import {
   Button,
@@ -25,8 +26,8 @@ const STATUSES: AppointmentStatus[] = ["PENDING", "CONFIRMED", "COMPLETED", "CAN
 /**
  * Tra cứu và xử lý lịch khám cho nhân viên và quản trị.
  *
- * Bảng không có cột bác sĩ: `AppointmentResponse` không trả `doctorUserId` dù endpoint lại
- * lọc được theo trường đó (VD-16). Thêm cột trống chỉ để "cho đủ" sẽ gây hiểu nhầm.
+ * Có cột và bộ lọc bác sĩ từ khi response trả `doctorUserId` (VD-16) — trước đó lễ tân nhìn
+ * danh sách chung không phân biệt được ca nào của ai.
  */
 export function AppointmentsView() {
   const qc = useQueryClient();
@@ -34,11 +35,18 @@ export function AppointmentsView() {
 
   const [date, setDate] = useState(todayISO());
   const [status, setStatus] = useState<AppointmentStatus | "">("");
+  const [doctorUserId, setDoctorUserId] = useState("");
+
+  const doctors = useDoctorDirectory();
 
   const appointments = useQuery({
-    queryKey: ["appointments", { date, status }],
+    queryKey: ["appointments", { date, status, doctorUserId }],
     queryFn: () =>
-      bookingApi.search({ date: date || undefined, status: status || undefined }),
+      bookingApi.search({
+        date: date || undefined,
+        status: status || undefined,
+        doctorUserId: doctorUserId || undefined,
+      }),
   });
 
   const updateStatus = useMutation({
@@ -67,6 +75,11 @@ export function AppointmentsView() {
       ),
     },
     { key: "date", header: "Ngày", hideBelow: "lg", cell: (a) => formatDate(a.date) },
+    {
+      key: "doctor",
+      header: "Bác sĩ",
+      cell: (a) => <span className="text-ink">{doctors.label(a.doctorUserId)}</span>,
+    },
     {
       key: "reason",
       header: "Lý do khám",
@@ -142,6 +155,20 @@ export function AppointmentsView() {
             ))}
           </SelectField>
         </div>
+        <div className="min-w-52">
+          <SelectField
+            label="Bác sĩ"
+            value={doctorUserId}
+            onChange={(e) => setDoctorUserId(e.target.value)}
+          >
+            <option value="">Tất cả bác sĩ</option>
+            {(doctors.data ?? []).map((d) => (
+              <option key={d.userId} value={d.userId}>
+                {doctors.label(d.userId)}
+              </option>
+            ))}
+          </SelectField>
+        </div>
         <Button variant="secondary" onClick={() => setDate(todayISO())}>
           Hôm nay
         </Button>
@@ -152,7 +179,7 @@ export function AppointmentsView() {
 
       <TableFrame title={date ? `Lịch ngày ${formatDate(date)}` : "Tất cả lịch khám"} count={rows.length}>
         {appointments.isLoading ? (
-          <TableSkeleton rows={5} cols={4} />
+          <TableSkeleton rows={5} cols={5} />
         ) : appointments.isError ? (
           <div className="p-4">
             <ErrorState

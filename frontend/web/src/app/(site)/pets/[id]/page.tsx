@@ -15,6 +15,7 @@ import { PetAvatar } from "@/components/site/PetAvatar";
 import { PetFormDialog } from "@/components/site/PetFormDialog";
 import { SiteDialog } from "@/components/site/SiteDialog";
 import { APPOINTMENT_LOOK, StatusPill } from "@/components/site/StatusPill";
+import { useDoctorDirectory } from "@/lib/useDoctors";
 
 export default function PetDetailPage() {
   return (
@@ -181,6 +182,7 @@ function PetAppointments({ petId, petName }: { petId: string; petName: string })
     queryKey: ["appointments", "mine"],
     queryFn: bookingApi.mine,
   });
+  const doctors = useDoctorDirectory();
 
   const list = (appointments.data ?? [])
     .filter((a) => a.petId === petId)
@@ -212,7 +214,7 @@ function PetAppointments({ petId, petName }: { petId: string; petName: string })
       ) : (
         <ul className="mt-8 divide-y divide-mist border-y border-mist">
           {list.map((a) => (
-            <AppointmentRow key={a.id} appointment={a} />
+            <AppointmentRow key={a.id} appointment={a} doctor={doctors.label(a.doctorUserId)} />
           ))}
         </ul>
       )}
@@ -220,7 +222,7 @@ function PetAppointments({ petId, petName }: { petId: string; petName: string })
   );
 }
 
-function AppointmentRow({ appointment: a }: { appointment: Appointment }) {
+function AppointmentRow({ appointment: a, doctor }: { appointment: Appointment; doctor: string }) {
   return (
     <li>
       <Link
@@ -233,6 +235,7 @@ function AppointmentRow({ appointment: a }: { appointment: Appointment }) {
             {formatTime(a.startTime)} đến {formatTime(a.endTime)}
           </p>
         </div>
+        <p className="min-w-44 text-[15px] text-stone">{doctor}</p>
         <p className="min-w-0 flex-1 truncate text-stone">
           {a.reason?.trim() || "Không ghi lý do khám"}
         </p>
