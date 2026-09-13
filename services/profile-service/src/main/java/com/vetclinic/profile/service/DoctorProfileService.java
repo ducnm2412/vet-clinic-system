@@ -97,9 +97,20 @@ public class DoctorProfileService {
     @Transactional(readOnly = true)
     public List<DoctorPublicResponse> listPublicDoctors() {
         return doctorProfileRepository.findAll().stream()
-                .map(p -> new DoctorPublicResponse(p.getId(), p.getUserId(), p.getSpecialty(), p.getBio(),
-                        p.getYearsOfExperience()))
+                .map(p -> new DoctorPublicResponse(p.getId(), p.getUserId(), p.getFullName(), p.getSpecialty(),
+                        p.getBio(), p.getYearsOfExperience()))
                 .toList();
+    }
+
+    /**
+     * VD-20: tạo sẵn hồ sơ bác sĩ kèm họ tên ngay khi tài khoản được lập, thay vì đợi bác sĩ tự
+     * mở trang hồ sơ. Gọi lại nhiều lần vẫn an toàn — RabbitMQ giao ít nhất một lần.
+     */
+    @Transactional
+    public void ensureProfileWithName(UUID userId, String fullName) {
+        DoctorProfile profile = getOrCreateProfile(userId);
+        profile.setFullName(fullName);
+        doctorProfileRepository.saveAndFlush(profile);
     }
 
     private DoctorProfile getOrCreateProfile(UUID userId) {

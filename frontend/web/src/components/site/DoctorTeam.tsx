@@ -9,10 +9,10 @@ import { ButtonLink, Section, SectionHead } from "./primitives";
 /**
  * Đội ngũ bác sĩ, lấy từ GET /profile/doctors (công khai, không cần đăng nhập).
  *
- * TODO(backend, VD-20): `DoctorPublicResponse` chỉ trả specialty, bio và yearsOfExperience
- * — KHÔNG có họ tên và không có ảnh. Nên thẻ dưới đây lấy chuyên môn làm tiêu đề.
- * Không lấy ảnh người lạ gán tên bác sĩ của phòng khám: đó là dựng chuyện.
- * Cần bổ sung: GET /profile/doctors trả thêm fullName và photoUrl.
+ * Tiêu đề thẻ là họ tên (VD-20); hồ sơ cũ chưa có tên thì dùng chuyên môn.
+ *
+ * TODO(backend): chưa có ảnh chân dung. Không lấy ảnh người lạ gán tên bác sĩ của phòng khám —
+ * đó là dựng chuyện. Cần bổ sung: photoUrl trong DoctorPublicResponse.
  */
 export function DoctorTeam() {
   const doctors = useQuery({ queryKey: ["doctors", "public"], queryFn: doctorApi.listPublic });
@@ -62,7 +62,12 @@ function DoctorCard({ doctor }: { doctor: DoctorPublic }) {
       </span>
 
       <div className="min-w-0">
-        <h3 className="t-h3">{doctor.specialty?.trim() || "Bác sĩ thú y"}</h3>
+        <h3 className="t-h3">
+          {doctor.fullName?.trim() ? `BS. ${doctor.fullName.trim()}` : doctor.specialty?.trim() || "Bác sĩ thú y"}
+        </h3>
+        {doctor.fullName?.trim() && doctor.specialty?.trim() && (
+          <p className="mt-1 font-medium text-pine">{doctor.specialty}</p>
+        )}
         {years != null && years > 0 && (
           <p className="tnum mt-1 text-sm text-teal-deep">{years} năm kinh nghiệm</p>
         )}

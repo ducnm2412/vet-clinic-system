@@ -7,6 +7,8 @@ import java.util.UUID;
 public record DoctorPublicResponse(
         UUID id,
         UUID userId,
+        // VD-20: có thể null với hồ sơ lập trước khi có cột này.
+        String fullName,
         String specialty,
         String bio,
         Integer yearsOfExperience

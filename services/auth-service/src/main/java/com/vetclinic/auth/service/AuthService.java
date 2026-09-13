@@ -16,6 +16,7 @@ import com.vetclinic.auth.exception.InvalidOrExpiredTokenException;
 import com.vetclinic.auth.exception.InvalidRefreshTokenException;
 import com.vetclinic.auth.exception.UserNotFoundException;
 import com.vetclinic.auth.messaging.UserDeletedEvent;
+import com.vetclinic.auth.messaging.StaffAccountCreatedEvent;
 import com.vetclinic.auth.messaging.UserRegisteredEvent;
 import com.vetclinic.auth.repository.RoleRepository;
 import com.vetclinic.auth.repository.UserRepository;
@@ -101,6 +102,10 @@ public class AuthService {
                 .build();
 
         userRepository.save(user);
+
+        // VD-20: mang họ tên sang profile-service. Chỉ đẩy lên RabbitMQ sau khi commit.
+        applicationEventPublisher.publishEvent(new StaffAccountCreatedEvent(user.getId(), user.getEmail(),
+                (user.getFirstName() + " " + user.getLastName()).trim(), request.role().name()));
 
         return new MessageResponse("Account created for " + request.email() + " with role " + request.role());
     }

@@ -74,6 +74,8 @@ export interface DoctorProfile {
 export interface DoctorPublic {
   id: string;
   userId: string;
+  /** VD-20. Null với hồ sơ lập trước khi backend lưu họ tên — giao diện rơi về chuyên môn. */
+  fullName: string | null;
   specialty: string | null;
   bio: string | null;
   yearsOfExperience: number | null;

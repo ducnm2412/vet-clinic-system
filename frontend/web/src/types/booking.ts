@@ -24,7 +24,7 @@ export interface AppointmentRequest {
 export interface Appointment {
   id: string;
   slotId: string;
-  /** Bác sĩ phụ trách, lấy từ slot (VD-16). Tên bác sĩ chưa có ở backend — xem VD-20. */
+  /** Bác sĩ phụ trách, lấy từ slot (VD-16). Tra tên qua useDoctorDirectory. */
   doctorUserId: string;
   date: string;
   startTime: string;

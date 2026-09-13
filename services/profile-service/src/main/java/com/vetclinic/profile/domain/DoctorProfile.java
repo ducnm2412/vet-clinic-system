@@ -38,6 +38,10 @@ public class DoctorProfile {
     @Column(name = "user_id", nullable = false, unique = true)
     private UUID userId;
 
+    // VD-20: bản sao họ tên từ auth-service, nhận qua sự kiện user.staff-created.
+    @Column(name = "full_name", length = 200)
+    private String fullName;
+
     @Column(nullable = false)
     private String specialty;
 

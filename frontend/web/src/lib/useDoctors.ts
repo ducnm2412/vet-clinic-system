@@ -11,8 +11,8 @@ import type { DoctorPublic } from "@/types";
  * Lịch hẹn giờ trả `doctorUserId` (VD-16), còn thông tin bác sĩ nằm ở GET /profile/doctors —
  * endpoint công khai nên khách, lễ tân và quản trị đều gọi được, không phải xin thêm quyền.
  *
- * TODO(backend, VD-20): danh sách đó chưa có họ tên, nên nhãn là chuyên môn chứ không phải
- * tên người. Khi backend trả `fullName` thì chỉ sửa `doctorLabel` ở đây.
+ * Nhãn ưu tiên họ tên (VD-20). Hồ sơ lập trước khi backend lưu tên thì rơi về chuyên môn,
+ * để không bao giờ hiện một ô trống.
  */
 export function useDoctorDirectory() {
   const doctors = useQuery({
@@ -39,6 +39,8 @@ export function doctorLabel(doctor: DoctorPublic | undefined, loading = false): 
   if (loading) return "Đang tải…";
   // Không có trong danh sách: hồ sơ bác sĩ chưa lập, hoặc tài khoản đã bị xoá sau khi khám.
   if (!doctor) return "Bác sĩ phòng khám";
+  const name = doctor.fullName?.trim();
+  if (name) return `BS. ${name}`;
   const specialty = doctor.specialty?.trim();
   return specialty ? `Bác sĩ ${specialty.charAt(0).toLowerCase()}${specialty.slice(1)}` : "Bác sĩ thú y";
 }

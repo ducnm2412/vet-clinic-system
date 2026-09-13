@@ -14,6 +14,7 @@ public class UserEventPublisher {
 
     private static final String ROUTING_KEY_USER_DELETED = "user.deleted";
     private static final String ROUTING_KEY_USER_REGISTERED = "user.registered";
+    private static final String ROUTING_KEY_STAFF_CREATED = "user.staff-created";
 
     private final RabbitTemplate rabbitTemplate;
 
@@ -22,6 +23,12 @@ public class UserEventPublisher {
     public void onUserDeleted(UserDeletedEvent event) {
         rabbitTemplate.convertAndSend(RabbitMQConfig.USER_EVENTS_EXCHANGE, ROUTING_KEY_USER_DELETED, event);
         log.info("Published user.deleted event for userId={}", event.userId());
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onStaffAccountCreated(StaffAccountCreatedEvent event) {
+        rabbitTemplate.convertAndSend(RabbitMQConfig.USER_EVENTS_EXCHANGE, ROUTING_KEY_STAFF_CREATED, event);
+        log.info("Published user.staff-created event for userId={} role={}", event.userId(), event.role());
     }
 
     // AFTER_COMMIT: chỉ đẩy message lên RabbitMQ khi transaction đăng ký user đã commit thành
