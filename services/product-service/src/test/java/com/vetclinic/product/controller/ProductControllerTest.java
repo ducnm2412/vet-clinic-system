@@ -99,6 +99,69 @@ class ProductControllerTest {
                 .andExpect(jsonPath("$.totalElements").value(0));
     }
 
+    // ---------- VD-01: hàng đã ẩn không được lộ ra qua tìm kiếm công khai ----------
+
+    /** Tạo một sản phẩm đã ngừng bán (active=false) và trả về SKU của nó. */
+    private String createHiddenProduct(String slug, String sku) throws Exception {
+        String categoryId = createCategory(slug);
+        mockMvc.perform(post("/products")
+                        .header("Authorization", "Bearer " + tokenFor("ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"categoryId":"%s","sku":"%s","name":"Hang da an","price":10000,"unit":"cai","active":false}
+                                """.formatted(categoryId, sku)))
+                .andExpect(status().isCreated());
+        return sku;
+    }
+
+    @Test
+    void search_anonymousWithActiveOnlyFalse_stillHidesInactive() throws Exception {
+        // Kịch bản gốc của VD-01: khách vãng lai tự thêm ?activeOnly=false và thấy hàng đã ẩn.
+        String sku = createHiddenProduct("vd01-anon", "SKU-VD01-ANON");
+
+        mockMvc.perform(get("/products").param("activeOnly", "false").param("size", "200"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[?(@.sku == '%s')]".formatted(sku)).doesNotExist());
+    }
+
+    @Test
+    void search_customerWithActiveOnlyFalse_stillHidesInactive() throws Exception {
+        // Đăng nhập rồi cũng không đủ — khách hàng không phải người quản lý kho.
+        String sku = createHiddenProduct("vd01-customer", "SKU-VD01-CUS");
+
+        mockMvc.perform(get("/products")
+                        .header("Authorization", "Bearer " + tokenFor("CUSTOMER"))
+                        .param("activeOnly", "false").param("size", "200"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[?(@.sku == '%s')]".formatted(sku)).doesNotExist());
+    }
+
+    @Test
+    void search_staffAndAdminWithActiveOnlyFalse_seeInactive() throws Exception {
+        // Nhân viên kho và quản trị vẫn phải thấy hàng ẩn để còn bật lại hoặc kiểm kê.
+        String sku = createHiddenProduct("vd01-staff", "SKU-VD01-STAFF");
+
+        for (String role : List.of("STAFF", "ADMIN")) {
+            mockMvc.perform(get("/products")
+                            .header("Authorization", "Bearer " + tokenFor(role))
+                            .param("activeOnly", "false").param("size", "200"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.content[?(@.sku == '%s')]".formatted(sku)).exists());
+        }
+    }
+
+    @Test
+    void search_staffWithoutActiveOnlyFalse_keepsDefaultOfActiveOnly() throws Exception {
+        // Có quyền nhưng không xin xem hàng ẩn thì vẫn giữ mặc định — không tự bật thay họ.
+        String sku = createHiddenProduct("vd01-default", "SKU-VD01-DEF");
+
+        mockMvc.perform(get("/products")
+                        .header("Authorization", "Bearer " + tokenFor("STAFF"))
+                        .param("size", "200"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[?(@.sku == '%s')]".formatted(sku)).doesNotExist());
+    }
+
     // ---------- CN-27, CN-28: quản trị ----------
 
     @Test
