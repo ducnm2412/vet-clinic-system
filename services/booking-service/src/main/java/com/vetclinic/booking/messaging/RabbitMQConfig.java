@@ -42,6 +42,30 @@ public class RabbitMQConfig {
         return BindingBuilder.bind(paymentCompletedQueue).to(paymentEventsExchange).with(ROUTING_KEY_PAYMENT_COMPLETED);
     }
 
+    // CN-08: auth-service phát user.locked / user.unlocked. Khai exchange ở cả hai bên (idempotent).
+    public static final String USER_EVENTS_EXCHANGE = "user.events";
+    public static final String USER_STATUS_QUEUE = "booking.user-status-changed";
+
+    @Bean
+    public TopicExchange userEventsExchange() {
+        return new TopicExchange(USER_EVENTS_EXCHANGE, true, false);
+    }
+
+    @Bean
+    public Queue userStatusQueue() {
+        return new Queue(USER_STATUS_QUEUE, true);
+    }
+
+    @Bean
+    public Binding userLockedBinding(Queue userStatusQueue, TopicExchange userEventsExchange) {
+        return BindingBuilder.bind(userStatusQueue).to(userEventsExchange).with("user.locked");
+    }
+
+    @Bean
+    public Binding userUnlockedBinding(Queue userStatusQueue, TopicExchange userEventsExchange) {
+        return BindingBuilder.bind(userStatusQueue).to(userEventsExchange).with("user.unlocked");
+    }
+
     @Bean
     public MessageConverter messageConverter() {
         return new Jackson2JsonMessageConverter();

@@ -1,5 +1,6 @@
 import type {
   AppointmentStatus,
+  UserStatus,
   OrderStatus,
   PaymentStatus,
   PrescriptionStatus,
@@ -16,6 +17,12 @@ export interface StatusStyle {
   dot: string;
   tint: string;
 }
+
+export const USER_STATUS: Record<UserStatus, StatusStyle> = {
+  ACTIVE: { label: "Đang hoạt động", dot: "bg-moss", tint: "bg-moss-wash text-ink" },
+  INACTIVE: { label: "Chưa xác minh email", dot: "bg-amber", tint: "bg-amber-wash text-ink" },
+  LOCKED: { label: "Đã khoá", dot: "bg-danger", tint: "bg-danger-wash text-ink" },
+};
 
 export const ORDER_STATUS: Record<OrderStatus, StatusStyle> = {
   PENDING: { label: "Chờ xác nhận", dot: "bg-amber", tint: "bg-amber-wash text-ink" },

@@ -42,11 +42,14 @@ function LoginForm() {
       router.replace(next || homeFor(roles));
     } catch (err) {
       // Backend cố tình trả cùng một lỗi cho sai mật khẩu, không tồn tại và chưa kích hoạt —
-      // không đoán thêm để không lộ tài khoản nào có thật.
+      // không đoán thêm để không lộ tài khoản nào có thật. Riêng tài khoản bị khoá trả 403, và
+      // chỉ trả khi mật khẩu đã đúng — người đoán mò không biết được email nào đang bị khoá.
       setFormError(
         err instanceof ApiError && err.status === 401
           ? "Email hoặc mật khẩu không đúng, hoặc tài khoản chưa xác minh email."
-          : err instanceof Error
+          : err instanceof ApiError && err.status === 403
+            ? "Tài khoản này đã bị khoá. Liên hệ phòng khám để được hỗ trợ."
+            : err instanceof Error
             ? err.message
             : "Không đăng nhập được.",
       );

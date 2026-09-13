@@ -40,10 +40,10 @@ export const NAV: Record<Role, NavSection[]> = {
     {
       title: "Con người",
       items: [
-        { href: "/admin/users", label: "Tài khoản", icon: Users, pending: true },
+        { href: "/admin/users", label: "Tài khoản", icon: Users },
         { href: "/admin/doctors", label: "Bác sĩ", icon: Stethoscope },
         { href: "/admin/staff", label: "Nhân viên", icon: Contact },
-        { href: "/admin/customers", label: "Khách hàng", icon: UserRound, pending: true },
+        { href: "/admin/customers", label: "Khách hàng", icon: UserRound },
       ],
     },
     {
@@ -59,7 +59,7 @@ export const NAV: Record<Role, NavSection[]> = {
         { href: "/admin/products", label: "Sản phẩm", icon: PackageSearch },
         { href: "/admin/inventory", label: "Tồn kho", icon: Boxes },
         { href: "/admin/orders", label: "Đơn hàng", icon: Receipt },
-        { href: "/admin/reports", label: "Báo cáo", icon: ClipboardList, pending: true },
+        { href: "/admin/reports", label: "Báo cáo", icon: ClipboardList },
       ],
     },
   ],

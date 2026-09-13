@@ -35,6 +35,9 @@ public class SecurityConfig {
                         // Staff/Admin tra cứu 1 khách hàng cụ thể — path "by-id" tách biệt hẳn khỏi
                         // "me" nên không lo bị rule /profile/customer/** phía dưới nuốt mất.
                         .requestMatchers(HttpMethod.GET, "/profile/customer/by-id/**").hasAnyRole("STAFF", "ADMIN")
+                        // Trang Khách hàng của admin tra hồ sơ nhiều khách một lượt. "customers" số
+                        // nhiều nên không trùng rule /profile/customer/** của chính khách.
+                        .requestMatchers(HttpMethod.GET, "/profile/customers/summary").hasRole("ADMIN")
                         .requestMatchers("/profile/customer/**").hasRole("CUSTOMER")
                         .requestMatchers("/profile/doctor/**").hasRole("DOCTOR")
                         // Danh sách nhân viên chỉ Admin xem được — /profile/staff/** cũng khớp path

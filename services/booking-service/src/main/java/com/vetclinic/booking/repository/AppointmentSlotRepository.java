@@ -1,10 +1,12 @@
 package com.vetclinic.booking.repository;
 
 import com.vetclinic.booking.domain.AppointmentSlot;
+import com.vetclinic.booking.domain.SlotStatus;
 import com.vetclinic.booking.dto.AvailableTimeResponse;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -24,6 +26,13 @@ public interface AppointmentSlotRepository extends JpaRepository<AppointmentSlot
     @Query("SELECT s FROM AppointmentSlot s WHERE s.date = :date AND s.startTime = :time AND s.status = 'AVAILABLE' " +
             "ORDER BY s.doctorUserId")
     List<AppointmentSlot> findAvailableForUpdate(@Param("date") LocalDate date, @Param("time") LocalTime time);
+
+    /** CN-08: đổi trạng thái hàng loạt slot từ hôm nay trở đi của một bác sĩ. Trả số slot đã đổi. */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE AppointmentSlot s SET s.status = :to WHERE s.doctorUserId = :doctorUserId " +
+            "AND s.status = :from AND s.date >= :fromDate")
+    int changeFutureSlotStatus(@Param("doctorUserId") UUID doctorUserId, @Param("from") SlotStatus from,
+                               @Param("to") SlotStatus to, @Param("fromDate") LocalDate fromDate);
 
     List<AppointmentSlot> findByDoctorUserIdAndDate(UUID doctorUserId, LocalDate date);
 

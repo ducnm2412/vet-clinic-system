@@ -4,6 +4,7 @@ import type {
   AddressRequest,
   CustomerProfile,
   CustomerProfileRequest,
+  CustomerSummary,
   DoctorLicense,
   DoctorLicenseRequest,
   DoctorProfile,
@@ -67,7 +68,14 @@ export const petLookupApi = {
 };
 
 export const customerLookupApi = {
-  /** STAFF/ADMIN tra cứu một khách cụ thể. Không có endpoint liệt kê — xem VD-18. */
+  /**
+   * Chỉ ADMIN. Điện thoại, địa chỉ và thú cưng của các khách đang hiện trên một trang bảng
+   * (tối đa 100). Khách chưa từng mở trang hồ sơ thì không có trong kết quả.
+   */
+  summary: (userIds: string[]) =>
+    http.get<CustomerSummary[]>(`/profile/customers/summary?userIds=${userIds.map(encodeURIComponent).join(",")}`),
+
+  /** STAFF/ADMIN tra cứu một khách cụ thể. */
   byId: (customerProfileId: string) =>
     http.get<CustomerProfile>(`/profile/customer/by-id/${customerProfileId}`),
 };

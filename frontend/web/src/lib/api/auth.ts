@@ -1,6 +1,8 @@
-import { getRefreshToken, http, setSession, setToken } from "./client";
+import { getRefreshToken, http, qs, setSession, setToken } from "./client";
 import type {
   AuthResponse,
+  PageResponse,
+  UserFilters,
   CreateStaffAccountRequest,
   CurrentUser,
   RegisterRequest,
@@ -40,9 +42,19 @@ export const authApi = {
 
   /** Chỉ ADMIN. Backend chỉ cho tạo tài khoản DOCTOR và STAFF. */
   createStaffAccount: (body: CreateStaffAccountRequest) =>
-    http.post<CurrentUser>("/admin/users", body),
+    http.post<{ message: string }>("/admin/users", body),
 
-  deleteUser: (userId: string) => http.del<void>(`/admin/users/${userId}`),
+  /** Chỉ ADMIN. Nguồn duy nhất có họ tên, email, vai trò và trạng thái của mọi tài khoản. */
+  listUsers: (filters: UserFilters = {}) =>
+    http.get<PageResponse<CurrentUser>>(`/admin/users${qs({ ...filters })}`),
+
+  /**
+   * CN-08: khoá thay cho xoá — lịch sử khám và đơn hàng giữ nguyên. Backend thu hồi mọi phiên và
+   * từ chối (409) khi tự khoá mình hoặc khoá admin cuối cùng. Giao diện không có nút xoá.
+   */
+  lockUser: (userId: string) => http.put<CurrentUser>(`/admin/users/${userId}/lock`),
+
+  unlockUser: (userId: string) => http.put<CurrentUser>(`/admin/users/${userId}/unlock`),
 };
 
 /**

@@ -15,6 +15,7 @@ import com.vetclinic.booking.exception.ResourceNotFoundException;
 import com.vetclinic.booking.exception.SlotFullyBookedException;
 import com.vetclinic.booking.messaging.AppointmentCreatedEvent;
 import com.vetclinic.booking.repository.AppointmentRepository;
+import com.vetclinic.booking.repository.BlockedDoctorRepository;
 import com.vetclinic.booking.repository.AppointmentSlotRepository;
 import feign.FeignException;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +34,7 @@ public class AppointmentService {
 
     private final AppointmentSlotRepository appointmentSlotRepository;
     private final AppointmentRepository appointmentRepository;
+    private final BlockedDoctorRepository blockedDoctorRepository;
     private final ProfileServiceClient profileServiceClient;
     private final SuggestionService suggestionService;
     private final ApplicationEventPublisher applicationEventPublisher;
@@ -120,7 +122,9 @@ public class AppointmentService {
         if (appointment.getStatus() != AppointmentStatus.CANCELLED) {
             appointment.setStatus(AppointmentStatus.CANCELLED);
             AppointmentSlot slot = appointment.getSlot();
-            slot.setStatus(SlotStatus.AVAILABLE);
+            // CN-08: bác sĩ đang bị khoá thì giờ vừa trống không được mở lại cho khách khác đặt.
+            slot.setStatus(blockedDoctorRepository.existsById(slot.getDoctorUserId())
+                    ? SlotStatus.BLOCKED : SlotStatus.AVAILABLE);
             appointmentSlotRepository.saveAndFlush(slot);
             appointmentRepository.saveAndFlush(appointment);
         }

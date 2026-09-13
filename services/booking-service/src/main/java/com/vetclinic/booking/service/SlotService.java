@@ -5,6 +5,7 @@ import com.vetclinic.booking.domain.ClinicSchedule;
 import com.vetclinic.booking.dto.AppointmentSlotResponse;
 import com.vetclinic.booking.dto.AvailableTimeResponse;
 import com.vetclinic.booking.repository.AppointmentSlotRepository;
+import com.vetclinic.booking.repository.BlockedDoctorRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,10 +21,15 @@ import java.util.UUID;
 public class SlotService {
 
     private final AppointmentSlotRepository appointmentSlotRepository;
+    private final BlockedDoctorRepository blockedDoctorRepository;
 
     @Transactional
     public List<AppointmentSlotResponse> generateSlots(UUID doctorId, LocalDate date) {
         List<AppointmentSlotResponse> created = new ArrayList<>();
+        // CN-08: bác sĩ đang bị khoá tài khoản thì không mở thêm giờ khám.
+        if (blockedDoctorRepository.existsById(doctorId)) {
+            return created;
+        }
 
         for (LocalTime startTime : ClinicSchedule.SLOT_TIMES) {
             if (appointmentSlotRepository.existsByDoctorUserIdAndDateAndStartTime(doctorId, date, startTime)) {

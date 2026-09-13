@@ -10,6 +10,7 @@ import com.vetclinic.auth.dto.LoginRequest;
 import com.vetclinic.auth.dto.MessageResponse;
 import com.vetclinic.auth.dto.RegisterRequest;
 import com.vetclinic.auth.dto.UserResponse;
+import com.vetclinic.auth.exception.AccountLockedException;
 import com.vetclinic.auth.exception.EmailAlreadyExistsException;
 import com.vetclinic.auth.exception.InvalidCredentialsException;
 import com.vetclinic.auth.exception.InvalidOrExpiredTokenException;
@@ -148,6 +149,10 @@ public class AuthService {
 
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
             throw new InvalidCredentialsException();
+        }
+
+        if (user.getStatus() == UserStatus.LOCKED) {
+            throw new AccountLockedException();
         }
 
         if (user.getStatus() != UserStatus.ACTIVE) {

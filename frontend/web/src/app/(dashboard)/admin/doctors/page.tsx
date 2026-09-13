@@ -51,7 +51,8 @@ export default function AdminDoctorsPage() {
                   <Stethoscope aria-hidden className="size-4 text-moss" />
                 </span>
                 <div className="min-w-0 flex-1">
-                  <h2 className="font-medium text-ink">{d.specialty || "Chưa ghi chuyên môn"}</h2>
+                  <h2 className="font-medium text-ink">{d.fullName ? `BS. ${d.fullName}` : "Chưa có họ tên"}</h2>
+                  <p className="text-sm text-bark">{d.specialty || "Chưa ghi chuyên môn"}</p>
                   {d.yearsOfExperience != null && (
                     <Tag className="mt-1">{d.yearsOfExperience} năm kinh nghiệm</Tag>
                   )}

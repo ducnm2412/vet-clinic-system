@@ -35,6 +35,16 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.UNAUTHORIZED, ex.getMessage());
     }
 
+    @ExceptionHandler(AccountLockedException.class)
+    public ResponseEntity<ErrorResponse> handleAccountLocked(AccountLockedException ex) {
+        return build(HttpStatus.FORBIDDEN, ex.getMessage());
+    }
+
+    @ExceptionHandler(AccountStatusChangeException.class)
+    public ResponseEntity<ErrorResponse> handleAccountStatusChange(AccountStatusChangeException ex) {
+        return build(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
     @ExceptionHandler(UserNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleUserNotFound(UserNotFoundException ex) {
         return build(HttpStatus.NOT_FOUND, ex.getMessage());

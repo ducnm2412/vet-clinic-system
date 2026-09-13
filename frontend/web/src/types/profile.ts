@@ -98,6 +98,15 @@ export interface DoctorLicenseRequest {
   expiryDate?: string;
 }
 
+/** profile-service: CustomerSummaryResponse — bảng Khách hàng của admin. */
+export interface CustomerSummary {
+  userId: string;
+  phone: string | null;
+  /** Địa chỉ mặc định, không có thì địa chỉ đầu tiên. */
+  address: string | null;
+  petNames: string[];
+}
+
 export interface StaffProfile {
   id: string;
   userId: string;
