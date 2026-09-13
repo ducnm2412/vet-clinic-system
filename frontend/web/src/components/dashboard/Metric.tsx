@@ -3,13 +3,14 @@ import { cn } from "@/lib/utils/cn";
 import { Skeleton } from "@/components/ui";
 
 /**
- * Ô số liệu. Không có phần "so với kỳ trước" vì backend chưa có API thống kê nào trả về
- * số liệu lịch sử (VD-18) — thà bỏ trống còn hơn hiện mũi tên tăng giảm không có thật.
+ * Ô số liệu. Không có phần "so với kỳ trước": reporting-service chưa trả số của kỳ liền trước,
+ * và thà bỏ trống còn hơn hiện mũi tên tăng giảm không có thật.
  */
 export function Metric({
   label,
   value,
   unit,
+  hint,
   icon: Icon,
   loading,
   tone = "plain",
@@ -17,6 +18,8 @@ export function Metric({
   label: string;
   value: number | string | null;
   unit?: string;
+  /** Dòng phụ dưới con số, ví dụ số đơn tạo nên doanh thu đó. */
+  hint?: string;
   icon: LucideIcon;
   loading?: boolean;
   /** "alert" dùng khi con số này là thứ cần xử lý ngay, ví dụ hàng sắp hết. */
@@ -38,6 +41,7 @@ export function Metric({
             {unit && <span className="ml-1 text-sm font-normal text-bark">{unit}</span>}
           </p>
         )}
+        {hint && !loading && <p className="mt-0.5 text-xs text-bark tnum">{hint}</p>}
       </div>
     </div>
   );

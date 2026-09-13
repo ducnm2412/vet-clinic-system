@@ -35,4 +35,21 @@ public interface AppointmentRepository extends JpaRepository<Appointment, UUID> 
             "AND a.slot.date = :date AND a.status <> com.vetclinic.booking.domain.AppointmentStatus.CANCELLED")
     long countActiveAppointmentsForDoctorOnDate(@Param("doctorUserId") UUID doctorUserId,
                                                  @Param("date") LocalDate date);
+
+    // CN-47: số liệu lịch khám cho reporting-service, tính theo NGÀY KHÁM (ngày của slot), không
+    // theo ngày đặt. Mỗi dòng: [khoá, tổng, PENDING, CONFIRMED, COMPLETED, CANCELLED, NO_SHOW].
+    String STATUS_COUNTS = "COUNT(*), " +
+            "COUNT(*) FILTER (WHERE a.status = 'PENDING'), COUNT(*) FILTER (WHERE a.status = 'CONFIRMED'), " +
+            "COUNT(*) FILTER (WHERE a.status = 'COMPLETED'), COUNT(*) FILTER (WHERE a.status = 'CANCELLED'), " +
+            "COUNT(*) FILTER (WHERE a.status = 'NO_SHOW') ";
+
+    @Query(value = "SELECT s.date, " + STATUS_COUNTS +
+            "FROM appointments a JOIN appointment_slots s ON s.id = a.slot_id " +
+            "WHERE s.date BETWEEN :from AND :to GROUP BY s.date", nativeQuery = true)
+    List<Object[]> countByDayAndStatus(@Param("from") LocalDate from, @Param("to") LocalDate to);
+
+    @Query(value = "SELECT s.doctor_user_id, " + STATUS_COUNTS +
+            "FROM appointments a JOIN appointment_slots s ON s.id = a.slot_id " +
+            "WHERE s.date BETWEEN :from AND :to GROUP BY s.doctor_user_id", nativeQuery = true)
+    List<Object[]> countByDoctorAndStatus(@Param("from") LocalDate from, @Param("to") LocalDate to);
 }

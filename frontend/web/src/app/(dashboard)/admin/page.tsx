@@ -3,17 +3,19 @@
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { Boxes, CalendarDays, PackageSearch, Receipt } from "lucide-react";
-import { MISSING, bookingApi, orderManageApi, productApi } from "@/lib/api";
-import { todayISO } from "@/lib/utils/format";
+import { bookingApi, orderManageApi, productApi, reportingApi } from "@/lib/api";
+import { formatPrice, todayISO } from "@/lib/utils/format";
 import { PageHeader } from "@/components/layout/DashboardShell";
 import { Metric, MetricRow } from "@/components/dashboard/Metric";
 import { appointmentColumns, orderColumns } from "@/components/dashboard/columns";
 import { useDoctorDirectory } from "@/lib/useDoctors";
+import { RevenueChart } from "@/components/reporting/RevenueChart";
+import { UnavailableNote } from "@/components/reporting/UnavailableNote";
+import { shiftDays } from "@/components/reporting/format";
 import {
   DataTable,
   EmptyState,
   ErrorState,
-  PendingApi,
   TableFrame,
   TableSkeleton,
   type Column,
@@ -145,16 +147,51 @@ export default function AdminDashboard() {
           )}
         </TableFrame>
 
-        <div>
-          <h2 className="mb-2 font-medium text-ink">Doanh thu</h2>
-          <PendingApi endpoint={MISSING.revenueSeries} />
-        </div>
+        <RevenueSnapshot today={today} />
       </div>
     </>
   );
 }
 
+/** CN-49: doanh thu 30 ngày gần nhất; chi tiết và khoảng khác nằm ở trang Báo cáo. */
+function RevenueSnapshot({ today }: { today: string }) {
+  const range = { from: shiftDays(today, -29), to: today };
+  const revenue = useQuery({
+    queryKey: ["reporting", "revenue", range, "DAY"],
+    queryFn: () => reportingApi.revenue(range, "DAY"),
+  });
 
+  return (
+    <TableFrame
+      title="Doanh thu 30 ngày"
+      actions={
+        <Link href="/admin/reports" className="text-sm text-moss underline underline-offset-2">
+          Xem báo cáo
+        </Link>
+      }
+    >
+      <div className="p-4">
+        {revenue.isLoading ? (
+          <TableSkeleton rows={4} cols={2} />
+        ) : revenue.isError ? (
+          <ErrorState message="Không tải được doanh thu." onRetry={() => revenue.refetch()} />
+        ) : revenue.data ? (
+          <>
+            <p className="font-[family-name:var(--font-display)] text-[25px] leading-tight text-ink tnum">
+              {formatPrice(revenue.data.totals.total)}
+            </p>
+            <div className="mt-3 empty:hidden">
+              <UnavailableNote sources={revenue.data.unavailable} />
+            </div>
+            <div className="mt-3">
+              <RevenueChart report={revenue.data} height={180} />
+            </div>
+          </>
+        ) : null}
+      </div>
+    </TableFrame>
+  );
+}
 
 const LOW_STOCK_COLUMNS: Column<Product>[] = [
   { key: "name", header: "Sản phẩm", cell: (p) => p.name },

@@ -2,7 +2,7 @@
 #
 #   docker compose up -d --build
 #
-# Cac service chua code (booking, pet, product, order, staff, notification, reporting)
+# Cac service chua code (pet, staff)
 # nam trong profile "future" nen KHONG chay mac dinh — chung chua co Dockerfile, neu
 # de chung o profile mac dinh thi ca lenh `up` se fail o buoc build.
 # Khi mot service duoc code xong: viet Dockerfile cho no roi xoa dong `profiles` tuong ung.
@@ -362,12 +362,19 @@ services:
       - staff-db
 
   reporting-service:
-    profiles: ["future"]
     build: ./services/reporting-service
     container_name: reporting-service
+    ports:
+      # 8088 da thuoc notification-service; reporting-service dung 8089.
+      - "8089:8089"
+    environment:
+      EUREKA_URI: http://eureka-server:8761/eureka/
+      # Chung JWT_SECRET de tu verify token admin. Khong co database: moi lan xem bao cao
+      # la hoi lai order/payment/booking-service (xem services/reporting-service/README.md).
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
     depends_on:
-      - eureka-server
-      - rabbitmq
+      eureka-server:
+        condition: service_started
 
   pet-db:
     profiles: ["future"]

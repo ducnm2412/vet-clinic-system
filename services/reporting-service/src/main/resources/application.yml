@@ -1,0 +1,29 @@
+spring:
+  application:
+    name: reporting-service
+  cloud:
+    openfeign:
+      client:
+        config:
+          # Một nguồn chậm không được kéo cả trang báo cáo theo — quá hạn thì bỏ phần đó,
+          # trả phần còn lại kèm danh sách nguồn không lấy được.
+          default:
+            connect-timeout: 2000
+            read-timeout: 5000
+
+server:
+  port: ${SERVER_PORT:8089}
+  error:
+    # Lỗi 400/503 của báo cáo mang câu giải thích cho admin (khoảng ngày sai, nguồn không trả lời).
+    include-message: always
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URI:http://localhost:8761/eureka/}
+  instance:
+    prefer-ip-address: true
+
+jwt:
+  # Dùng chung secret với auth-service — tự verify chữ ký token, không gọi ngược auth-service.
+  secret: ${JWT_SECRET}
