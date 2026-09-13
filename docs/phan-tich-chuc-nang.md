@@ -35,7 +35,7 @@ Chú thích trạng thái: ✅ Đã hiện thực · ⚠️ Hiện thực một 
 | CN-05 | Tạo tài khoản Bác sĩ/Nhân viên | AC-04 | Tạo tài khoản `status=ACTIVE` ngay, chỉ cho phép role DOCTOR/STAFF | Họ tên, email, mật khẩu, role | Thông báo tạo thành công | ✅ |
 | CN-06 | Phân quyền truy cập (RBAC) | Hệ thống | Filter JWT stateless chặn theo route và role, không truy vấn DB mỗi request | JWT trong header | Cho phép / 401 / 403 | ✅ |
 | CN-07 | Làm mới access token | AC-01→04 | Dùng refresh token cấp lại access token khi hết hạn | `refreshToken` | `accessToken` mới | ⏳ |
-| CN-08 | Khoá / mở khoá tài khoản | AC-04 | Chuyển `status=LOCKED`, chặn đăng nhập | ID tài khoản | Kết quả cập nhật | ⏳ |
+| CN-08 | Khoá / mở khoá tài khoản | AC-04 | Chuyển `status=LOCKED`, chặn đăng nhập | ID tài khoản | Kết quả cập nhật | ✅ |
 
 ### 2.2. Module Hồ sơ người dùng & Thú cưng (`profile-service` — `profile_db`)
 
@@ -131,14 +131,14 @@ Chú thích trạng thái: ✅ Đã hiện thực · ⚠️ Hiện thực một 
 | CN-44 | Thông báo đơn hàng | Hệ thống | Consume sự kiện order → xác nhận đơn, cập nhật giao hàng | ⏳ |
 | CN-45 | Nhắc lịch tái khám / tiêm phòng | Hệ thống | Gửi nhắc theo lịch định kỳ | ⏳ |
 
-### 2.9. Module Báo cáo & Thống kê (`reporting-service` — read model)
+### 2.9. Module Báo cáo & Thống kê (`reporting-service` — ghép số liệu từ service nguồn khi xem)
 
 | Mã CN | Tên chức năng | Tác nhân | Mô tả xử lý | Trạng thái |
 |---|---|---|---|---|
-| CN-46 | Báo cáo doanh thu | AC-04 | Tổng hợp doanh thu bán hàng + dịch vụ khám theo ngày/tháng/quý | ⏳ |
-| CN-47 | Thống kê lịch khám | AC-04 | Số lượt khám, tỉ lệ huỷ lịch, hiệu suất theo bác sĩ | ⏳ |
+| CN-46 | Báo cáo doanh thu | AC-04 | Tổng hợp doanh thu bán hàng + dịch vụ khám theo ngày/tháng/quý | ✅ |
+| CN-47 | Thống kê lịch khám | AC-04 | Số lượt khám, tỉ lệ huỷ lịch, hiệu suất theo bác sĩ | ✅ |
 | CN-48 | Báo cáo chấm công | AC-04 | Tổng hợp giờ công toàn bộ nhân sự | ⏳ |
-| CN-49 | Dashboard quản trị | AC-04 | Bảng điều khiển tổng hợp các chỉ số vận hành | ⏳ |
+| CN-49 | Dashboard quản trị | AC-04 | Bảng điều khiển tổng hợp các chỉ số vận hành | ✅ |
 
 ### 2.10. Chức năng hạ tầng (nền tảng kỹ thuật)
 

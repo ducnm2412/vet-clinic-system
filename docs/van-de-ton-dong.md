@@ -133,10 +133,29 @@ không thấy gì.
 
 Đăng xuất giờ thu hồi refresh token ở server, không chỉ xoá ở máy.
 
-### 🟡 VD-06. CN-08 — không khoá được tài khoản
+### ✅ VD-06. CN-08 — không khoá được tài khoản — đã sửa 13/09/2026
 
-`UserStatus` khai báo sẵn giá trị `LOCKED` nhưng **không code nào set giá trị đó**, cũng
-không đếm số lần đăng nhập sai.
+`UserStatus` khai báo sẵn `LOCKED` nhưng không code nào set giá trị đó.
+
+**Đã sửa:** `PUT /admin/users/{id}/lock` và `/unlock` (chỉ ADMIN). Giao diện quản trị dùng
+**khoá thay cho xoá** — xoá hẳn làm lịch khám, bệnh án và đơn hàng cũ mất người liên quan, và
+khách vẫn đặt được vào giờ trống của bác sĩ đã xoá. Trang Tài khoản không có nút xoá.
+
+- Khoá thu hồi mọi refresh token. Đăng nhập đúng mật khẩu trả 403 "đã bị khoá"; sai mật khẩu
+  vẫn 401 như mọi trường hợp khác, nên không dò được email nào bị khoá.
+- Không tự khoá mình, không khoá admin đang hoạt động cuối cùng (409).
+- Mở khoá tài khoản chưa xác minh email thì về lại `INACTIVE`, không lách được bước xác minh.
+- Sự kiện `user.locked` / `user.unlocked` → booking-service: bác sĩ bị khoá thì slot trống từ
+  hôm nay chuyển `BLOCKED`, không sinh slot mới, lịch bị huỷ không mở lại giờ đó. Mở khoá thì
+  mở lại và sinh bù. Lịch đã đặt giữ nguyên — nhân viên tự liên hệ khách.
+
+**Còn lại:**
+- Access token đang cầm vẫn dùng được tới khi hết hạn (15 phút) — các service tự kiểm JWT,
+  không hỏi lại auth-service mỗi request.
+- Bác sĩ bị khoá vẫn hiện trong danh sách công khai `GET /profile/doctors` (profile-service chưa
+  nghe sự kiện khoá). Không đặt được lịch với họ, nhưng trang giới thiệu vẫn liệt kê.
+- `DELETE /admin/users/{id}` vẫn tồn tại ở backend, booking-service không nghe `user.deleted`.
+- Chưa tự khoá khi đăng nhập sai nhiều lần.
 
 ### 🟡 VD-07. Không gửi lại được email xác thực
 
@@ -242,16 +261,12 @@ DB_PORT=5437 DB_NAME=booking_db_test mvn test -DargLine="-Duser.timezone=Asia/Ho
 Spring Cloud LoadBalancer cache danh sách instance từ Eureka theo chu kỳ. Không phải lỗi,
 nhưng dễ làm mất công debug nhầm. Đã ghi trong `frontend/README.md`.
 
-### 🟡 VD-18. Bảy mảng giao diện quản trị chưa có API
+### 🟡 VD-18. Ba mảng giao diện quản trị chưa có API (còn lại sau 13/09)
 
 Rà khi dựng frontend Next.js. Các màn hình dưới đây không có endpoint nào phục vụ:
 
 | Màn hình | Thiếu gì |
 |---|---|
-| Danh sách tài khoản | Chỉ có `POST` và `DELETE /admin/users`, không có `GET` |
-| Danh sách khách hàng | Chỉ có `GET /profile/customer/by-id/{id}`, không có endpoint liệt kê |
-| Số liệu tổng quan | Không có API thống kê nào (doanh thu, số ca hôm nay, số khách) |
-| Biểu đồ báo cáo | `reporting-service` chưa tồn tại |
 | Chấm công | `staff-service` chưa tồn tại |
 | Lịch sử khám của thú cưng | Xem VD-17 |
 | Thông báo trong ứng dụng | `notification-service` không có REST endpoint |
@@ -259,7 +274,11 @@ Rà khi dựng frontend Next.js. Các màn hình dưới đây không có endpoi
 Frontend đang để placeholder có đánh dấu `TODO` và tầng mock riêng (`lib/api/mock/`), không
 nhúng dữ liệu giả vào component (`lib/api/missing.ts`). Khi API có thật thì chỉ thay tầng đó.
 
-Hai mục đầu bảng là rẻ nhất và chặn nhiều màn hình nhất — nên làm trước.
+Đã gỡ ngày 13/09: số liệu tổng quan và biểu đồ báo cáo (`reporting-service`, CN-46/47/49); danh sách
+tài khoản, khách hàng và tên nhân viên (`GET /admin/users?role=&status=&keyword=&page=&size=` ở
+auth-service, chỉ ADMIN). Trang Khách hàng ghép thêm điện thoại, địa chỉ và thú cưng qua
+`GET /profile/customers/summary?userIds=` (chỉ ADMIN, tối đa 100 khách mỗi lần).
+
 
 ### 🟡 VD-19. Service goi nhau luc khoi dong tra 500 thay vi 503
 

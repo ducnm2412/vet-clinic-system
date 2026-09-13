@@ -14,12 +14,12 @@ Tài liệu này ghi lại **những gì đã làm được**. Bảng phân tíc
 
 | Hạng mục | Số lượng |
 |---|---|
-| Service nghiệp vụ đã hiện thực | **7** / 10 |
-| Service chưa viết dòng nào | 3 (`pet`, `staff`, `reporting`) |
+| Service nghiệp vụ đã hiện thực | **8** / 10 |
+| Service chưa viết dòng nào | 2 (`pet`, `staff`) |
 | File Java (main) | 234 |
 | File test | 35 |
 | Endpoint REST | 75 |
-| Luồng sự kiện RabbitMQ | 7 |
+| Luồng sự kiện RabbitMQ | 9 |
 | Database PostgreSQL | 6 |
 
 ---
@@ -35,6 +35,7 @@ Tài liệu này ghi lại **những gì đã làm được**. Bảng phân tíc
 | `booking-service` | 8086 | `booking_db` | 53 / 8 | V1–V3 | 13 |
 | `payment-service` | 8087 | `payment_db` | 24 / 3 | V1–V3 | 3 |
 | `notification-service` | 8088 | — | 5 / 2 | — | 0 |
+| `reporting-service` | 8089 | — | 12 / 2 | — | 3 |
 
 Hạ tầng đi kèm: `api-gateway` (8080), `eureka-server` (8761), `frontend` Next.js (3000),
 RabbitMQ (5672 / 15672), Redis (6379), MailHog (1025 / 8025).
@@ -111,6 +112,33 @@ toán trực tuyến cho đơn hàng thương mại điện tử (CN-34 vẫn ch
 xác minh tài khoản. Dev dùng MailHog, chuyển sang SMTP thật chỉ cần đổi biến môi trường
 `MAIL_HOST` / `MAIL_USERNAME` / `MAIL_PASSWORD`, không phải sửa code hay build lại image.
 
+### 3.8. `reporting-service` — báo cáo cho quản trị viên
+
+CN-46 doanh thu theo ngày/tháng/quý, CN-47 thống kê lịch khám (tỉ lệ huỷ, không đến, số ca
+theo bác sĩ), CN-49 số liệu cho trang Tổng quan. Ba endpoint `GET /reporting/summary`,
+`/reporting/revenue`, `/reporting/appointments`, chỉ ADMIN.
+
+**Không có database và không nghe sự kiện** — mỗi lần admin mở báo cáo, service hỏi thẳng
+nơi đang giữ số liệu rồi ghép lại:
+
+```
+reporting --GET /orders/stats----> order     doanh thu đơn đã giao, theo completed_at
+          --GET /payment/stats---> payment   tiền đơn thuốc đã thu, theo paid_at
+          --GET /booking/stats---> booking   số lịch theo trạng thái, theo ngày khám và bác sĩ
+          --GET /profile/doctors-> profile   họ tên bác sĩ
+```
+
+Chọn cách này thay vì read model nghe sự kiện vì các sự kiện hiện có không mang số tiền và
+lịch hẹn không phát sự kiện khi huỷ hay khám xong; làm read model phải sửa ba service phát
+sự kiện và dữ liệu cũ sẽ không có trong báo cáo. Đổi lại, báo cáo phụ thuộc service nguồn
+lúc chạy — nên:
+
+- Mỗi service nguồn tự gộp bằng SQL (`GROUP BY` ngày giờ Việt Nam), chỉ trả vài chục dòng.
+- Token admin được chuyển nguyên sang; service nguồn kiểm tra lại quyền ADMIN. Nhân viên
+  không đọc được doanh thu dù gọi thẳng service nguồn.
+- Một nguồn không trả lời thì phần đó là `null` và nằm trong `unavailable`, phần còn lại vẫn
+  hiện. `0` chỉ dùng cho "đã hỏi, thật sự không có". Timeout 2 s kết nối / 5 s đọc.
+
 ---
 
 ## 4. Luồng sự kiện RabbitMQ
@@ -124,6 +152,7 @@ booking  --prescription.created-> payment         tạo phiếu thu tiền thu�
 payment  --payment.completed----> booking         mở đơn thuốc đã trả tiền
 booking  --appointment.created--> notification   gửi email xác nhận lịch khám (CN-43)
 auth     --user.staff-created----> profile        tạo hồ sơ bác sĩ kèm họ tên (VD-20)
+auth     --user.locked/unlocked--> booking        chặn / mở lại giờ khám của bác sĩ bị khoá (CN-08)
 ```
 
 Cả hai chiều trừ / hoàn kho đều **chống xử lý trùng message**: `product-service` kiểm tra
@@ -148,6 +177,7 @@ Sau khi gộp hai nhánh phát triển song song, cổng được phân lại m�
 | booking-service | 8086 | booking-db | 5437 |
 | payment-service | 8087 | payment-db | 5438 |
 | notification-service | 8088 | — | — |
+| reporting-service | 8089 | — | — |
 | eureka-server | 8761 | — | — |
 | frontend | 3000 | — | — |
 
@@ -167,7 +197,7 @@ chạy local ngoài Docker vẫn sẽ đụng cổng.
   Hibernate chỉ đối chiếu chứ không tự sinh hay sửa bảng.
 - **Bảo mật** — JWT ký HS256, secret dùng chung qua biến môi trường; mỗi service tự
   verify, không gọi chéo.
-- **Triển khai** — một lệnh `docker compose up` dựng toàn bộ. Ba service chưa code nằm
+- **Triển khai** — một lệnh `docker compose up` dựng toàn bộ. Hai service chưa code nằm
   trong profile `future` nên không bị kéo theo.
 
 ---
@@ -176,14 +206,13 @@ chạy local ngoài Docker vẫn sẽ đụng cổng.
 
 | Mã | Chức năng | Vì sao chưa có |
 |---|---|---|
-| CN-08 | Khoá / mở khoá tài khoản | Không khoá được — VD-06 |
 | CN-34 | Thanh toán trực tuyến | Mới có COD; cần tài khoản merchant và URL công khai nhận IPN |
 | CN-38 → 41 | Chấm công, lịch làm việc, giờ công | `staff-service` chưa tồn tại |
 | CN-44, 45 | Thông báo đơn hàng / nhắc tái khám | `notification-service` mới làm email xác minh và xác nhận đặt lịch |
-| CN-46 → 49 | Báo cáo doanh thu, thống kê, dashboard | `reporting-service` chưa tồn tại |
+| CN-48 | Báo cáo chấm công | Cần `staff-service`; CN-46, 47, 49 đã làm ngày 13/09 |
 
-CN-08 đáng ưu tiên hơn cả: không phải "chưa làm tới" mà là **code đã viết nhưng không
-hoạt động**, nằm ngay trong service nền tảng. (CN-07 cùng loại đã sửa ngày 13/09 — VD-05.)
+CN-07 (làm mới phiên) và CN-08 (khoá tài khoản) từng là code khai báo sẵn nhưng không hoạt động;
+cả hai đã sửa ngày 13/09 — VD-05, VD-06.
 
 ---
 
