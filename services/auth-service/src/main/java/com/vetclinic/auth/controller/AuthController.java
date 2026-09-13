@@ -3,6 +3,7 @@ package com.vetclinic.auth.controller;
 import com.vetclinic.auth.dto.AuthResponse;
 import com.vetclinic.auth.dto.LoginRequest;
 import com.vetclinic.auth.dto.MessageResponse;
+import com.vetclinic.auth.dto.RefreshTokenRequest;
 import com.vetclinic.auth.dto.RegisterRequest;
 import com.vetclinic.auth.dto.UserResponse;
 import com.vetclinic.auth.service.AuthService;
@@ -39,6 +40,21 @@ public class AuthController {
     @PostMapping("/login")
     public AuthResponse login(@Valid @RequestBody LoginRequest request) {
         return authService.login(request);
+    }
+
+    /**
+     * Không đòi access token — cả lý do tồn tại của endpoint này là access token đã hết hạn.
+     * Refresh token trong thân request chính là bằng chứng danh tính.
+     */
+    @PostMapping("/refresh")
+    public AuthResponse refresh(@Valid @RequestBody RefreshTokenRequest request) {
+        return authService.refresh(request.refreshToken());
+    }
+
+    @PostMapping("/logout")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void logout(@Valid @RequestBody RefreshTokenRequest request) {
+        authService.logout(request.refreshToken());
     }
 
     @GetMapping("/me")

@@ -1,4 +1,4 @@
-import { http, setToken } from "./client";
+import { getRefreshToken, http, setSession, setToken } from "./client";
 import type {
   AuthResponse,
   CreateStaffAccountRequest,
@@ -11,8 +11,23 @@ import type {
 export const authApi = {
   async login(email: string, password: string): Promise<AuthResponse> {
     const res = await http.post<AuthResponse>("/auth/login", { email, password }, true);
-    setToken(res.accessToken);
+    setSession(res.accessToken, res.refreshToken);
     return res;
+  },
+
+  /**
+   * Thu hồi refresh token ở server rồi xoá phiên ở máy. Xoá ở máy luôn chạy, kể cả khi mất
+   * mạng — người bấm đăng xuất phải thoát ra được, không phải chờ server trả lời.
+   */
+  async logout(): Promise<void> {
+    const refreshToken = getRefreshToken();
+    setToken(null);
+    if (!refreshToken) return;
+    try {
+      await http.post<void>("/auth/logout", { refreshToken }, true);
+    } catch {
+      // Server không nhận được thì token vẫn tự hết hạn sau 7 ngày; ở máy đã xoá rồi.
+    }
   },
 
   register: (body: RegisterRequest) =>

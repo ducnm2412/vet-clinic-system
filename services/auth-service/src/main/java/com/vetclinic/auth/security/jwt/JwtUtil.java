@@ -27,10 +27,6 @@ public class JwtUtil {
         return buildToken(subject, userId, roles, jwtProperties.getAccessTokenExpiration());
     }
 
-    public String generateRefreshToken(String subject) {
-        return buildToken(subject, null, List.of(), jwtProperties.getRefreshTokenExpiration());
-    }
-
     public Claims parseClaims(String token) {
         return Jwts.parser()
                 .verifyWith(signingKey())

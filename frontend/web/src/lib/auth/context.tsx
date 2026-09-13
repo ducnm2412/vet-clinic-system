@@ -10,7 +10,16 @@ import {
   type ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
-import { SESSION_EXPIRED_EVENT, authApi, getToken, isExpired, readToken, setToken } from "@/lib/api";
+import {
+  SESSION_EXPIRED_EVENT,
+  SESSION_REFRESHED_EVENT,
+  authApi,
+  getRefreshToken,
+  getToken,
+  isExpired,
+  readToken,
+  setToken,
+} from "@/lib/api";
 import type { Role } from "@/types";
 
 interface AuthState {
@@ -41,16 +50,21 @@ function subscribe(onChange: () => void) {
   listeners.add(onChange);
   // Đăng xuất ở tab khác cũng phải phản ánh sang tab này.
   window.addEventListener("storage", onChange);
+  // Tầng API làm mới token ngầm — đọc lại để claims (hạn dùng) không bị cũ.
+  window.addEventListener(SESSION_REFRESHED_EVENT, onChange);
   return () => {
     listeners.delete(onChange);
     window.removeEventListener("storage", onChange);
+    window.removeEventListener(SESSION_REFRESHED_EVENT, onChange);
   };
 }
 
 function getSnapshot(): string | null {
   const stored = getToken();
-  // Token hết hạn coi như không có, khỏi để giao diện tưởng còn đăng nhập rồi mọi request 401.
-  if (stored && isExpired(readToken(stored))) {
+  // Access token hết hạn mà KHÔNG còn refresh token thì phiên đã chết thật. Còn refresh token
+  // thì giữ nguyên: request đầu tiên gặp 401 sẽ tự làm mới (VD-05), người dùng không bị đá ra
+  // chỉ vì mở lại tab sau 15 phút.
+  if (stored && isExpired(readToken(stored)) && !getRefreshToken()) {
     setToken(null);
     return null;
   }
@@ -87,8 +101,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const token = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   const ready = useSyncExternalStore(subscribe, getReady, getServerReady);
 
-  // auth-service không có endpoint làm mới token (VD-05) nên không gia hạn ngầm được.
-  // Bất kỳ 401 nào cũng đưa người dùng về trang đăng nhập, giữ lại đường dẫn đang xem.
+  // Tầng API đã thử làm mới bằng refresh token rồi mà vẫn không được thì mới tới đây.
+  // Đưa người dùng về trang đăng nhập, giữ lại đường dẫn đang xem.
   useEffect(() => {
     function onExpired() {
       notify();
@@ -109,7 +123,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signOut = useCallback(() => {
-    setToken(null);
+    // authApi.logout xoá phiên ở máy ngay lập tức rồi mới báo server thu hồi refresh token,
+    // nên giao diện đổi trạng thái liền, không chờ mạng.
+    void authApi.logout();
     notify();
   }, []);
 

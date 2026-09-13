@@ -120,4 +120,73 @@ class AuthControllerTest {
         mockMvc.perform(get("/auth/me").header("Authorization", "Bearer garbage.token.value"))
                 .andExpect(status().isUnauthorized());
     }
+
+    // ---------- VD-05: làm mới phiên ----------
+
+    /** Tạo tài khoản đã kích hoạt rồi đăng nhập, trả về nguyên thân phản hồi. */
+    private com.fasterxml.jackson.databind.JsonNode loginFresh(String email) throws Exception {
+        mockMvc.perform(post("/auth/register").contentType(MediaType.APPLICATION_JSON).content("""
+                {"firstName":"RT","lastName":"User","email":"%s","password":"password123","confirmPassword":"password123"}
+                """.formatted(email))).andExpect(status().isCreated());
+        User user = userRepository.findByEmail(email).orElseThrow();
+        mockMvc.perform(get("/auth/verify-email").param("token", user.getVerificationToken()))
+                .andExpect(status().isOk());
+
+        String body = mockMvc.perform(post("/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"%s\",\"password\":\"password123\"}".formatted(email)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        return objectMapper.readTree(body);
+    }
+
+    private static String refreshBody(String token) {
+        return "{\"refreshToken\":\"%s\"}".formatted(token);
+    }
+
+    @Test
+    void refresh_withoutAccessToken_issuesPairThatWorksOnMe() throws Exception {
+        // Toàn bộ lý do tồn tại của endpoint này: access token đã chết thì vẫn làm mới được,
+        // nên nó KHÔNG được đòi Authorization header.
+        String refreshToken = loginFresh("it-refresh@example.com").get("refreshToken").asText();
+
+        String body = mockMvc.perform(post("/auth/refresh").contentType(MediaType.APPLICATION_JSON)
+                        .content(refreshBody(refreshToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken").isNotEmpty())
+                .andExpect(jsonPath("$.refreshToken").isNotEmpty())
+                .andReturn().getResponse().getContentAsString();
+
+        String newAccess = objectMapper.readTree(body).get("accessToken").asText();
+        mockMvc.perform(get("/auth/me").header("Authorization", "Bearer " + newAccess))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value("it-refresh@example.com"));
+    }
+
+    @Test
+    void refresh_invalidToken_returns401() throws Exception {
+        // 401 chứ không phải 400: frontend nhìn mã này để biết phải mời người dùng đăng nhập lại.
+        mockMvc.perform(post("/auth/refresh").contentType(MediaType.APPLICATION_JSON)
+                        .content(refreshBody("khong-ton-tai")))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void refresh_missingToken_returns400WithFieldError() throws Exception {
+        mockMvc.perform(post("/auth/refresh").contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrors.refreshToken").exists());
+    }
+
+    @Test
+    void logout_thenRefresh_returns401() throws Exception {
+        String refreshToken = loginFresh("it-logout@example.com").get("refreshToken").asText();
+
+        mockMvc.perform(post("/auth/logout").contentType(MediaType.APPLICATION_JSON)
+                        .content(refreshBody(refreshToken)))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(post("/auth/refresh").contentType(MediaType.APPLICATION_JSON)
+                        .content(refreshBody(refreshToken)))
+                .andExpect(status().isUnauthorized());
+    }
 }

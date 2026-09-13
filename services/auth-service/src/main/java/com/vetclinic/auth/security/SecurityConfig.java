@@ -31,7 +31,10 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/register", "/auth/login", "/auth/verify-email", "/error").permitAll()
+                        // refresh/logout mở công khai: access token lúc đó có thể đã hết hạn, danh
+                        // tính được chứng minh bằng refresh token trong thân request.
+                        .requestMatchers("/auth/register", "/auth/login", "/auth/verify-email",
+                                "/auth/refresh", "/auth/logout", "/error").permitAll()
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated())
                 .exceptionHandling(ex -> ex.authenticationEntryPoint((request, response, authException) ->

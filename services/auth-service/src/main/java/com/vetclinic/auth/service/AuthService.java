@@ -13,6 +13,7 @@ import com.vetclinic.auth.dto.UserResponse;
 import com.vetclinic.auth.exception.EmailAlreadyExistsException;
 import com.vetclinic.auth.exception.InvalidCredentialsException;
 import com.vetclinic.auth.exception.InvalidOrExpiredTokenException;
+import com.vetclinic.auth.exception.InvalidRefreshTokenException;
 import com.vetclinic.auth.exception.UserNotFoundException;
 import com.vetclinic.auth.messaging.UserDeletedEvent;
 import com.vetclinic.auth.messaging.UserRegisteredEvent;
@@ -44,6 +45,7 @@ public class AuthService {
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final RefreshTokenService refreshTokenService;
     private final ApplicationEventPublisher applicationEventPublisher;
     private final SecureRandom secureRandom = new SecureRandom();
 
@@ -133,7 +135,8 @@ public class AuthService {
         return new MessageResponse("Email verified successfully. You can now log in.");
     }
 
-    @Transactional(readOnly = true)
+    // Không còn readOnly: đăng nhập giờ ghi một dòng refresh_tokens.
+    @Transactional
     public AuthResponse login(LoginRequest request) {
         User user = userRepository.findByEmail(request.email())
                 .orElseThrow(InvalidCredentialsException::new);
@@ -149,6 +152,34 @@ public class AuthService {
         return buildAuthResponse(user);
     }
 
+    /**
+     * VD-05 — đổi refresh token lấy cặp token mới.
+     *
+     * Kiểm lại tài khoản mỗi lần làm mới, không chỉ kiểm token: tài khoản đã bị xoá hoặc
+     * không còn ACTIVE thì token còn hạn cũng không được dùng nữa.
+     *
+     * `noRollbackFor` phải có ở cả tầng này. RefreshTokenService.consume ghi lệnh thu hồi rồi
+     * mới ném lỗi; nếu method bao ngoài vẫn rollback theo mặc định thì lệnh thu hồi đó mất.
+     */
+    @Transactional(noRollbackFor = InvalidRefreshTokenException.class)
+    public AuthResponse refresh(String refreshToken) {
+        UUID userId = refreshTokenService.consume(refreshToken);
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(InvalidRefreshTokenException::new);
+
+        if (user.getStatus() != UserStatus.ACTIVE) {
+            throw new InvalidRefreshTokenException();
+        }
+
+        return buildAuthResponse(user);
+    }
+
+    @Transactional
+    public void logout(String refreshToken) {
+        refreshTokenService.revoke(refreshToken);
+    }
+
     @Transactional(readOnly = true)
     public UserResponse getCurrentUser(String email) {
         User user = userRepository.findByEmail(email)
@@ -160,7 +191,7 @@ public class AuthService {
 
     private AuthResponse buildAuthResponse(User user) {
         String accessToken = jwtUtil.generateAccessToken(user.getId(), user.getEmail(), extractRoleNames(user));
-        String refreshToken = jwtUtil.generateRefreshToken(user.getEmail());
+        String refreshToken = refreshTokenService.issue(user.getId());
 
         return new AuthResponse(accessToken, refreshToken);
     }

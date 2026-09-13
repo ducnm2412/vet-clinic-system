@@ -1,4 +1,13 @@
-export { ApiError, SESSION_EXPIRED_EVENT, getToken, setToken, http, qs } from "./client";
+export {
+  ApiError,
+  SESSION_EXPIRED_EVENT,
+  SESSION_REFRESHED_EVENT,
+  getRefreshToken,
+  getToken,
+  setToken,
+  http,
+  qs,
+} from "./client";
 export { authApi, readToken, isExpired, ROLE_LABEL } from "./auth";
 export { customerApi, doctorApi, staffApi, petLookupApi, customerLookupApi } from "./profile";
 export { productApi, categoryApi } from "./products";
