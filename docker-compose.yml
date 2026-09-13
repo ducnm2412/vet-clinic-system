@@ -81,9 +81,12 @@ services:
       RABBITMQ_USERNAME: ${RABBITMQ_USER:-guest}
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
     depends_on:
-      - eureka-server
-      - profile-db
-      - rabbitmq
+      profile-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
 
   booking-service:
     build: ./services/booking-service
@@ -104,9 +107,12 @@ services:
       RABBITMQ_USERNAME: ${RABBITMQ_USER:-guest}
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
     depends_on:
-      - eureka-server
-      - booking-db
-      - rabbitmq
+      booking-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
 
   payment-service:
     build: ./services/payment-service
@@ -127,9 +133,12 @@ services:
       RABBITMQ_USERNAME: ${RABBITMQ_USER:-guest}
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
     depends_on:
-      - eureka-server
-      - payment-db
-      - rabbitmq
+      payment-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
 
   notification-service:
     build: ./services/notification-service
@@ -205,6 +214,14 @@ services:
       POSTGRES_DB: profile_db
       POSTGRES_USER: ${PROFILE_DB_USER:-postgres}
       POSTGRES_PASSWORD: ${PROFILE_DB_PASSWORD:?PROFILE_DB_PASSWORD is required}
+    volumes:
+      - profile-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PROFILE_DB_USER:-postgres} -d profile_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   booking-db:
     image: postgres:16
     container_name: booking-db
@@ -215,6 +232,13 @@ services:
       POSTGRES_DB: booking_db
       POSTGRES_USER: ${BOOKING_DB_USER:-postgres}
       POSTGRES_PASSWORD: ${BOOKING_DB_PASSWORD:?BOOKING_DB_PASSWORD is required}
+    volumes:
+      - booking-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${BOOKING_DB_USER:-postgres} -d booking_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   payment-db:
     image: postgres:16
@@ -226,6 +250,13 @@ services:
       POSTGRES_DB: payment_db
       POSTGRES_USER: ${PAYMENT_DB_USER:-postgres}
       POSTGRES_PASSWORD: ${PAYMENT_DB_PASSWORD:?PAYMENT_DB_PASSWORD is required}
+    volumes:
+      - payment-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PAYMENT_DB_USER:-postgres} -d payment_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   # --- Message broker & cache ---
   rabbitmq:
@@ -388,3 +419,5 @@ volumes:
   profile-db-data:
   product-db-data:
   order-db-data:
+  booking-db-data:
+  payment-db-data:
