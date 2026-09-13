@@ -1,31 +1,40 @@
 # Vấn đề tồn đọng
 
 Danh sách nợ kỹ thuật và chức năng còn thiếu, ghi lại để không quên khi quay lại.
-Cập nhật lần cuối: 25/08/2026.
+Cập nhật lần cuối: 13/09/2026.
 
-Mức độ: 🔴 cần sửa sớm · 🟡 nên sửa · 🟢 chờ phụ thuộc · ⚪ không gấp
+Mức độ: 🔴 cần sửa sớm · 🟡 nên sửa · 🟢 chờ phụ thuộc · ⚪ không gấp · ✅ đã sửa
 
 ---
 
 ## product-service
 
-### 🔴 VD-01. Khách vãng lai xem được hàng đã ẩn
+### ✅ VD-01. Khách vãng lai xem được hàng đã ẩn — đã sửa 13/09/2026
 
-`GET /products` là endpoint công khai, nhưng tham số `activeOnly` do client tự truyền
-(`ProductController.java:49`). Ai cũng thêm `?activeOnly=false` được.
+`GET /products` là endpoint công khai, nhưng tham số `activeOnly` do client tự truyền. Ai
+cũng thêm `?activeOnly=false` là liệt kê được hàng đã ngừng bán.
 
-Đã kiểm chứng bằng dữ liệu thật:
+**Đã sửa:** `ProductController.search` đọc quyền từ `Authentication`. Chỉ `STAFF`/`ADMIN` mới
+tắt được bộ lọc; khách vãng lai và `CUSTOMER` luôn bị ép về `activeOnly=true` dù truyền gì.
+
+Kiểm chứng trên hệ thống thật với một sản phẩm `active=false`:
 
 ```
-Tạo sản phẩm active=false                    -> 201
-Khách không token, mặc định                  -> thấy 0 sản phẩm  (đúng)
-Khách không token, ?activeOnly=false         -> thấy 1 sản phẩm  (SAI)
+Khách không token, ?activeOnly=false   -> 0   (trước khi sửa: 1)
+CUSTOMER,          ?activeOnly=false   -> 0
+STAFF,             ?activeOnly=false   -> 1
+ADMIN,             ?activeOnly=false   -> 1
 ```
 
-`active=false` dùng để ngừng bán một mặt hàng, nếu ai cũng xem được thì cờ này vô nghĩa.
+Có 4 test hồi quy trong `ProductControllerTest` — hai test kịch bản tấn công được chạy
+**trước** khi sửa để chắc chúng đỏ thật.
 
-**Hướng sửa:** bỏ `activeOnly` khỏi tham số client, thay bằng đọc quyền từ `Authentication` —
-có `STAFF`/`ADMIN` mới thấy hàng ẩn, còn lại luôn ép `activeOnly=true`.
+**Còn lại, cố ý chưa đóng:** `GET /products/{id}` vẫn trả hàng đã ẩn cho bất kỳ ai biết UUID.
+Không đóng ở đây vì `order-service` gọi đúng endpoint này **không kèm token** và dựa vào việc
+nhận được `active=false` để hiện "Sản phẩm đã ngừng bán" trong giỏ. Chặn nó thì giỏ hàng của
+khách sẽ hiện "(sản phẩm đã bị xoá)" với tên trống. Rủi ro còn lại thấp hơn nhiều so với lỗi
+gốc: phải biết trước UUID, không liệt kê được. Muốn đóng hẳn thì `order-service` cần gọi bằng
+danh tính service riêng — xem VD-24.
 
 ### 🟡 VD-02. Không có khoá chống tranh chấp khi sửa tồn kho
 
@@ -94,13 +103,35 @@ thanh toán vào đầu luồng.
 
 ## auth-service
 
-### 🔴 VD-05. CN-07 — refresh token phát ra nhưng không dùng được
+### ✅ VD-05. CN-07 — refresh token phát ra nhưng không dùng được — đã sửa 13/09/2026
 
-`login` trả về `refreshToken` nhưng **không có endpoint nào tiêu thụ nó**. Access token sống
-15 phút, nên cứ 15 phút là người dùng bị đăng xuất và phải đăng nhập lại.
+`login` trả về `refreshToken` nhưng không endpoint nào nhận nó, nên cứ 15 phút người dùng bị
+đăng xuất. Tệ hơn: refresh token cũ là **JWT ký cùng khoá với access token** và không lưu ở
+đâu — không thu hồi được. Nó không dùng thay access token được chỉ vì **tình cờ** thiếu claim
+`userId`.
 
-**Hướng sửa:** thêm `POST /auth/refresh`. Nên làm sớm — để đến khi frontend thật đã gọi hàng
-chục API thì sửa sẽ phiền hơn nhiều.
+**Đã sửa theo cách chuẩn:**
+
+- Refresh token là 32 byte ngẫu nhiên, **không phải JWT** — không có đường nào lọt qua bộ lọc JWT.
+- Server chỉ lưu **bản băm SHA-256** (bảng `refresh_tokens`, migration `V4`).
+- **Xoay vòng** mỗi lần làm mới: token cũ bị thu hồi, sinh token mới.
+- **Phát hiện đánh cắp:** token đã xoay vòng mà vẫn bị đem ra dùng thì thu hồi sạch mọi phiên
+  của tài khoản, buộc đăng nhập lại bằng mật khẩu.
+- Mỗi lần làm mới kiểm lại tài khoản còn tồn tại và còn `ACTIVE`.
+- `POST /auth/refresh` và `POST /auth/logout`, cả hai không đòi access token.
+
+Một chỗ dễ sai đã được chốt bằng test: lệnh thu hồi toàn bộ phiên xảy ra ngay trước khi ném
+lỗi, mà `@Transactional` mặc định rollback khi có exception — tức là thu hồi xong lại bị huỷ
+ngầm. Cần `noRollbackFor` ở **cả hai** tầng service. Test tương ứng chạy ngoài transaction, và
+đã được kiểm bằng cách gỡ `noRollbackFor` ra: test đỏ.
+
+**Frontend** tự làm mới ngầm khi gặp 401 rồi gửi lại request. Chỉ một lần làm mới chạy tại một
+thời điểm — nếu ba request cùng làm mới thì request thứ hai sẽ dùng token vừa bị xoay vòng và
+kích hoạt cơ chế phát hiện đánh cắp. Kiểm chứng trong trình duyệt thật: access token hết hạn,
+trang bắn ba request cùng lúc, cả ba dính 401, **chỉ một** lần gọi `/auth/refresh`, người dùng
+không thấy gì.
+
+Đăng xuất giờ thu hồi refresh token ở server, không chỉ xoá ở máy.
 
 ### 🟡 VD-06. CN-08 — không khoá được tài khoản
 
@@ -298,3 +329,31 @@ dòng 404 đỏ vào console. Ai mở DevTools lên xem sẽ tưởng có lỗi.
 
 **Hướng sửa (khi rảnh):** trả 200 kèm thân rỗng, hoặc thêm `GET .../medical-record/exists`.
 Không gấp.
+
+### 🟡 VD-24. `order-service` gọi `product-service` không kèm danh tính
+
+Phát hiện khi sửa VD-01.
+
+`ProductClient` gọi `GET /products/{id}` như một khách vãng lai. Vì vậy endpoint đó buộc phải
+mở công khai **và** trả cả hàng đã ẩn, nếu không giỏ hàng không biết món nào đã ngừng bán.
+Hai yêu cầu đó kéo nhau: không đóng được lỗ hổng xem hàng ẩn theo UUID mà không làm hỏng giỏ.
+
+**Hướng sửa:** cho service gọi nhau bằng danh tính riêng (token service-to-service, hoặc
+endpoint nội bộ `/internal/products/{id}` chỉ mở trong mạng Docker). Khi có rồi, `GET
+/products/{id}` công khai mới trả 404 cho hàng đã ẩn được.
+
+### 🟢 VD-25. Test tích hợp lỗi trên Windows vì múi giờ `Asia/Saigon`
+
+JVM trên Windows gửi múi giờ tên cũ `Asia/Saigon`, PostgreSQL 16 từ chối:
+`FATAL: invalid value for parameter "TimeZone"`. Mọi test dùng database đều lỗi ngay lúc
+dựng context, trông như code hỏng trong khi code không sai gì.
+
+**Cách chạy test hiện tại:**
+
+```bash
+mvn test -DargLine="-Duser.timezone=Asia/Ho_Chi_Minh"
+```
+
+**Hướng sửa gọn hơn:** đặt `<argLine>-Duser.timezone=Asia/Ho_Chi_Minh</argLine>` trong cấu
+hình `maven-surefire-plugin` ở từng `pom.xml`, để không ai phải nhớ cờ này.
+

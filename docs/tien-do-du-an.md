@@ -2,7 +2,7 @@
 
 **Kiến trúc:** Microservices (Spring Boot + Spring Cloud), Database per Service
 **Thời gian:** 27/07/2026 → 09/09/2026 · 27 commit
-**Cập nhật lần cuối:** 09/09/2026
+**Cập nhật lần cuối:** 13/09/2026
 
 Tài liệu này ghi lại **những gì đã làm được**. Bảng phân tích chức năng đầy đủ nằm ở
 [phan-tich-chuc-nang.md](phan-tich-chuc-nang.md), nợ kỹ thuật ở
@@ -176,29 +176,31 @@ chạy local ngoài Docker vẫn sẽ đụng cổng.
 
 | Mã | Chức năng | Vì sao chưa có |
 |---|---|---|
-| CN-07 | Làm mới access token | Đã phát refresh token nhưng không dùng được — VD-05 |
 | CN-08 | Khoá / mở khoá tài khoản | Không khoá được — VD-06 |
 | CN-34 | Thanh toán trực tuyến | Mới có COD; cần tài khoản merchant và URL công khai nhận IPN |
 | CN-38 → 41 | Chấm công, lịch làm việc, giờ công | `staff-service` chưa tồn tại |
 | CN-43, 44, 45 | Thông báo đặt lịch / đơn hàng / nhắc tái khám | `notification-service` mới làm email xác minh |
 | CN-46 → 49 | Báo cáo doanh thu, thống kê, dashboard | `reporting-service` chưa tồn tại |
 
-CN-07 và CN-08 đáng ưu tiên hơn cả: chúng không phải "chưa làm tới" mà là **code đã viết
-nhưng không hoạt động**, nằm ngay trong service nền tảng.
+CN-08 đáng ưu tiên hơn cả: không phải "chưa làm tới" mà là **code đã viết nhưng không
+hoạt động**, nằm ngay trong service nền tảng. (CN-07 cùng loại đã sửa ngày 13/09 — VD-05.)
 
 ---
 
 ## 8. Vấn đề đã biết
 
-Chi tiết ở [van-de-ton-dong.md](van-de-ton-dong.md). Hai mục nghiêm trọng nhất:
+Chi tiết ở [van-de-ton-dong.md](van-de-ton-dong.md).
 
-- **VD-01** — `GET /products?activeOnly=false` cho khách vãng lai xem được hàng đã ẩn.
-  Đã kiểm chứng bằng dữ liệu thật.
-- **VD-05** — refresh token phát ra nhưng không dùng được.
+Ngày 13/09 đã sửa ba mục nặng nhất:
 
-Ngoài ra: `profile-db`, `booking-db` và `payment-db` **thiếu `volumes`**, nên mất sạch dữ
-liệu mỗi lần `docker compose down`. Ba database còn lại (`auth`, `product`, `order`) đều
-đã có volume và healthcheck.
+- **VD-01** — khách vãng lai liệt kê được hàng đã ẩn qua `?activeOnly=false`.
+- **VD-05** — refresh token phát ra nhưng không dùng được, và không thu hồi được.
+- `profile-db`, `booking-db`, `payment-db` **thiếu `volumes`**, mất sạch dữ liệu mỗi lần
+  `docker compose down`. Giờ cả 6 database đều có volume và healthcheck; service tương ứng
+  chờ database `healthy` mới khởi động. Đã kiểm chứng bằng việc xoá hẳn container, và một lần
+  Docker sập thật — dữ liệu còn nguyên.
+
+Mục 🔴 duy nhất còn lại là VD-16: lịch hẹn không cho biết bác sĩ nào khám.
 
 ---
 

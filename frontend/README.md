@@ -86,9 +86,17 @@ không: lần commit đầu tiên trên trình duyệt vẫn dùng ảnh chụp 
 đã true trong khi token còn null thì `RouteGuard` đá người đang đăng nhập về trang đăng
 nhập — chỉ khi họ mở thẳng một địa chỉ cần quyền, không lộ khi bấm chuyển trang.
 
-Không có endpoint làm mới token (xem `docs/van-de-ton-dong.md` — VD-05), nên khi access
-token hết hạn sau 15 phút, mọi 401 sẽ đưa người dùng về trang đăng nhập kèm `?next=` để
-quay lại đúng chỗ đang dở.
+Access token sống 15 phút. Gặp 401, tầng API (`lib/api/client.ts`) tự đổi refresh token
+lấy cặp mới rồi gửi lại request đó — người dùng không thấy gì. Chỉ khi làm mới cũng thất bại
+mới đưa về trang đăng nhập kèm `?next=` để quay lại đúng chỗ đang dở.
+
+Hai điều phải giữ nếu sửa chỗ này:
+
+- **Chỉ một lần làm mới tại một thời điểm.** Backend xoay vòng refresh token mỗi lần dùng và
+  coi việc dùng lại token cũ là dấu hiệu bị đánh cắp — thu hồi sạch mọi phiên. Ba request cùng
+  tự làm mới thì request thứ hai sẽ kích hoạt đúng cơ chế đó.
+- **Request về muộn thì kiểm token trước khi làm mới.** Nếu trong máy đã có token mới hơn token
+  request đó gửi đi, chỉ gửi lại, không làm mới thêm.
 
 ## Màn hình chưa có dữ liệu
 
