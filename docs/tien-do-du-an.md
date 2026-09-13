@@ -122,15 +122,15 @@ order    --order.completed------> product         trừ kho
 order    --order.cancelled------> product         hoàn kho
 booking  --prescription.created-> payment         tạo phiếu thu tiền thuốc
 payment  --payment.completed----> booking         mở đơn thuốc đã trả tiền
-booking  --appointment.created--> (chưa ai nghe)
+booking  --appointment.created--> notification   gửi email xác nhận lịch khám (CN-43)
+auth     --user.staff-created----> profile        tạo hồ sơ bác sĩ kèm họ tên (VD-20)
 ```
 
 Cả hai chiều trừ / hoàn kho đều **chống xử lý trùng message**: `product-service` kiểm tra
 `stock_movements` theo `(productId, orderId, type)` trước khi áp dụng, nên một đơn có thể
 vừa có dòng `SALE` vừa có dòng `RETURN` mà không đếm nhầm.
 
-`appointment.created` đã được phát ra nhưng **chưa service nào lắng nghe** — đây chính là
-CN-43 còn thiếu. Chỗ nối đã sẵn, chỉ thiếu consumer bên `notification-service`.
+`appointment.created` mang sẵn email khách, tên thú cưng và tên bác sĩ, nên `notification-service` chỉ việc soạn email — không gọi ngược sang auth hay profile. Tra tên bác sĩ hỏng thì email bớt một dòng, việc đặt lịch không bị ảnh hưởng. Mọi giá trị khách tự gõ đều được escape HTML trước khi ghép vào email.
 
 ---
 
@@ -179,7 +179,7 @@ chạy local ngoài Docker vẫn sẽ đụng cổng.
 | CN-08 | Khoá / mở khoá tài khoản | Không khoá được — VD-06 |
 | CN-34 | Thanh toán trực tuyến | Mới có COD; cần tài khoản merchant và URL công khai nhận IPN |
 | CN-38 → 41 | Chấm công, lịch làm việc, giờ công | `staff-service` chưa tồn tại |
-| CN-43, 44, 45 | Thông báo đặt lịch / đơn hàng / nhắc tái khám | `notification-service` mới làm email xác minh |
+| CN-44, 45 | Thông báo đơn hàng / nhắc tái khám | `notification-service` mới làm email xác minh và xác nhận đặt lịch |
 | CN-46 → 49 | Báo cáo doanh thu, thống kê, dashboard | `reporting-service` chưa tồn tại |
 
 CN-08 đáng ưu tiên hơn cả: không phải "chưa làm tới" mà là **code đã viết nhưng không

@@ -286,20 +286,30 @@ nhung 500 thi roi vao thong bao loi chung.
 them retry co backoff. Cung nen ap dung cho moi cho service goi cheo nhau.
 
 
-### 🟡 VD-20. `GET /profile/doctors` không trả họ tên và ảnh bác sĩ
+### ✅ VD-20. `GET /profile/doctors` không trả họ tên bác sĩ — đã sửa 13/09/2026
 
-Phát hiện khi dựng dải "Bác sĩ phụ trách" trên website khách hàng.
+Họ tên chỉ nằm trong bảng `users` của auth-service, còn trang công khai và lịch hẹn lấy thông
+tin bác sĩ từ profile-service. Không trang nào hiện được tên người khám.
 
-`DoctorPublicResponse` chỉ có `id`, `userId`, `specialty`, `bio`, `yearsOfExperience`.
-Không có tên, không có ảnh. Cố ý bỏ `phone` là đúng — đó là dữ liệu liên hệ cá nhân.
-Nhưng bỏ luôn cả họ tên thì một trang giới thiệu phòng khám không giới thiệu được ai.
+**Đã sửa bằng sự kiện**, không gọi đồng bộ giữa service:
 
-Frontend đang lấy **chuyên môn làm tiêu đề thẻ** và dùng mái vòm màu kèm ống nghe thay
-cho ảnh chân dung. Không lấy ảnh người lạ gán tên bác sĩ của phòng khám: đó là dựng chuyện.
+- Admin tạo tài khoản DOCTOR/STAFF → auth-service phát `user.staff-created` kèm họ tên
+  (thứ tự Việt Nam: biểu mẫu đặt "Họ" vào firstName, "Tên" vào lastName).
+- profile-service nhận sự kiện, tạo sẵn hồ sơ bác sĩ có `full_name` (migration `V2`). Bác sĩ
+  mới có mặt trong danh sách công khai ngay, không phải đợi họ tự mở trang hồ sơ lần đầu.
+- `DoctorPublicResponse` trả thêm `fullName`. Frontend hiện "BS. Họ Tên"; hồ sơ chưa có tên
+  thì rơi về chuyên môn.
 
-**Hướng sửa:** thêm `fullName` (ghép từ `firstName`/`lastName` bên auth-service) và
-`photoUrl` vào `DoctorPublicResponse`. Tên bác sĩ là thông tin công khai ở mọi phòng khám,
-không phải dữ liệu nhạy cảm như số điện thoại.
+Test: `StaffAccountCreatedEventTest` (auth), `DoctorNameTest` (profile — gồm nhận trùng sự kiện
+không tạo trùng hồ sơ và không xoá chuyên môn đã khai). Kiểm chứng đầu-cuối: admin tạo bác sĩ
+mới, tên xuất hiện trong danh sách công khai qua RabbitMQ.
+
+**Dữ liệu cũ:** hồ sơ lập trước `V2` có `full_name` rỗng — hai database khác nhau nên migration
+không tự điền được. Môi trường dev đã điền tay cho ba bác sĩ demo. Khi triển khai thật cần chạy
+một lần: lấy `first_name || ' ' || last_name` từ `auth_db.users` ghi vào
+`profile_db.doctor_profiles.full_name` theo `user_id`.
+
+**Còn lại:** chưa có ảnh chân dung (`photoUrl`).
 
 ### 🟡 VD-21. `AppointmentRequest` không có trường dịch vụ
 
