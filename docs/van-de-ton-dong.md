@@ -166,28 +166,26 @@ Entity `Pet` đang nằm trong `profile-service` (thuộc hồ sơ khách hàng)
 
 ## booking-service
 
-### 🔴 VD-16. Lịch hẹn không cho biết bác sĩ nào khám
+### ✅ VD-16. Lịch hẹn không cho biết bác sĩ nào khám — đã sửa 13/09/2026
 
-`AppointmentRequest` chỉ nhận `{petId, date, startTime, reason}` — khách không chọn được bác
-sĩ, hệ thống tự gán slot. Bản thân điều đó là một quyết định hợp lệ.
+Khách không chọn bác sĩ, hệ thống tự xếp slot — bản thân điều đó hợp lệ. Vấn đề là
+`AppointmentResponse` và `AppointmentDetailResponse` chỉ trả `slotId`, không trả bác sĩ,
+trong khi `GET /booking/appointments` lại **lọc** được theo `doctorUserId`. Lọc theo bác sĩ
+thì được, hiện bác sĩ lên màn hình thì không.
 
-Vấn đề nằm ở chiều ngược lại: **`AppointmentResponse` và `AppointmentDetailResponse` không
-trả về `doctorUserId`**, chỉ có `slotId`. Trong khi đó `GET /booking/appointments` lại *lọc*
-được theo `doctorUserId`.
+**Đã sửa:** thêm `doctorUserId` vào cả hai response, lấy thẳng từ slot — không gọi thêm
+service nào. Có 5 test trong `AppointmentDoctorTest`, mỗi test khoá một đường trả response
+(tạo, danh sách của khách, tra cứu của lễ tân, chi tiết, huỷ và đổi trạng thái), cộng một
+kiểm tra JSON trong test tự xếp bác sĩ có sẵn.
 
-Hệ quả:
+Frontend ghép `doctorUserId` với danh sách bác sĩ công khai:
 
-```
-Lọc lịch theo bác sĩ        -> lam duoc
-Hiện tên bác sĩ trên lịch   -> KHONG lam duoc
-```
+- Lễ tân và quản trị có **cột bác sĩ** và **bộ lọc theo bác sĩ** trên bảng lịch khám.
+- Khách đặt xong thấy ngay "Người khám" trên trang chi tiết, danh sách lịch và hồ sơ thú cưng.
 
-Nên không màn hình nào — của khách, của bác sĩ hay của quản trị — nói được ai phụ trách ca
-khám. Bác sĩ mở `/booking/appointments/doctor/me` thì biết đó là ca của mình, nhưng lễ tân
-nhìn danh sách chung thì không phân biệt được.
-
-**Hướng sửa:** thêm `doctorUserId` (và tên bác sĩ nếu tiện) vào hai response trên. Dữ liệu đã
-có sẵn qua `slotId`, chỉ là chưa trả ra.
+**Chưa có tên người:** nhãn hiện là chuyên môn ("Bác sĩ nội khoa chó mèo"), vì tên chỉ nằm
+trong bảng `users` của auth-service — xem VD-20. Khi backend trả tên thì chỉ sửa một hàm
+`doctorLabel` trong `frontend/web/src/lib/useDoctors.ts`.
 
 ### 🟡 VD-17. Bệnh án chỉ tra được theo lịch hẹn, không theo thú cưng
 
@@ -224,6 +222,20 @@ trần sẽ hỏng nếu không set biến môi trường.
 broker, nhưng vẫn cần Postgres.
 
 **Hướng sửa:** dùng Testcontainers, hoặc thêm profile test trỏ sẵn đúng cổng.
+
+
+**⚠️ Không bao giờ chạy test vào database đang dùng.** Một số test của `booking-service`
+không chạy trong transaction và dọn bằng `deleteAll()` — `AppointmentEventPublisherTest` xoá
+**toàn bộ** lịch hẹn lẫn khung giờ. Ngày 13/09 chạy nhầm bộ test này vào `booking_db` thật
+làm mất sạch lịch hẹn, phải khôi phục từ bản sao lưu.
+
+Mỗi database có sẵn một bản test riêng trong cùng container, trỏ vào bằng `DB_NAME`:
+
+```bash
+# booking-service (tương tự auth_db_test cho auth-service)
+docker exec booking-db createdb -U postgres booking_db_test
+DB_PORT=5437 DB_NAME=booking_db_test mvn test -DargLine="-Duser.timezone=Asia/Ho_Chi_Minh"
+```
 
 ### ⚪ VD-13. Gateway trả 503 khoảng 30 giây sau khi rebuild
 

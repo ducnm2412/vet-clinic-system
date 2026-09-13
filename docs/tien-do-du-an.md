@@ -200,7 +200,7 @@ Ngày 13/09 đã sửa ba mục nặng nhất:
   chờ database `healthy` mới khởi động. Đã kiểm chứng bằng việc xoá hẳn container, và một lần
   Docker sập thật — dữ liệu còn nguyên.
 
-Mục 🔴 duy nhất còn lại là VD-16: lịch hẹn không cho biết bác sĩ nào khám.
+Cùng ngày sửa luôn **VD-16** — lịch hẹn giờ cho biết bác sĩ nào khám. Danh sách không còn mục 🔴 nào.
 
 ---
 
