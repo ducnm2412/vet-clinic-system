@@ -8,6 +8,7 @@ import com.vetclinic.booking.domain.SlotStatus;
 import com.vetclinic.booking.dto.AppointmentDetailResponse;
 import com.vetclinic.booking.dto.AppointmentRequest;
 import com.vetclinic.booking.dto.AppointmentResponse;
+import com.vetclinic.booking.dto.DoctorSummaryResponse;
 import com.vetclinic.booking.dto.PetResponse;
 import com.vetclinic.booking.dto.SuggestedSlotResponse;
 import com.vetclinic.booking.exception.ResourceNotFoundException;
@@ -38,7 +39,14 @@ public class AppointmentService {
 
     @Transactional
     public AppointmentResponse createAppointment(UUID customerUserId, String bearerToken, AppointmentRequest request) {
-        validateOwnsPet(request.petId(), bearerToken);
+        return createAppointment(customerUserId, null, bearerToken, request);
+    }
+
+    /** `customerEmail` lấy từ JWT của khách, dùng cho email xác nhận lịch (CN-43). */
+    @Transactional
+    public AppointmentResponse createAppointment(UUID customerUserId, String customerEmail, String bearerToken,
+                                                 AppointmentRequest request) {
+        PetResponse pet = validateOwnsPet(request.petId(), bearerToken);
 
         List<AppointmentSlot> available = appointmentSlotRepository.findAvailableForUpdate(
                 request.date(), request.startTime());
@@ -70,7 +78,8 @@ public class AppointmentService {
 
         applicationEventPublisher.publishEvent(new AppointmentCreatedEvent(appointment.getId(), slot.getId(),
                 slot.getDoctorUserId(), appointment.getCustomerUserId(), appointment.getPetId(), slot.getDate(),
-                slot.getStartTime(), slot.getEndTime()));
+                slot.getStartTime(), slot.getEndTime(), customerEmail, pet == null ? null : pet.name(),
+                doctorNameOf(slot.getDoctorUserId()), appointment.getReason()));
 
         return toResponse(appointment);
     }
@@ -132,9 +141,26 @@ public class AppointmentService {
                 .orElseThrow(() -> new ResourceNotFoundException("Appointment not found: " + appointmentId));
     }
 
-    private void validateOwnsPet(UUID petId, String bearerToken) {
+    /**
+     * Tên bác sĩ cho email xác nhận. Không tra được thì trả null chứ không làm hỏng việc đặt
+     * lịch — lịch đã giữ chỗ xong, thiếu một cái tên trong email không đáng để khách phải đặt lại.
+     */
+    private String doctorNameOf(UUID doctorUserId) {
         try {
-            profileServiceClient.getMyPet(petId, bearerToken);
+            return profileServiceClient.listDoctors().stream()
+                    .filter(d -> doctorUserId.equals(d.userId()))
+                    .map(DoctorSummaryResponse::fullName)
+                    .filter(name -> name != null && !name.isBlank())
+                    .findFirst()
+                    .orElse(null);
+        } catch (RuntimeException e) {
+            return null;
+        }
+    }
+
+    private PetResponse validateOwnsPet(UUID petId, String bearerToken) {
+        try {
+            return profileServiceClient.getMyPet(petId, bearerToken);
         } catch (FeignException.NotFound | FeignException.Forbidden e) {
             throw new ResourceNotFoundException("Pet not found or not owned by customer: " + petId);
         }

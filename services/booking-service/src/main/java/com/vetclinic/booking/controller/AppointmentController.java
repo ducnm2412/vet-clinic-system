@@ -41,7 +41,7 @@ public class AppointmentController {
     public AppointmentResponse createAppointment(@AuthenticationPrincipal AuthenticatedUser principal,
                                                   @RequestHeader("Authorization") String bearerToken,
                                                   @Valid @RequestBody AppointmentRequest request) {
-        return appointmentService.createAppointment(principal.userId(), bearerToken, request);
+        return appointmentService.createAppointment(principal.userId(), principal.email(), bearerToken, request);
     }
 
     @GetMapping("/booking/appointments/me")

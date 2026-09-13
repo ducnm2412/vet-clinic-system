@@ -6,6 +6,10 @@ import com.vetclinic.booking.domain.AppointmentStatus;
 import com.vetclinic.booking.dto.AppointmentDetailResponse;
 import com.vetclinic.booking.dto.AppointmentRequest;
 import com.vetclinic.booking.dto.AppointmentResponse;
+import com.vetclinic.booking.dto.DoctorSummaryResponse;
+import com.vetclinic.booking.messaging.AppointmentCreatedEvent;
+import org.springframework.test.context.event.ApplicationEvents;
+import org.springframework.test.context.event.RecordApplicationEvents;
 import com.vetclinic.booking.dto.PetResponse;
 import com.vetclinic.booking.repository.AppointmentSlotRepository;
 import org.junit.jupiter.api.Test;
@@ -34,7 +38,11 @@ import static org.mockito.Mockito.when;
  */
 @SpringBootTest(properties = "eureka.client.enabled=false")
 @Transactional
+@RecordApplicationEvents
 class AppointmentDoctorTest {
+
+    @Autowired
+    private ApplicationEvents events;
 
     private static final LocalDate DATE = LocalDate.of(2027, 6, 1);
     private static final LocalTime NINE = LocalTime.of(9, 0);
@@ -118,6 +126,40 @@ class AppointmentDoctorTest {
                 .isEqualTo(doctor);
         assertThat(appointmentService.cancelAppointment(created.id(), null, true).doctorUserId())
                 .isEqualTo(doctor);
+    }
+
+    @Test
+    void createdEvent_carriesEverythingTheConfirmationEmailNeeds() {
+        // CN-43: notification-service chỉ soạn email, không gọi ngược sang auth/profile.
+        UUID doctor = UUID.randomUUID();
+        slotFor(doctor, NINE);
+        when(profileServiceClient.getMyPet(any(), any())).thenReturn(pet());
+        when(profileServiceClient.listDoctors()).thenReturn(List.of(
+                new DoctorSummaryResponse(UUID.randomUUID(), doctor, "Trần Minh Khoa", "Nội khoa", null, 8)));
+
+        appointmentService.createAppointment(UUID.randomUUID(), "khach@example.com", "Bearer t",
+                new AppointmentRequest(UUID.randomUUID(), DATE, NINE, "Bỏ ăn"));
+
+        AppointmentCreatedEvent e = events.stream(AppointmentCreatedEvent.class).findFirst().orElseThrow();
+        assertThat(e.customerEmail()).isEqualTo("khach@example.com");
+        assertThat(e.petName()).isEqualTo("Milo");
+        assertThat(e.doctorName()).isEqualTo("Trần Minh Khoa");
+        assertThat(e.reason()).isEqualTo("Bỏ ăn");
+    }
+
+    @Test
+    void createdEvent_whenProfileServiceDown_stillBooks() {
+        // Tra tên bác sĩ hỏng thì email bớt một dòng, KHÔNG được làm hỏng việc đặt lịch.
+        UUID doctor = UUID.randomUUID();
+        slotFor(doctor, NINE);
+        when(profileServiceClient.getMyPet(any(), any())).thenReturn(pet());
+        when(profileServiceClient.listDoctors()).thenThrow(new RuntimeException("profile-service down"));
+
+        AppointmentResponse res = appointmentService.createAppointment(UUID.randomUUID(), "khach@example.com",
+                "Bearer t", new AppointmentRequest(UUID.randomUUID(), DATE, NINE, null));
+
+        assertThat(res.doctorUserId()).isEqualTo(doctor);
+        assertThat(events.stream(AppointmentCreatedEvent.class).findFirst().orElseThrow().doctorName()).isNull();
     }
 
     private static PetResponse pet() {

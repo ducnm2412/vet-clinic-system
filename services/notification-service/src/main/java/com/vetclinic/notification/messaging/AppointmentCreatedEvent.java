@@ -1,9 +1,10 @@
-package com.vetclinic.booking.messaging;
+package com.vetclinic.notification.messaging;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.UUID;
 
+/** Mirror của booking-service AppointmentCreatedEvent (CN-43). */
 public record AppointmentCreatedEvent(
         UUID appointmentId,
         UUID slotId,
@@ -13,8 +14,6 @@ public record AppointmentCreatedEvent(
         LocalDate date,
         LocalTime startTime,
         LocalTime endTime,
-        // CN-43: đủ để notification-service soạn email xác nhận mà không phải gọi ngược sang
-        // auth/profile. Có thể null nếu không tra được — email vẫn gửi, chỉ bớt chi tiết.
         String customerEmail,
         String petName,
         String doctorName,

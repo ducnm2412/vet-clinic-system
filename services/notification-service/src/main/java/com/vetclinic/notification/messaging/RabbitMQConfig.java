@@ -25,6 +25,11 @@ public class RabbitMQConfig {
     public static final String USER_REGISTERED_QUEUE = "notification.user-registered";
     private static final String ROUTING_KEY_USER_REGISTERED = "user.registered";
 
+    // booking-service là chủ khai báo gốc — thuộc tính (durable=true, autoDelete=false) phải khớp.
+    public static final String BOOKING_EVENTS_EXCHANGE = "booking.events";
+    public static final String APPOINTMENT_CREATED_QUEUE = "notification.appointment-created";
+    private static final String ROUTING_KEY_APPOINTMENT_CREATED = "appointment.created";
+
     @Bean
     public TopicExchange userEventsExchange() {
         return new TopicExchange(USER_EVENTS_EXCHANGE, true, false);
@@ -38,6 +43,22 @@ public class RabbitMQConfig {
     @Bean
     public Binding userRegisteredBinding(Queue userRegisteredQueue, TopicExchange userEventsExchange) {
         return BindingBuilder.bind(userRegisteredQueue).to(userEventsExchange).with(ROUTING_KEY_USER_REGISTERED);
+    }
+
+    @Bean
+    public TopicExchange bookingEventsExchange() {
+        return new TopicExchange(BOOKING_EVENTS_EXCHANGE, true, false);
+    }
+
+    @Bean
+    public Queue appointmentCreatedQueue() {
+        return new Queue(APPOINTMENT_CREATED_QUEUE, true);
+    }
+
+    @Bean
+    public Binding appointmentCreatedBinding(Queue appointmentCreatedQueue, TopicExchange bookingEventsExchange) {
+        return BindingBuilder.bind(appointmentCreatedQueue).to(bookingEventsExchange)
+                .with(ROUTING_KEY_APPOINTMENT_CREATED);
     }
 
     // Bắt buộc phải có để @RabbitListener parse được JSON auth-service gửi thành record Java
