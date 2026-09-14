@@ -1,0 +1,868 @@
+{
+  "info": {
+    "_postman_id": "a1e4c9a0-1234-4a2e-9b1a-vetclinicpm01",
+    "name": "Vet Clinic System - Full API",
+    "description": "Bo test toan bo API cua vet-clinic-system qua API Gateway (localhost:8080). Chay lan luot tu tren xuong duoi (theo dung thu tu cac folder/request da danh so) de cac bien (token, id) duoc tu dong luu vao Environment va dung lai cho cac request sau.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Tinh san 1 ngay trong tuong lai (7 ngay ke tu hom nay) dung chung cho tat ca request",
+          "// can 'date' (tao slot, dat lich, xem available-times...) - chi tinh 1 lan roi luu vao",
+          "// environment de moi request trong ca collection dung CHUNG 1 ngay.",
+          "if (!pm.environment.get('testDate')) {",
+          "    const d = new Date();",
+          "    d.setDate(d.getDate() + 7);",
+          "    const iso = d.toISOString().slice(0, 10);",
+          "    pm.environment.set('testDate', iso);",
+          "}"
+        ]
+      }
+    }
+  ],
+  "variable": [],
+  "item": [
+    {
+      "name": "01. Auth - Setup",
+      "item": [
+        {
+          "name": "01 - Register Customer",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Nguyen\",\n  \"lastName\": \"Customer\",\n  \"email\": \"{{customerEmail}}\",\n  \"password\": \"{{customerPassword}}\",\n  \"confirmPassword\": \"{{customerPassword}}\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/register",
+            "description": "Tao tai khoan CUSTOMER. Status mac dinh la INACTIVE, phai xac thuc email (request tiep theo) moi login duoc."
+          }
+        },
+        {
+          "name": "02 - Verify Email (Customer)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Tu dong lay verification token tu MailHog thay vi phai copy tay (copy tay rat de",
+                  "// dinh ky tu thua neu lo xem o tab 'Source'/'Raw' cua MailHog - noi dung email o do",
+                  "// van con o dang quoted-printable, vd token bi cat thanh 'abc=\\r\\ndef' hoac '=3D'",
+                  "// thay vi '='. Script nay goi thang MailHog API, tu giai ma quoted-printable roi",
+                  "// tach token chinh xac, khoi can vao UI MailHog nua.",
+                  "(async () => {",
+                  "    const mailhogUrl = pm.environment.get('mailhogUrl') || 'http://localhost:8025';",
+                  "    const targetEmail = pm.environment.get('customerEmail');",
+                  "",
+                  "    const res = await pm.sendRequest({",
+                  "        url: mailhogUrl + '/api/v2/messages?limit=50',",
+                  "        method: 'GET'",
+                  "    });",
+                  "    const data = res.json();",
+                  "    const items = (data && data.items) || [];",
+                  "",
+                  "    const match = items.find(function (item) {",
+                  "        const to = (item.Content && item.Content.Headers && item.Content.Headers.To) || [];",
+                  "        return to.some(function (t) { return t.indexOf(targetEmail) !== -1; });",
+                  "    });",
+                  "",
+                  "    if (!match) {",
+                  "        console.warn('[Verify Email] Khong tim thay email nao gui toi ' + targetEmail +",
+                  "            ' trong MailHog (' + mailhogUrl + '). Chay lai request 01 - Register Customer truoc.');",
+                  "        return;",
+                  "    }",
+                  "",
+                  "    let body = match.Content.Body || '';",
+                  "    // Bo soft line-break cua quoted-printable roi decode '=XX' -> ky tu that.",
+                  "    body = body.replace(/=\\r\\n/g, '').replace(/=\\n/g, '');",
+                  "    body = body.replace(/=([0-9A-Fa-f]{2})/g, function (_, hex) {",
+                  "        return String.fromCharCode(parseInt(hex, 16));",
+                  "    });",
+                  "",
+                  "    const tokenMatch = body.match(/token=([^\"&]+)/);",
+                  "    if (tokenMatch) {",
+                  "        pm.environment.set('customerVerificationToken', tokenMatch[1]);",
+                  "        console.log('[Verify Email] Da tu dong lay token:', tokenMatch[1]);",
+                  "    } else {",
+                  "        console.warn('[Verify Email] Tim thay email nhung khong parse duoc token trong noi dung.');",
+                  "    }",
+                  "})();"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Verify email thanh cong', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/auth/verify-email?token={{customerVerificationToken}}",
+            "description": "Token duoc TU DONG lay tu MailHog ({{mailhogUrl}}) va giai ma dung o Pre-request Script - chi can bam Send. Neu van loi 400, xem tab Console (View > Show Postman Console) de biet email da toi MailHog chua."
+          }
+        },
+        {
+          "name": "03 - Login - Admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login admin thanh cong', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.accessToken).to.be.a('string');",
+                  "    pm.environment.set('adminAccessToken', json.accessToken);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login",
+            "description": "Tai khoan ADMIN duoc AdminAccountSeeder tu tao khi auth-service khoi dong lan dau, tu ADMIN_EMAIL/ADMIN_PASSWORD trong .env. Nho sua bien 'adminPassword' trong Environment cho khop voi .env that (khong phai gia tri mac dinh 'changeme' trong .env.example)."
+          }
+        },
+        {
+          "name": "04 - Login - Customer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login customer thanh cong', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.accessToken).to.be.a('string');",
+                  "    pm.environment.set('customerAccessToken', json.accessToken);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{customerEmail}}\",\n  \"password\": \"{{customerPassword}}\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login",
+            "description": "Chi chay duoc sau khi da xac thuc email o buoc 02."
+          }
+        }
+      ]
+    },
+    {
+      "name": "02. Admin - Tao tai khoan Doctor & Staff",
+      "item": [
+        {
+          "name": "05 - Create Doctor Account",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminAccessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Tran\",\n  \"lastName\": \"Doctor\",\n  \"email\": \"{{doctorEmail}}\",\n  \"password\": \"{{doctorPassword}}\",\n  \"role\": \"DOCTOR\"\n}"
+            },
+            "url": "{{baseUrl}}/admin/users",
+            "description": "Chi ADMIN moi goi duoc. Tai khoan tao ra co status ACTIVE ngay, khong can xac thuc email."
+          }
+        },
+        {
+          "name": "06 - Create Staff Account",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminAccessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Le\",\n  \"lastName\": \"Staff\",\n  \"email\": \"{{staffEmail}}\",\n  \"password\": \"{{staffPassword}}\",\n  \"role\": \"STAFF\"\n}"
+            },
+            "url": "{{baseUrl}}/admin/users",
+            "description": "role phai la DOCTOR hoac STAFF (server validate)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "03. Auth - Login theo vai tro",
+      "item": [
+        {
+          "name": "07 - Login - Doctor",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login doctor thanh cong', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const json = pm.response.json();",
+                  "    pm.environment.set('doctorAccessToken', json.accessToken);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{doctorEmail}}\",\n  \"password\": \"{{doctorPassword}}\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login"
+          }
+        },
+        {
+          "name": "08 - Login - Staff",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login staff thanh cong', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const json = pm.response.json();",
+                  "    pm.environment.set('staffAccessToken', json.accessToken);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{staffEmail}}\",\n  \"password\": \"{{staffPassword}}\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login"
+          }
+        },
+        {
+          "name": "09 - Get Current User (Me) - Doctor",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lay duoc thong tin doctor', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const json = pm.response.json();",
+                  "    pm.environment.set('doctorUserId', json.id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{doctorAccessToken}}" }],
+            "url": "{{baseUrl}}/auth/me",
+            "description": "Lay userId cua doctor (khong tra ve o buoc tao/login) - can cho buoc generate slot va cho cac test sau."
+          }
+        },
+        {
+          "name": "10 - Get Current User (Me) - Customer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lay duoc thong tin customer', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const json = pm.response.json();",
+                  "    pm.environment.set('customerUserId', json.id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{customerAccessToken}}" }],
+            "url": "{{baseUrl}}/auth/me"
+          }
+        }
+      ]
+    },
+    {
+      "name": "04. Profile - Customer",
+      "item": [
+        {
+          "name": "11 - Get My Profile (Customer)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const json = pm.response.json();",
+                  "    pm.environment.set('customerProfileId', json.id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{customerAccessToken}}" }],
+            "url": "{{baseUrl}}/profile/customer/me",
+            "description": "Ho so customer duoc auto-tao khi UserRegisteredEvent duoc profile-service tieu thu qua RabbitMQ."
+          }
+        },
+        {
+          "name": "12 - Update My Profile (Customer)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{customerAccessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"0901234567\",\n  \"dateOfBirth\": \"1995-05-20\"\n}"
+            },
+            "url": "{{baseUrl}}/profile/customer/me"
+          }
+        },
+        {
+          "name": "13 - Create Address",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Tao address thanh cong', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "    const json = pm.response.json();",
+                  "    pm.environment.set('addressId', json.id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{customerAccessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"line1\": \"123 Nguyen Trai\",\n  \"line2\": \"Can ho 4A\",\n  \"ward\": \"Phuong 7\",\n  \"city\": \"Ho Chi Minh\",\n  \"isDefault\": true\n}"
+            },
+            "url": "{{baseUrl}}/profile/customer/me/addresses"
+          }
+        },
+        {
+          "name": "14 - List Addresses",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{customerAccessToken}}" }],
+            "url": "{{baseUrl}}/profile/customer/me/addresses"
+          }
+        },
+        {
+          "name": "15 - Update Address",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{customerAccessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"line1\": \"456 Le Loi\",\n  \"line2\": \"\",\n  \"ward\": \"Phuong 3\",\n  \"city\": \"Ho Chi Minh\",\n  \"isDefault\": true\n}"
+            },
+            "url": "{{baseUrl}}/profile/customer/me/addresses/{{addressId}}"
+          }
+        },
+        {
+          "name": "16 - Create Pet",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Tao pet thanh cong', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "    const json = pm.response.json();",
+                  "    pm.environment.set('petId', json.id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{customerAccessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Miu\",\n  \"species\": \"Cat\",\n  \"breed\": \"British Shorthair\",\n  \"gender\": \"FEMALE\",\n  \"dateOfBirth\": \"2022-01-15\",\n  \"weightKg\": 3.5\n}"
+            },
+            "url": "{{baseUrl}}/profile/customer/me/pets",
+            "description": "gender: MALE | FEMALE | UNKNOWN. petId luu lai se duoc dung xuyen suot phan Booking o duoi."
+          }
+        },
+        {
+          "name": "17 - List My Pets",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{customerAccessToken}}" }],
+            "url": "{{baseUrl}}/profile/customer/me/pets"
+          }
+        },
+        {
+          "name": "18 - Get Pet By Id (own)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{customerAccessToken}}" }],
+            "url": "{{baseUrl}}/profile/customer/me/pets/{{petId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "05. Profile - Doctor",
+      "item": [
+        {
+          "name": "19 - Get My Profile (Doctor)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{doctorAccessToken}}" }],
+            "url": "{{baseUrl}}/profile/doctor/me"
+          }
+        },
+        {
+          "name": "20 - Update My Profile (Doctor)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{doctorAccessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"specialty\": \"Internal Medicine\",\n  \"phone\": \"0909998888\",\n  \"bio\": \"5 nam kinh nghiem dieu tri thu nho.\",\n  \"yearsOfExperience\": 5\n}"
+            },
+            "url": "{{baseUrl}}/profile/doctor/me"
+          }
+        },
+        {
+          "name": "21 - Create License",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Tao license thanh cong', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "    const json = pm.response.json();",
+                  "    pm.environment.set('licenseId', json.id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{doctorAccessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"licenseNumber\": \"VN-CCHN-000123\",\n  \"issuedBy\": \"So Y Te TP.HCM\",\n  \"issuedDate\": \"2020-03-01\",\n  \"expiryDate\": \"2030-03-01\"\n}"
+            },
+            "url": "{{baseUrl}}/profile/doctor/me/licenses"
+          }
+        },
+        {
+          "name": "22 - List My Licenses",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{doctorAccessToken}}" }],
+            "url": "{{baseUrl}}/profile/doctor/me/licenses"
+          }
+        },
+        {
+          "name": "23 - List Public Doctors [no auth]",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/profile/doctors",
+            "description": "Endpoint public - khong can token."
+          }
+        }
+      ]
+    },
+    {
+      "name": "06. Profile - Staff",
+      "item": [
+        {
+          "name": "24 - Get My Profile (Staff)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{staffAccessToken}}" }],
+            "url": "{{baseUrl}}/profile/staff/me"
+          }
+        },
+        {
+          "name": "25 - Update My Profile (Staff)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{staffAccessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"position\": \"Le tan\",\n  \"phone\": \"0912345678\",\n  \"hireDate\": \"2023-06-01\"\n}"
+            },
+            "url": "{{baseUrl}}/profile/staff/me"
+          }
+        },
+        {
+          "name": "26 - List All Staff",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{staffAccessToken}}" }],
+            "url": "{{baseUrl}}/profile/staff"
+          }
+        }
+      ]
+    },
+    {
+      "name": "07. Profile - Internal Lookup (Doctor/Staff/Admin)",
+      "item": [
+        {
+          "name": "27 - Get Pet By Id (internal)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{staffAccessToken}}" }],
+            "url": "{{baseUrl}}/profile/pets/{{petId}}",
+            "description": "Dung boi DOCTOR/STAFF/ADMIN (vd: booking-service goi Feign) - khac voi /profile/customer/me/pets/{id} chi cho chinh chu."
+          }
+        },
+        {
+          "name": "28 - Get Pets By Ids",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{staffAccessToken}}" }],
+            "url": "{{baseUrl}}/profile/pets?ids={{petId}}"
+          }
+        },
+        {
+          "name": "29 - Get Customer Profile By Id (staff view)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{staffAccessToken}}" }],
+            "url": "{{baseUrl}}/profile/customer/by-id/{{customerProfileId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "08. Booking - Slots",
+      "item": [
+        {
+          "name": "30 - Get Available Times [no auth]",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/booking/available-times?date={{testDate}}",
+            "description": "Public - so luong slot con trong theo tung khung gio trong ngay."
+          }
+        },
+        {
+          "name": "31 - Generate Slots (Staff/Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{staffAccessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"doctorUserId\": \"{{doctorUserId}}\",\n  \"date\": \"{{testDate}}\"\n}"
+            },
+            "url": "{{baseUrl}}/booking/slots/generate",
+            "description": "Idempotent - sinh cac khung gio co dinh (08:00 - 16:30, moi 30 phut, nghi trua 12:00-13:00) cho 1 bac si trong 1 ngay. Goi lai nhieu lan khong bi trung."
+          }
+        }
+      ]
+    },
+    {
+      "name": "09. Booking - Appointments",
+      "item": [
+        {
+          "name": "32 - Create Appointment (Customer)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Dat lich thanh cong hoac bi full (409)', function () {",
+                  "    pm.expect([201, 409]).to.include(pm.response.code);",
+                  "});",
+                  "if (pm.response.code === 201) {",
+                  "    pm.environment.set('appointmentId', pm.response.json().id);",
+                  "} else if (pm.response.code === 409) {",
+                  "    console.log('Slot da day, xem goi y trong suggestedTimes:', pm.response.json().suggestedTimes);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{customerAccessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"petId\": \"{{petId}}\",\n  \"date\": \"{{testDate}}\",\n  \"startTime\": \"09:00:00\",\n  \"reason\": \"Kham suc khoe dinh ky\"\n}"
+            },
+            "url": "{{baseUrl}}/booking/appointments",
+            "description": "Khach hang KHONG chon bac si - he thong tu gan bac si dang ranh & it lich nhat vao khung gio nay. Neu tra 409 (SlotFullyBooked), response se co field 'suggestedTimes' goi y khung gio khac - khong can goi API rieng."
+          }
+        },
+        {
+          "name": "33 - List My Appointments (Customer)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{customerAccessToken}}" }],
+            "url": "{{baseUrl}}/booking/appointments/me"
+          }
+        },
+        {
+          "name": "34 - List My Doctor Appointments (Doctor)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{doctorAccessToken}}" }],
+            "url": "{{baseUrl}}/booking/appointments/doctor/me?date={{testDate}}"
+          }
+        },
+        {
+          "name": "35 - Search Appointments (Staff/Admin)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{staffAccessToken}}" }],
+            "url": "{{baseUrl}}/booking/appointments?date={{testDate}}",
+            "description": "Cac query param date/status/doctorUserId deu optional, co the bo trong de lay tat ca."
+          }
+        },
+        {
+          "name": "36 - Get Appointment Detail (Doctor/Staff/Admin)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{doctorAccessToken}}" }],
+            "url": "{{baseUrl}}/booking/appointments/{{appointmentId}}"
+          }
+        },
+        {
+          "name": "37 - Update Appointment Status -> CONFIRMED",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{doctorAccessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"CONFIRMED\"\n}"
+            },
+            "url": "{{baseUrl}}/booking/appointments/{{appointmentId}}/status",
+            "description": "status: PENDING | CONFIRMED | CANCELLED | COMPLETED | NO_SHOW"
+          }
+        }
+      ]
+    },
+    {
+      "name": "10. Booking - Medical Record & Payment",
+      "item": [
+        {
+          "name": "38 - Create/Update Medical Record (Doctor)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{doctorAccessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"diagnosis\": \"Viem da di ung\",\n  \"treatment\": \"Ke thuoc khang viem, ve sinh vung da bi anh huong\",\n  \"notes\": \"Tai kham sau 1 tuan neu khong do\",\n  \"prescriptionItems\": [\n    {\n      \"medicationName\": \"Cetirizine\",\n      \"dosage\": \"5mg\",\n      \"frequency\": \"1 lan/ngay\",\n      \"durationDays\": 7,\n      \"notes\": \"Uong sau an\"\n    }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/booking/appointments/{{appointmentId}}/medical-record",
+            "description": "Neu co prescriptionItems, mot Payment tuong ung se duoc tao (qua event) ben payment-service voi trang thai PENDING, staff se set amount va xac nhan thanh toan tien mat o cac request sau."
+          }
+        },
+        {
+          "name": "39 - Get Medical Record",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{customerAccessToken}}" }],
+            "url": "{{baseUrl}}/booking/appointments/{{appointmentId}}/medical-record"
+          }
+        },
+        {
+          "name": "40 - List Pending Payments (Staff/Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const json = pm.response.json();",
+                  "    if (Array.isArray(json) && json.length > 0) {",
+                  "        pm.environment.set('paymentId', json[0].id);",
+                  "    } else {",
+                  "        console.log('Chua co payment nao pending - hay chac chan buoc 38 co prescriptionItems va da chay xong.');",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{staffAccessToken}}" }],
+            "url": "{{baseUrl}}/payment/payments/pending"
+          }
+        },
+        {
+          "name": "41 - Set Payment Amount (Staff/Admin)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{staffAccessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 150000\n}"
+            },
+            "url": "{{baseUrl}}/payment/payments/{{paymentId}}/amount"
+          }
+        },
+        {
+          "name": "42 - Confirm Cash Payment (Staff/Admin)",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Authorization", "value": "Bearer {{staffAccessToken}}" }],
+            "url": "{{baseUrl}}/payment/payments/{{paymentId}}/confirm-cash"
+          }
+        },
+        {
+          "name": "43 - List Pending Prescriptions (Staff/Admin)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{staffAccessToken}}" }],
+            "url": "{{baseUrl}}/booking/medical-records/pending",
+            "description": "Danh sach don thuoc da PAID, cho staff tiep nhan. Chay sau buoc 42 (confirm-cash) thi don o buoc 38 moi xuat hien o day."
+          }
+        },
+        {
+          "name": "44 - Receive Prescription (Staff/Admin)",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Authorization", "value": "Bearer {{staffAccessToken}}" }],
+            "url": "{{baseUrl}}/booking/appointments/{{appointmentId}}/medical-record/receive",
+            "description": "Chuyen PAID -> RECEIVED. Neu con PENDING (chua thanh toan) se tra 409."
+          }
+        }
+      ]
+    },
+    {
+      "name": "11. Optional - Destructive / Cleanup",
+      "description": "Cac request xoa/huy du lieu - CHI chay khi ban thuc su muon don dep, vi chay xong se lam hong du lieu de test lai cac buoc phia tren.",
+      "item": [
+        {
+          "name": "45 - Cancel Appointment (Customer/Staff/Admin)",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Authorization", "value": "Bearer {{customerAccessToken}}" }],
+            "url": "{{baseUrl}}/booking/appointments/{{appointmentId}}/cancel"
+          }
+        },
+        {
+          "name": "46 - Delete Address",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{customerAccessToken}}" }],
+            "url": "{{baseUrl}}/profile/customer/me/addresses/{{addressId}}"
+          }
+        },
+        {
+          "name": "47 - Delete Pet",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{customerAccessToken}}" }],
+            "url": "{{baseUrl}}/profile/customer/me/pets/{{petId}}"
+          }
+        },
+        {
+          "name": "48 - Delete Doctor License",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{doctorAccessToken}}" }],
+            "url": "{{baseUrl}}/profile/doctor/me/licenses/{{licenseId}}"
+          }
+        },
+        {
+          "name": "49 - Delete User (Admin)",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminAccessToken}}" }],
+            "url": "{{baseUrl}}/admin/users/{{userIdToDelete}}",
+            "description": "Dien thu cong bien 'userIdToDelete' (UUID) truoc khi goi - vd de xoa tai khoan doctor/staff test vua tao."
+          }
+        }
+      ]
+    }
+  ]
+}
