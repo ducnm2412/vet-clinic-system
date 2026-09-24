@@ -55,7 +55,20 @@ public class ProductService {
 
     @Transactional(readOnly = true)
     public ProductResponse getById(UUID id) {
-        return toResponse(findOrThrow(id));
+        return getById(id, true);
+    }
+
+    /**
+     * VD-24: hàng đã ẩn coi như không tồn tại với người ngoài. Trả 404 chứ không 403 — 403 là tự
+     * xác nhận "có sản phẩm này, chỉ không cho xem", đủ để dò danh mục hàng sắp bán.
+     */
+    @Transactional(readOnly = true)
+    public ProductResponse getById(UUID id, boolean includeInactive) {
+        Product product = findOrThrow(id);
+        if (!includeInactive && !Boolean.TRUE.equals(product.getActive())) {
+            throw new ResourceNotFoundException("Product not found: " + id);
+        }
+        return toResponse(product);
     }
 
     // ---------- CN-28: quản lý sản phẩm ----------

@@ -102,14 +102,16 @@ public class CartService {
     }
 
     /**
-     * Lấy thông tin sản phẩm từ product-service. Sản phẩm bị xoá trả 404 — đổi thành lỗi
-     * nghiệp vụ của mình thay vì để FeignException lọt lên tầng trên.
+     * Lấy thông tin sản phẩm từ product-service.
+     *
+     * VD-24: 404 giờ có hai nghĩa — sản phẩm đã bị xoá, hoặc đã ẩn khỏi cửa hàng. product-service
+     * cố tình không phân biệt với người ngoài, nên câu báo cho khách cũng gộp làm một.
      */
     public ProductClient.ProductView fetchProduct(UUID productId) {
         try {
             return productClient.getProduct(productId);
         } catch (FeignException.NotFound e) {
-            throw new ProductUnavailableException("Sản phẩm không còn tồn tại: " + productId);
+            throw new ProductUnavailableException("Sản phẩm này không còn bán");
         }
     }
 
@@ -135,8 +137,8 @@ public class CartService {
             try {
                 p = productClient.getProduct(item.getProductId());
             } catch (FeignException.NotFound e) {
-                items.add(new CartItemResponse(item.getProductId(), null, "(sản phẩm đã bị xoá)",
-                        null, null, item.getQuantity(), null, false, "Sản phẩm không còn tồn tại"));
+                items.add(new CartItemResponse(item.getProductId(), null, "(sản phẩm không còn bán)",
+                        null, null, item.getQuantity(), null, false, "Sản phẩm không còn bán"));
                 checkoutable = false;
                 continue;
             }

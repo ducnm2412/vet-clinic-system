@@ -80,9 +80,13 @@ public class ProductController {
         return productService.listLowStock();
     }
 
+    /**
+     * VD-24: công khai, nhưng hàng đã ẩn chỉ STAFF/ADMIN mới xem được — người khác nhận 404.
+     * Trước đây ai có UUID cũng đọc được hàng chưa/ngừng bán.
+     */
     @GetMapping("/{id}")
-    public ProductResponse getById(@PathVariable UUID id) {
-        return productService.getById(id);
+    public ProductResponse getById(@PathVariable UUID id, Authentication authentication) {
+        return productService.getById(id, canSeeInactive(authentication));
     }
 
     @GetMapping("/{id}/stock-movements")

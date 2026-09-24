@@ -29,12 +29,8 @@ ADMIN,             ?activeOnly=false   -> 1
 Có 4 test hồi quy trong `ProductControllerTest` — hai test kịch bản tấn công được chạy
 **trước** khi sửa để chắc chúng đỏ thật.
 
-**Còn lại, cố ý chưa đóng:** `GET /products/{id}` vẫn trả hàng đã ẩn cho bất kỳ ai biết UUID.
-Không đóng ở đây vì `order-service` gọi đúng endpoint này **không kèm token** và dựa vào việc
-nhận được `active=false` để hiện "Sản phẩm đã ngừng bán" trong giỏ. Chặn nó thì giỏ hàng của
-khách sẽ hiện "(sản phẩm đã bị xoá)" với tên trống. Rủi ro còn lại thấp hơn nhiều so với lỗi
-gốc: phải biết trước UUID, không liệt kê được. Muốn đóng hẳn thì `order-service` cần gọi bằng
-danh tính service riêng — xem VD-24.
+Phần còn lại — `GET /products/{id}` trả hàng đã ẩn cho bất kỳ ai biết UUID — **đã đóng nốt ngày
+24/09**, xem VD-24.
 
 ### ✅ VD-02. Không có khoá chống tranh chấp khi sửa tồn kho — đã sửa 24/09/2026
 
@@ -405,17 +401,28 @@ dòng 404 đỏ vào console. Ai mở DevTools lên xem sẽ tưởng có lỗi.
 **Hướng sửa (khi rảnh):** trả 200 kèm thân rỗng, hoặc thêm `GET .../medical-record/exists`.
 Không gấp.
 
-### 🟡 VD-24. `order-service` gọi `product-service` không kèm danh tính
+### ✅ VD-24. Xem được hàng đã ẩn nếu biết UUID — đã sửa 24/09/2026
 
-Phát hiện khi sửa VD-01.
+Phát hiện khi sửa VD-01. `order-service` gọi `GET /products/{id}` như khách vãng lai, nên
+endpoint đó phải trả cả hàng đã ẩn để giỏ hàng biết món nào ngừng bán — và ai có UUID cũng đọc
+được hàng chưa bán hoặc đã ngừng bán.
 
-`ProductClient` gọi `GET /products/{id}` như một khách vãng lai. Vì vậy endpoint đó buộc phải
-mở công khai **và** trả cả hàng đã ẩn, nếu không giỏ hàng không biết món nào đã ngừng bán.
-Hai yêu cầu đó kéo nhau: không đóng được lỗ hổng xem hàng ẩn theo UUID mà không làm hỏng giỏ.
+**Đã sửa mà không cần danh tính service:** `GET /products/{id}` giờ trả **404** cho hàng đã ẩn,
+trừ khi người gọi là STAFF/ADMIN. Trả 404 chứ không 403 — 403 là tự xác nhận "có sản phẩm này,
+chỉ không cho xem", đủ để dò danh mục hàng sắp bán.
 
-**Hướng sửa:** cho service gọi nhau bằng danh tính riêng (token service-to-service, hoặc
-endpoint nội bộ `/internal/products/{id}` chỉ mở trong mạng Docker). Khi có rồi, `GET
-/products/{id}` công khai mới trả 404 cho hàng đã ẩn được.
+Giỏ hàng không hỏng: `order-service` vốn đã xử lý 404 sẵn. Món bị ẩn hiện thành
+"(sản phẩm không còn bán)", không mua được, và chặn đặt đơn. Đổi lại, khách mất tên món trong
+giỏ — chấp nhận được, vì tên hàng đã ngừng bán không phải thứ khách cần biết.
+
+Kiểm chứng trên hệ thống thật: sau khi admin ẩn một sản phẩm đang nằm trong giỏ của khách —
+khách vãng lai và khách hàng tra UUID đều nhận 404, nhân viên và quản trị vẫn xem được; giỏ
+hàng chặn đặt; thêm lại món đó vào giỏ trả 409 "Sản phẩm này không còn bán". Trang sản phẩm
+phía khách hiện "Không tìm thấy sản phẩm này".
+
+**Ghi chú:** cách này dựa vào việc `order-service` không cần thấy hàng ẩn. Nếu sau này có luồng
+service gọi nhau thật sự cần quyền cao hơn người dùng cuối, khi đó mới phải làm danh tính riêng
+giữa các service.
 
 ### ✅ VD-25. Test tích hợp lỗi trên Windows vì múi giờ `Asia/Saigon` — đã sửa 24/09/2026
 
