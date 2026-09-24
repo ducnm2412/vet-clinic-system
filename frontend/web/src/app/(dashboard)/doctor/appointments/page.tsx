@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError, bookingApi } from "@/lib/api";
 import { APPOINTMENT_STATUS } from "@/lib/utils/status";
 import { formatDate, formatTime, todayISO } from "@/lib/utils/format";
@@ -17,6 +17,7 @@ import {
   TableFrame,
   TableSkeleton,
   controlClass,
+  useToast,
   type Column,
 } from "@/components/ui";
 
@@ -26,11 +27,25 @@ import {
  */
 export default function DoctorAppointmentsPage() {
   const router = useRouter();
+  const qc = useQueryClient();
+  const toast = useToast();
   const [date, setDate] = useState(todayISO());
 
   const appointments = useQuery({
     queryKey: ["appointments", "doctor", { date }],
     queryFn: () => bookingApi.forMeAsDoctor(date || undefined),
+  });
+
+  // Tiếp nhận ca: PENDING -> CONFIRMED. Chỉ đổi trạng thái, chưa mở hồ sơ khám — bác sĩ bấm
+  // "Mở hồ sơ" riêng khi thật sự bắt đầu khám.
+  const confirm = useMutation({
+    mutationFn: (appointmentId: string) => bookingApi.updateStatus(appointmentId, "CONFIRMED"),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["appointments", "doctor"] });
+      toast.success("Đã tiếp nhận ca khám");
+    },
+    onError: (err) =>
+      toast.error(err instanceof ApiError ? err.message : "Không tiếp nhận được ca khám."),
   });
 
   const rows = [...(appointments.data ?? [])].sort((a, b) =>
@@ -62,7 +77,19 @@ export default function DoctorAppointmentsPage() {
       key: "action",
       header: "Thao tác",
       cell: (a) => (
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-2">
+          {a.status === "PENDING" && (
+            <Button
+              size="sm"
+              loading={confirm.isPending && confirm.variables === a.id}
+              onClick={(e) => {
+                e.stopPropagation();
+                confirm.mutate(a.id);
+              }}
+            >
+              Tiếp nhận
+            </Button>
+          )}
           <Button size="sm" variant="secondary" onClick={() => router.push(`/doctor/appointments/${a.id}`)}>
             Mở hồ sơ
           </Button>

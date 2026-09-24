@@ -56,6 +56,13 @@ public class SlotService {
 
     @Transactional(readOnly = true)
     public List<AvailableTimeResponse> getAvailableTimes(LocalDate date) {
-        return appointmentSlotRepository.countAvailableByDate(date);
+        List<AvailableTimeResponse> times = appointmentSlotRepository.countAvailableByDate(date);
+        // Nếu ngày đang xem là hôm nay, bỏ những khung giờ đã bắt đầu (hoặc đang diễn ra) —
+        // khách không thể đặt vào giờ đã trôi qua.
+        if (date.isEqual(LocalDate.now(ClinicSchedule.ZONE_ID))) {
+            LocalTime now = LocalTime.now(ClinicSchedule.ZONE_ID);
+            times = times.stream().filter(t -> t.startTime().isAfter(now)).toList();
+        }
+        return times;
     }
 }

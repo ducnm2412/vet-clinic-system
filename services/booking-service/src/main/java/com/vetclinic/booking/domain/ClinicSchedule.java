@@ -1,12 +1,17 @@
 package com.vetclinic.booking.domain;
 
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.List;
 
 public class ClinicSchedule {
 
     private ClinicSchedule() {
     }
+
+    // Container chạy UTC nhưng phòng khám ở giờ Việt Nam — mọi so sánh "bây giờ" với slot phải
+    // dùng múi giờ này, không dùng LocalDate/LocalTime.now() mặc định (server timezone).
+    public static final ZoneId ZONE_ID = ZoneId.of("Asia/Ho_Chi_Minh");
 
     public static final List<LocalTime> SLOT_TIMES = List.of(
             LocalTime.of(8, 0), LocalTime.of(8, 30), LocalTime.of(9, 0), LocalTime.of(9, 30),

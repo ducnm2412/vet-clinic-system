@@ -26,9 +26,11 @@ public class PetController {
         return petService.getPetById(id);
     }
 
+    // Không truyền ids -> trả toàn bộ pet (dùng cho trang tra cứu doctor/staff/admin,
+    // lọc theo tên/loài/giống làm ở phía giao diện).
     @GetMapping("/profile/pets")
     @PreAuthorize("hasAnyRole('DOCTOR','STAFF','ADMIN')")
-    public List<PetResponse> getPetsByIds(@RequestParam List<UUID> ids) {
-        return petService.getPetsByIds(ids);
+    public List<PetResponse> getPets(@RequestParam(required = false) List<UUID> ids) {
+        return (ids == null || ids.isEmpty()) ? petService.getAllPets() : petService.getPetsByIds(ids);
     }
 }

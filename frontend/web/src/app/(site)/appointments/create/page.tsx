@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Check, ChevronLeft, Plus } from "lucide-react";
@@ -17,6 +17,14 @@ import { PetFormDialog } from "@/components/site/PetFormDialog";
 import { SiteTextarea } from "@/components/site/fields";
 
 const STEPS = ["Chọn bé", "Chọn ngày", "Chọn giờ", "Xác nhận"] as const;
+
+/** Cộng thêm `n` ngày vào một chuỗi ngày dạng "yyyy-MM-dd". */
+function addDaysISO(iso: string, n: number): string {
+  const d = new Date(`${iso}T00:00:00`);
+  d.setDate(d.getDate() + n);
+  const p = (v: number) => String(v).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
 
 export default function CreateAppointmentPage() {
   return (
@@ -45,6 +53,26 @@ function BookingFlow() {
     queryFn: () => bookingApi.availableTimes(date),
     enabled: date !== "",
   });
+
+  // Kiểm tra riêng cho "hôm nay": nếu đã qua hết khung giờ trong ngày (backend không trả khung
+  // giờ nào cho hôm nay nữa) thì không cho chọn "Hôm nay" ở bước 2 — tránh để khách đi hết bước
+  // 2 rồi mới biết ở bước 3 là đã hết giờ. Còn đang tải hoặc lỗi thì coi như vẫn chọn được, để
+  // không chặn nhầm khi mạng chậm.
+  const todayDate = todayISO();
+  const todayTimes = useQuery({
+    queryKey: ["available-times", todayDate],
+    queryFn: () => bookingApi.availableTimes(todayDate),
+  });
+  const todayBookable = todayTimes.data === undefined || todayTimes.data.length > 0;
+
+  useEffect(() => {
+    if (!todayBookable && date === todayDate) {
+      setDate(addDaysISO(todayDate, 1));
+      setStartTime("");
+      setSuggestions([]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [todayBookable]);
 
   const book = useMutation({
     mutationFn: () => bookingApi.create({ petId, date, startTime, reason: reason || undefined }),
@@ -131,6 +159,7 @@ function BookingFlow() {
             {step === 1 && (
               <StepDate
                 date={date}
+                todayBookable={todayBookable}
                 onChange={(d) => {
                   setDate(d);
                   setStartTime("");
@@ -301,16 +330,21 @@ function StepPets({
   );
 }
 
-function StepDate({ date, onChange }: { date: string; onChange: (d: string) => void }) {
+function StepDate({
+  date,
+  todayBookable,
+  onChange,
+}: {
+  date: string;
+  todayBookable: boolean;
+  onChange: (d: string) => void;
+}) {
   const today = todayISO();
+  // Hôm nay đã hết khung giờ thì ngày sớm nhất chọn được là ngày mai.
+  const minDate = todayBookable ? today : addDaysISO(today, 1);
 
   // Bảy ngày tới bấm được ngay; xa hơn thì dùng ô chọn ngày.
-  const quick = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(`${today}T00:00:00`);
-    d.setDate(d.getDate() + i);
-    const p = (n: number) => String(n).padStart(2, "0");
-    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-  });
+  const quick = Array.from({ length: 7 }, (_, i) => addDaysISO(today, i));
 
   const weekday = ["Chủ Nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"];
 
@@ -324,16 +358,21 @@ function StepDate({ date, onChange }: { date: string; onChange: (d: string) => v
       <ul className="mt-8 flex flex-wrap gap-3">
         {quick.map((d, i) => {
           const day = new Date(`${d}T00:00:00`);
+          const disabled = i === 0 && !todayBookable;
           return (
             <li key={d}>
               <button
-                onClick={() => onChange(d)}
+                onClick={() => !disabled && onChange(d)}
+                disabled={disabled}
                 aria-pressed={date === d}
+                title={disabled ? "Hôm nay đã hết giờ nhận khách, chọn ngày khác giúp bạn nhé." : undefined}
                 className={cn(
                   "w-24 rounded-[var(--radius-card)] border px-3 py-3 text-center transition-colors",
-                  date === d
-                    ? "border-teal bg-mint"
-                    : "border-mist hover:border-teal hover:bg-mint/60",
+                  disabled
+                    ? "cursor-not-allowed border-mist bg-mist/40 text-stone/60"
+                    : date === d
+                      ? "border-teal bg-mint"
+                      : "border-mist hover:border-teal hover:bg-mint/60",
                 )}
               >
                 <span className="block text-[14px] text-stone">
@@ -342,17 +381,24 @@ function StepDate({ date, onChange }: { date: string; onChange: (d: string) => v
                 <span className="tnum block text-[19px] font-semibold">
                   {String(day.getDate()).padStart(2, "0")}/{String(day.getMonth() + 1).padStart(2, "0")}
                 </span>
+                {disabled && <span className="mt-1 block text-[12px] text-stone/70">Hết giờ</span>}
               </button>
             </li>
           );
         })}
       </ul>
 
+      {!todayBookable && (
+        <p className="mt-4 text-[14px] text-stone">
+          Hôm nay phòng khám đã hết khung giờ nhận khách. Chọn ngày mai trở đi giúp bạn nhé.
+        </p>
+      )}
+
       <label className="mt-8 block max-w-60">
         <span className="mb-1.5 block text-[15px] font-medium">Hoặc chọn ngày khác</span>
         <input
           type="date"
-          min={today}
+          min={minDate}
           value={date}
           onChange={(e) => onChange(e.target.value)}
           className="h-12 w-full rounded-xl border border-mist bg-white px-4 text-[16px] outline-none focus:border-teal"

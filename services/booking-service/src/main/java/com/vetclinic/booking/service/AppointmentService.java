@@ -4,6 +4,7 @@ import com.vetclinic.booking.client.ProfileServiceClient;
 import com.vetclinic.booking.domain.Appointment;
 import com.vetclinic.booking.domain.AppointmentSlot;
 import com.vetclinic.booking.domain.AppointmentStatus;
+import com.vetclinic.booking.domain.ClinicSchedule;
 import com.vetclinic.booking.domain.SlotStatus;
 import com.vetclinic.booking.dto.AppointmentDetailResponse;
 import com.vetclinic.booking.dto.AppointmentRequest;
@@ -24,6 +25,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
@@ -49,6 +51,15 @@ public class AppointmentService {
     public AppointmentResponse createAppointment(UUID customerUserId, String customerEmail, String bearerToken,
                                                  AppointmentRequest request) {
         PetResponse pet = validateOwnsPet(request.petId(), bearerToken);
+
+        // Chặn đặt vào khung giờ đã trôi qua của hôm nay — kể cả khi client gọi thẳng API,
+        // bỏ qua bộ lọc đã có ở SlotService.getAvailableTimes.
+        if (request.date().isEqual(LocalDate.now(ClinicSchedule.ZONE_ID))
+                && !request.startTime().isAfter(LocalTime.now(ClinicSchedule.ZONE_ID))) {
+            List<SuggestedSlotResponse> suggestions = suggestionService.findSuggestions(
+                    request.date(), request.startTime());
+            throw new SlotFullyBookedException(suggestions);
+        }
 
         List<AppointmentSlot> available = appointmentSlotRepository.findAvailableForUpdate(
                 request.date(), request.startTime());

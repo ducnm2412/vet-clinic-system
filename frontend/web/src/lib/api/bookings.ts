@@ -64,7 +64,11 @@ export const medicalRecordApi = {
   markReceived: (appointmentId: string) =>
     http.put<MedicalRecord>(`/booking/appointments/${appointmentId}/medical-record/receive`),
 
+  /** Hàng đợi PAID dùng chung mọi bác sĩ — chỉ STAFF/ADMIN gọi được. */
   pending: () => http.get<MedicalRecord[]>("/booking/medical-records/pending"),
+
+  /** "Bệnh án còn treo" của riêng bác sĩ đang đăng nhập (PENDING hoặc PAID) — chỉ DOCTOR gọi được. */
+  mine: () => http.get<MedicalRecord[]>("/booking/medical-records/mine/outstanding"),
 };
 
 /**

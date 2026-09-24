@@ -28,8 +28,8 @@ export default function DoctorDashboard() {
   });
 
   const pendingRecords = useQuery({
-    queryKey: ["medical-records", "pending"],
-    queryFn: medicalRecordApi.pending,
+    queryKey: ["medical-records", "mine"],
+    queryFn: medicalRecordApi.mine,
   });
 
   const list = todayList.data ?? [];

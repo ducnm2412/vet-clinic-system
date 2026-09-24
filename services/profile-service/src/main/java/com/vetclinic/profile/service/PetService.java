@@ -33,6 +33,13 @@ public class PetService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<PetResponse> getAllPets() {
+        return petRepository.findAll().stream()
+                .map(this::toPetResponse)
+                .toList();
+    }
+
     private PetResponse toPetResponse(Pet pet) {
         return new PetResponse(pet.getId(), pet.getName(), pet.getSpecies(), pet.getBreed(), pet.getGender(),
                 pet.getDateOfBirth(), pet.getWeightKg(), pet.getCreatedAt(), pet.getUpdatedAt());

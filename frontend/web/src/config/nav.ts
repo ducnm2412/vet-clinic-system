@@ -122,3 +122,15 @@ export const ROLE_PREFIX: Record<string, Role[]> = {
   "/doctor": ["DOCTOR"],
   "/staff": ["STAFF", "ADMIN"],
 };
+
+/**
+ * Đường dẫn `next` (nơi người dùng định vào trước khi bị đá ra trang đăng nhập) có hợp với
+ * vai trò vừa đăng nhập không. Dùng để tránh đưa nhân viên/bác sĩ trở lại một trang dashboard
+ * của vai trò khác rồi lại bị RouteGuard đá tiếp sang /unauthorized — chỉ ba nhánh dashboard ở
+ * ROLE_PREFIX mới cần kiểm; các trang khác (site công khai, trang khách hàng) cho qua như cũ.
+ */
+export function isNextAllowedForRoles(next: string, roles: Role[]): boolean {
+  const prefix = Object.keys(ROLE_PREFIX).find((p) => next === p || next.startsWith(`${p}/`));
+  if (!prefix) return true;
+  return roles.some((r) => ROLE_PREFIX[prefix].includes(r));
+}

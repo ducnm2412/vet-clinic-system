@@ -57,4 +57,13 @@ public class MedicalRecordController {
     public List<MedicalRecordResponse> listPendingPrescriptions() {
         return medicalRecordService.listPendingPrescriptions();
     }
+
+    // "Bệnh án còn treo" của bác sĩ: đơn thuốc CHÍNH BÁC SĨ NÀY kê, chưa trả tiền hoặc đã trả
+    // nhưng chưa phát — không dùng chung endpoint /pending ở trên vì đó là hàng đợi PAID dành
+    // riêng cho staff (mọi bác sĩ gộp chung, không lọc theo người kê).
+    @GetMapping("/booking/medical-records/mine/outstanding")
+    @PreAuthorize("hasRole('DOCTOR')")
+    public List<MedicalRecordResponse> listMyOutstandingPrescriptions(@AuthenticationPrincipal AuthenticatedUser principal) {
+        return medicalRecordService.listMyOutstandingPrescriptions(principal.userId());
+    }
 }

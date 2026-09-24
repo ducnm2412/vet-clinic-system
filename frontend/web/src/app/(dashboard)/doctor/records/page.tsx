@@ -19,15 +19,15 @@ import {
 } from "@/components/ui";
 
 /**
- * Bệnh án có đơn thuốc chưa xong. `GET /booking/medical-records/pending` trả những bản
- * ghi mà đơn thuốc chưa thu tiền hoặc chưa phát — đây là việc còn treo của phòng khám,
- * không phải toàn bộ bệnh án đã lập.
+ * Bệnh án có đơn thuốc chưa xong. `GET /booking/medical-records/mine/outstanding` trả những
+ * bản ghi do chính bác sĩ đang đăng nhập kê mà đơn thuốc chưa thu tiền hoặc chưa phát — đây là
+ * việc còn treo của bác sĩ này, không phải toàn bộ bệnh án đã lập.
  */
 export default function DoctorRecordsPage() {
   const router = useRouter();
   const records = useQuery({
-    queryKey: ["medical-records", "pending"],
-    queryFn: medicalRecordApi.pending,
+    queryKey: ["medical-records", "mine"],
+    queryFn: medicalRecordApi.mine,
   });
 
   const columns: Column<MedicalRecord>[] = [

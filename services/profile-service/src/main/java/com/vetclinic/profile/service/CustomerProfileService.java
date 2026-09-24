@@ -59,7 +59,8 @@ public class CustomerProfileService {
         return toProfileResponse(profile);
     }
 
-    @Transactional(readOnly = true)
+    // KHÔNG readOnly: getOrCreateProfile có thể phải INSERT profile mới cho customer lần đầu gọi.
+    @Transactional
     public List<AddressResponse> listAddresses(UUID userId) {
         CustomerProfile profile = getOrCreateProfile(userId);
         return addressRepository.findByCustomerProfileId(profile.getId()).stream()
@@ -116,7 +117,8 @@ public class CustomerProfileService {
         addressRepository.delete(address);
     }
 
-    @Transactional(readOnly = true)
+    // KHÔNG readOnly: getOrCreateProfile có thể phải INSERT profile mới cho customer lần đầu gọi.
+    @Transactional
     public List<PetResponse> listPets(UUID userId) {
         CustomerProfile profile = getOrCreateProfile(userId);
         return petRepository.findByCustomerProfileId(profile.getId()).stream()

@@ -24,7 +24,8 @@ import {
 /**
  * Thu tiền mặt cho đơn thuốc tại quầy. Luồng: bác sĩ kê đơn → payment-service tạo phiếu
  * (chưa có số tiền) → nhân viên nhập số tiền → khách trả → xác nhận đã thu, lúc đó
- * payment-service phát `payment.completed` để booking mở đơn thuốc cho khách nhận.
+ * payment-service phát `payment.completed` để booking-service đánh dấu đơn thuốc RECEIVED
+ * luôn (thu tiền và giao thuốc là cùng một lượt ở quầy, không có bước tiếp nhận riêng).
  */
 export default function StaffPaymentsPage() {
   const [selected, setSelected] = useState<Payment | null>(null);
@@ -122,7 +123,7 @@ function PaymentDialog({ payment, onClose }: { payment: Payment | null; onClose:
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["payments"] });
       qc.invalidateQueries({ queryKey: ["medical-records"] });
-      toast.success("Đã thu tiền, khách có thể nhận thuốc");
+      toast.success("Đã thu tiền và phát thuốc cho khách");
       onClose();
     },
     onError: (err) => toast.error(err instanceof ApiError ? err.message : "Không xác nhận được."),

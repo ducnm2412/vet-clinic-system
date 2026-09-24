@@ -31,6 +31,18 @@ export default function DoctorAppointmentPage() {
     queryFn: () => medicalRecordApi.byAppointment(id).catch(() => null),
   });
 
+  const qc = useQueryClient();
+  const toast = useToast();
+  const confirm = useMutation({
+    mutationFn: () => bookingApi.updateStatus(id, "CONFIRMED"),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["appointments", id] });
+      qc.invalidateQueries({ queryKey: ["appointments", "doctor"] });
+      toast.success("Đã tiếp nhận ca khám");
+    },
+    onError: (err) => toast.error(err instanceof ApiError ? err.message : "Không tiếp nhận được ca khám."),
+  });
+
   if (appointment.isLoading || record.isLoading) return <Spinner label="Đang mở hồ sơ" />;
   if (appointment.isError || !appointment.data) {
     return <ErrorState message="Không mở được ca khám này." onRetry={() => appointment.refetch()} />;
@@ -43,7 +55,12 @@ export default function DoctorAppointmentPage() {
       </Link>
 
       <div className="mt-3 grid gap-5 lg:grid-cols-[20rem_1fr]">
-        <PatientPanel appointment={appointment.data} record={record.data ?? null} />
+        <PatientPanel
+          appointment={appointment.data}
+          record={record.data ?? null}
+          onConfirm={() => confirm.mutate()}
+          confirming={confirm.isPending}
+        />
         {/*
           `key` gắn theo bệnh án: chưa có thì "new", có rồi thì id. Khi bác sĩ bấm lưu lần
           đầu, React dựng lại khối biên tập với dữ liệu vừa lưu — không cần effect đồng bộ,
@@ -62,9 +79,13 @@ export default function DoctorAppointmentPage() {
 function PatientPanel({
   appointment: a,
   record,
+  onConfirm,
+  confirming,
 }: {
   appointment: AppointmentDetail;
   record: MedicalRecord | null;
+  onConfirm: () => void;
+  confirming: boolean;
 }) {
   const pet = a.pet;
 
@@ -103,8 +124,17 @@ function PatientPanel({
       </section>
 
       <section className="rounded-[var(--radius-control)] border border-line bg-surface p-4">
-        <h2 className="mb-2 font-medium text-ink">Ca khám</h2>
-        <StatusTag status={APPOINTMENT_STATUS[a.status]} />
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="font-medium text-ink">Ca khám</h2>
+          {a.status === "PENDING" && (
+            <Button size="sm" loading={confirming} onClick={onConfirm}>
+              Tiếp nhận
+            </Button>
+          )}
+        </div>
+        <div className="mt-2">
+          <StatusTag status={APPOINTMENT_STATUS[a.status]} />
+        </div>
         <dl className="mt-3 space-y-1 text-sm">
           <div className="flex justify-between">
             <dt className="text-bark">Ngày</dt>

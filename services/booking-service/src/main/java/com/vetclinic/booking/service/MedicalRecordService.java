@@ -112,8 +112,11 @@ public class MedicalRecordService {
         return toResponse(record);
     }
 
-    // Gọi khi nhận được event payment.completed (xem PaymentEventListener) — chuyển
-    // PENDING -> PAID. Bỏ qua nếu không tìm thấy record hoặc đã ở trạng thái khác PENDING
+    // Gọi khi nhận được event payment.completed (xem PaymentEventListener) — chuyển thẳng
+    // PENDING -> RECEIVED. Phòng khám thu tiền và giao thuốc cùng một lượt ở quầy, không có
+    // bước "chờ tiếp nhận" riêng như nhiều hiệu thuốc lớn — nên khách vừa trả tiền xong là
+    // coi như đã nhận thuốc luôn, không cần staff xác nhận thêm một lần nữa qua
+    // receivePrescription(). Bỏ qua nếu không tìm thấy record hoặc đã ở trạng thái khác PENDING
     // (đã xử lý rồi / message bị gửi lặp), không throw để không làm message bị requeue vô hạn.
     @Transactional
     public void markPrescriptionPaid(UUID medicalRecordId) {
@@ -124,9 +127,9 @@ public class MedicalRecordService {
         }
 
         if (record.get().getStatus() == PrescriptionStatus.PENDING) {
-            record.get().setStatus(PrescriptionStatus.PAID);
+            record.get().setStatus(PrescriptionStatus.RECEIVED);
             medicalRecordRepository.saveAndFlush(record.get());
-            log.info("Prescription paid, medicalRecordId={}", medicalRecordId);
+            log.info("Prescription paid and received, medicalRecordId={}", medicalRecordId);
         }
     }
 
@@ -134,6 +137,18 @@ public class MedicalRecordService {
     @Transactional(readOnly = true)
     public List<MedicalRecordResponse> listPendingPrescriptions() {
         return medicalRecordRepository.findByStatusOrderByCreatedAtAsc(PrescriptionStatus.PAID).stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    // "Bệnh án còn treo" của bác sĩ: đơn thuốc CHÍNH BÁC SĨ NÀY kê mà còn dở — PENDING (khách
+    // chưa trả tiền) hoặc PAID (đã trả nhưng staff chưa phát thuốc). Khác hẳn
+    // listPendingPrescriptions() ở trên, vốn là hàng đợi PAID dùng chung mọi bác sĩ, chỉ staff xem.
+    @Transactional(readOnly = true)
+    public List<MedicalRecordResponse> listMyOutstandingPrescriptions(UUID doctorId) {
+        return medicalRecordRepository.findByStatusInAndDoctorUserId(
+                        List.of(PrescriptionStatus.PENDING, PrescriptionStatus.PAID), doctorId)
+                .stream()
                 .map(this::toResponse)
                 .toList();
     }
