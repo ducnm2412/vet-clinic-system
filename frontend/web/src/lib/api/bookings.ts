@@ -69,6 +69,9 @@ export const medicalRecordApi = {
 
   /** "Bệnh án còn treo" của riêng bác sĩ đang đăng nhập (PENDING hoặc PAID) — chỉ DOCTOR gọi được. */
   mine: () => http.get<MedicalRecord[]>("/booking/medical-records/mine/outstanding"),
+
+  /** Lịch sử khám của 1 thú cưng, mới nhất trước — DOCTOR/STAFF/ADMIN gọi được. */
+  byPet: (petId: string) => http.get<MedicalRecord[]>(`/booking/medical-records/by-pet/${petId}`),
 };
 
 /**

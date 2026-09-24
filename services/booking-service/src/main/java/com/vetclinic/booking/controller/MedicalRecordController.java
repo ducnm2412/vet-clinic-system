@@ -66,4 +66,12 @@ public class MedicalRecordController {
     public List<MedicalRecordResponse> listMyOutstandingPrescriptions(@AuthenticationPrincipal AuthenticatedUser principal) {
         return medicalRecordService.listMyOutstandingPrescriptions(principal.userId());
     }
+
+    // Lịch sử khám của 1 thú cưng — dùng khi bác sĩ/nhân viên bấm vào 1 thú cưng ở màn tra
+    // cứu chung (GET /profile/pets) để xem lại các lần khám trước, không chỉ ca hiện tại.
+    @GetMapping("/booking/medical-records/by-pet/{petId}")
+    @PreAuthorize("hasAnyRole('DOCTOR','STAFF','ADMIN')")
+    public List<MedicalRecordResponse> listByPet(@PathVariable UUID petId) {
+        return medicalRecordService.listByPet(petId);
+    }
 }

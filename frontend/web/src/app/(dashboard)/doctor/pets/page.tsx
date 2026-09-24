@@ -7,7 +7,7 @@ export default function Page() {
   return (
     <>
       <PageHeader title="Thú cưng" description="Tra hồ sơ bé trước khi khám." />
-      <PetsLookupView />
+      <PetsLookupView basePath="/doctor/pets" />
     </>
   );
 }

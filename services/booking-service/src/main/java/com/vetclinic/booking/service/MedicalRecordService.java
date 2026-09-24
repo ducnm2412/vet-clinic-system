@@ -153,6 +153,15 @@ public class MedicalRecordService {
                 .toList();
     }
 
+    // Lịch sử khám của 1 thú cưng, qua mọi appointment — mới nhất trước. Dùng cho màn tra
+    // thú cưng khi bác sĩ/nhân viên muốn xem lại các lần khám trước, không chỉ ca hiện tại.
+    @Transactional(readOnly = true)
+    public List<MedicalRecordResponse> listByPet(UUID petId) {
+        return medicalRecordRepository.findByAppointment_PetIdOrderByCreatedAtDesc(petId).stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
     private MedicalRecordResponse toResponse(MedicalRecord record) {
         return new MedicalRecordResponse(record.getId(), record.getAppointment().getId(), record.getDiagnosis(),
                 record.getTreatment(), record.getNotes(), record.getStatus(),

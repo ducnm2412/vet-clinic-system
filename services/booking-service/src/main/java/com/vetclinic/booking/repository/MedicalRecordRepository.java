@@ -24,4 +24,8 @@ public interface MedicalRecordRepository extends JpaRepository<MedicalRecord, UU
             "ORDER BY m.createdAt ASC")
     List<MedicalRecord> findByStatusInAndDoctorUserId(@Param("statuses") List<PrescriptionStatus> statuses,
                                                         @Param("doctorId") UUID doctorId);
+
+    // Toàn bộ bệnh án của 1 thú cưng qua các lần khám — mới nhất trước. Dùng cho màn xem lịch
+    // sử khám khi tra theo thú cưng (trang "Thú cưng"), khác với tra theo từng appointment.
+    List<MedicalRecord> findByAppointment_PetIdOrderByCreatedAtDesc(UUID petId);
 }

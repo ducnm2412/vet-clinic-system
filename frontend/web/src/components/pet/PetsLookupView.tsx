@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { ApiError, petLookupApi } from "@/lib/api";
 import { speciesStripe } from "@/lib/utils/status";
@@ -18,10 +19,10 @@ import {
  * `GET /profile/pets`. Lọc theo tên làm ở phía giao diện vì endpoint không nhận tham số
  * tìm kiếm; danh sách một phòng khám đủ nhỏ để làm vậy.
  *
- * Chưa có đường sang lịch sử khám: bệnh án hiện chỉ tra được theo từng lịch hẹn, không
- * theo thú cưng (VD-17).
+ * `basePath` (nếu truyền vào, ví dụ "/doctor/pets") biến mỗi thẻ thành link sang
+ * `${basePath}/{petId}` — trang xem lịch sử khám của riêng thú cưng đó (VD-17).
  */
-export function PetsLookupView() {
+export function PetsLookupView({ basePath }: { basePath?: string }) {
   const [keyword, setKeyword] = useState("");
   const pets = useQuery({ queryKey: ["pets", "all"], queryFn: petLookupApi.list });
 
@@ -69,37 +70,52 @@ export function PetsLookupView() {
         </div>
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {rows.map((pet) => (
-            <li
-              key={pet.id}
-              className="flex overflow-hidden rounded-[var(--radius-control)] border border-line bg-surface"
-            >
-              <span aria-hidden className={cn("w-1.5 shrink-0", speciesStripe(pet.species))} />
-              <div className="min-w-0 flex-1 p-4">
-                <h2 className="truncate font-medium text-ink">{pet.name}</h2>
-                <p className="mt-0.5 text-sm text-bark">
-                  {pet.species}
-                  {pet.breed ? ` ${pet.breed}` : ""} · {formatAge(pet.dateOfBirth)}
-                </p>
-                <dl className="mt-3 space-y-1 text-sm">
-                  <div className="flex justify-between">
-                    <dt className="text-bark">Giới tính</dt>
-                    <dd>
-                      {pet.gender === "MALE" ? "Đực" : pet.gender === "FEMALE" ? "Cái" : "Chưa rõ"}
-                    </dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt className="text-bark">Cân nặng</dt>
-                    <dd className="tnum">{pet.weightKg ? `${pet.weightKg} kg` : "—"}</dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt className="text-bark">Ngày sinh</dt>
-                    <dd>{formatDate(pet.dateOfBirth)}</dd>
-                  </div>
-                </dl>
-              </div>
-            </li>
-          ))}
+          {rows.map((pet) => {
+            const cardClass = cn(
+              "flex overflow-hidden rounded-[var(--radius-control)] border border-line bg-surface",
+              basePath && "transition-colors hover:border-moss/60",
+            );
+            const content = (
+              <>
+                <span aria-hidden className={cn("w-1.5 shrink-0", speciesStripe(pet.species))} />
+                <div className="min-w-0 flex-1 p-4">
+                  <h2 className="truncate font-medium text-ink">{pet.name}</h2>
+                  <p className="mt-0.5 text-sm text-bark">
+                    {pet.species}
+                    {pet.breed ? ` ${pet.breed}` : ""} · {formatAge(pet.dateOfBirth)}
+                  </p>
+                  <dl className="mt-3 space-y-1 text-sm">
+                    <div className="flex justify-between">
+                      <dt className="text-bark">Giới tính</dt>
+                      <dd>
+                        {pet.gender === "MALE" ? "Đực" : pet.gender === "FEMALE" ? "Cái" : "Chưa rõ"}
+                      </dd>
+                    </div>
+                    <div className="flex justify-between">
+                      <dt className="text-bark">Cân nặng</dt>
+                      <dd className="tnum">{pet.weightKg ? `${pet.weightKg} kg` : "—"}</dd>
+                    </div>
+                    <div className="flex justify-between">
+                      <dt className="text-bark">Ngày sinh</dt>
+                      <dd>{formatDate(pet.dateOfBirth)}</dd>
+                    </div>
+                  </dl>
+                </div>
+              </>
+            );
+
+            return basePath ? (
+              <li key={pet.id}>
+                <Link href={`${basePath}/${pet.id}`} className={cardClass}>
+                  {content}
+                </Link>
+              </li>
+            ) : (
+              <li key={pet.id} className={cardClass}>
+                {content}
+              </li>
+            );
+          })}
         </ul>
       )}
     </>
