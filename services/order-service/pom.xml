@@ -148,6 +148,26 @@
                     </excludes>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <!-- VD-25: múi giờ cố định, nếu không Windows chạy "Asia/Saigon" và mọi test
+                         liên quan ngày giờ đều lệch. -->
+                    <argLine>-Duser.timezone=Asia/Ho_Chi_Minh</argLine>
+                    <systemPropertyVariables>
+                        <!-- JWT_SECRET chỉ để test tự ký token; production đọc từ biến môi trường.
+                             Đặt ở đây để chạy test trong IDE không phải khai gì thêm. -->
+                        <JWT_SECRET>test-only-secret-khong-dung-o-moi-truong-that-32-ky-tu</JWT_SECRET>
+                        <!-- VD-12: test luôn chạy vào database riêng, không bao giờ vào database
+                             đang dùng thật. TestDatabaseGuard chặn lần nữa lúc chạy. Dùng system
+                             property thay vì src/test/resources/application.yml vì file đó sẽ GHI ĐÈ
+                             HOÀN TOÀN application.yml chính, không phải merge thêm. -->
+                        <DB_PORT>5436</DB_PORT>
+                        <DB_NAME>order_db_test</DB_NAME>
+                    </systemPropertyVariables>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 

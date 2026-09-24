@@ -151,6 +151,8 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
+                    <!-- VD-25: múi giờ cố định cho test ngày giờ. -->
+                    <argLine>-Duser.timezone=Asia/Ho_Chi_Minh</argLine>
                     <!-- Tắt SlotGenerationScheduler trong mọi test — nếu bật, @SpringBootTest sẽ
                          vô tình boot cả job này; chạy nhiều test class liên tiếp (>45s tổng) sẽ
                          khiến job thật sự chèn dữ liệu vào DB test, đè lên các ngày cố định mà
@@ -158,8 +160,23 @@
                          application.yml vì file đó sẽ GHI ĐÈ HOÀN TOÀN application.yml chính
                          (mất cấu hình datasource/JWT...), không phải merge thêm vào. -->
                     <systemPropertyVariables>
+                        <!-- JWT_SECRET chỉ để test tự ký token; production đọc từ biến môi trường.
+                             Đặt ở đây để chạy test trong IDE không phải khai gì thêm. -->
+                        <JWT_SECRET>test-only-secret-khong-dung-o-moi-truong-that-32-ky-tu</JWT_SECRET>
+                        <!-- VD-12: test luôn chạy vào database riêng, không bao giờ vào database
+                             đang dùng thật. TestDatabaseGuard chặn lần nữa lúc chạy. Dùng system
+                             property thay vì src/test/resources/application.yml vì file đó sẽ GHI ĐÈ
+                             HOÀN TOÀN application.yml chính, không phải merge thêm. -->
+                        <DB_PORT>5437</DB_PORT>
+                        <DB_NAME>booking_db_test</DB_NAME>
                         <app.scheduling.slot-generation.enabled>false</app.scheduling.slot-generation.enabled>
                     </systemPropertyVariables>
+                    <excludes>
+                        <!-- Cần Eureka và profile-service đang chạy thật mới resolve được Feign,
+                             nên không chạy trong lượt test thường. Chạy riêng khi hệ thống đang bật:
+                             mvn test -Dtest=ProfileServiceClientTest -Dsurefire.failIfNoSpecifiedTests=false -->
+                        <exclude>**/ProfileServiceClientTest.java</exclude>
+                    </excludes>
                 </configuration>
             </plugin>
         </plugins>

@@ -112,6 +112,21 @@
                     </excludes>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <!-- VD-25: múi giờ cố định, nếu không Windows chạy "Asia/Saigon" và mọi test
+                         liên quan ngày giờ đều lệch. Service này không có database nên không cần
+                         chốt chặn VD-12. -->
+                    <argLine>-Duser.timezone=Asia/Ho_Chi_Minh</argLine>
+                    <systemPropertyVariables>
+                        <!-- JWT_SECRET chỉ để test tự ký token; production đọc từ biến môi trường.
+                             Đặt ở đây để chạy test trong IDE không phải khai gì thêm. -->
+                        <JWT_SECRET>test-only-secret-khong-dung-o-moi-truong-that-32-ky-tu</JWT_SECRET>
+                    </systemPropertyVariables>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 

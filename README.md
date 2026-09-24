@@ -49,6 +49,26 @@ Mỗi thư mục service có README riêng mô tả chức năng, database và c
 | Thanh toán | VNPay / Momo API |
 | Đóng gói | Docker (base image eclipse-temurin), Docker Compose |
 
-## Bước tiếp theo
+## Chạy test
 
-Mỗi thư mục service hiện chỉ có README mô tả — cần khởi tạo project Spring Boot thật (pom.xml, Application.java, Dockerfile) bên trong khi bắt đầu code, theo đúng lộ trình 8 tuần trong kế hoạch (Eureka + Gateway + Auth trước, Booking song song ở Frontend).
+Test dùng PostgreSQL thật, nên cần các container database đang chạy:
+
+```bash
+docker compose up -d
+bash scripts/create-test-databases.sh   # một lần cho mỗi máy
+bash scripts/test.sh                    # tất cả service
+bash scripts/test.sh booking-service    # một service
+```
+
+**Test không bao giờ chạy vào database đang dùng.** Mỗi service có database riêng cho test
+(`booking_db_test`, `auth_db_test`…), khai sẵn trong `pom.xml`. Nếu có ai cố trỏ vào database
+thật, `TestDatabaseGuard` dừng lượt chạy trước khi mở kết nối. Lý do và lịch sử sự cố nằm ở
+VD-12 trong `docs/van-de-ton-dong.md`.
+
+Chạy thẳng `mvn test` trong một service cũng an toàn, chỉ cần khai mật khẩu database của
+service đó (`scripts/test.sh` đọc sẵn từ `.env`).
+
+## Tiến độ
+
+Xem `docs/tien-do-du-an.md` (service nào xong, luồng sự kiện) và `docs/van-de-ton-dong.md`
+(vấn đề đã biết, đã sửa và chưa sửa).

@@ -231,7 +231,7 @@ booking không biết hỏi ai để biết bác sĩ có rảnh không.
 **Đề xuất:** lịch làm việc (kế hoạch) thuộc `booking-service` vì nó cần tính slot trống theo
 thời gian thực; `staff-service` chỉ giữ chấm công thực tế (check-in/out, tổng giờ công).
 
-### 🟡 VD-12. Test tích hợp cần Postgres thật
+### ✅ VD-12. Test tích hợp chạy nhầm vào database thật — đã sửa 24/09/2026
 
 `auth-service` và `profile-service` không có `src/test/resources/application.yml` riêng, nên
 `@SpringBootTest` dùng thẳng `application.yml` chính và cần DB thật đúng cổng. Chạy `mvn test`
@@ -240,21 +240,36 @@ trần sẽ hỏng nếu không set biến môi trường.
 `product-service` đã đỡ hơn một phần: test controller tắt listener RabbitMQ nên không cần
 broker, nhưng vẫn cần Postgres.
 
-**Hướng sửa:** dùng Testcontainers, hoặc thêm profile test trỏ sẵn đúng cổng.
+**Vì sao nguy hiểm:** một số test của `booking-service` không chạy trong transaction và dọn
+bằng `deleteAll()` — `AppointmentEventPublisherTest` xoá **toàn bộ** lịch hẹn lẫn khung giờ.
+Ngày 13/09 chạy nhầm bộ test này vào `booking_db` thật làm mất sạch lịch hẹn, phải khôi phục
+từ bản sao lưu.
 
+**Đã sửa bằng hai lớp:**
 
-**⚠️ Không bao giờ chạy test vào database đang dùng.** Một số test của `booking-service`
-không chạy trong transaction và dọn bằng `deleteAll()` — `AppointmentEventPublisherTest` xoá
-**toàn bộ** lịch hẹn lẫn khung giờ. Ngày 13/09 chạy nhầm bộ test này vào `booking_db` thật
-làm mất sạch lịch hẹn, phải khôi phục từ bản sao lưu.
+1. **Mặc định đúng.** Mỗi `pom.xml` khai `DB_PORT` và `DB_NAME` trỏ vào database `*_test` ngay
+   trong `maven-surefire-plugin`. Cấu hình trong pom thắng cả biến môi trường lẫn `-D` trên
+   dòng lệnh, nên `DB_NAME=booking_db mvn test` vẫn chạy vào `booking_db_test`.
+2. **Chốt chặn lúc chạy.** `TestDatabaseGuard` (mỗi service một bản, đăng ký trong
+   `src/test/resources/META-INF/spring.factories`) đọc `spring.datasource.url` và ném lỗi nếu
+   tên database không kết thúc bằng `_test`. Chặn trước khi Spring mở kết nối đầu tiên, và bắt
+   cả trường hợp test tự khai `spring.datasource.url` trong `@SpringBootTest`.
 
-Mỗi database có sẵn một bản test riêng trong cùng container, trỏ vào bằng `DB_NAME`:
+Cũng đặt luôn `JWT_SECRET` riêng cho test và múi giờ `Asia/Ho_Chi_Minh` (VD-25), nên chạy test
+trong IDE không phải khai gì thêm.
 
 ```bash
-# booking-service (tương tự auth_db_test cho auth-service)
-docker exec booking-db createdb -U postgres booking_db_test
-DB_PORT=5437 DB_NAME=booking_db_test mvn test -DargLine="-Duser.timezone=Asia/Ho_Chi_Minh"
+bash scripts/create-test-databases.sh   # một lần, sau khi docker compose up -d
+bash scripts/test.sh                    # tất cả service
+bash scripts/test.sh booking-service    # một service
 ```
+
+Script `test.sh` chỉ nạp mật khẩu database và RabbitMQ từ `.env`; phần chọn database test nằm
+trong pom nên chạy `mvn test` trực tiếp cũng an toàn.
+
+**Còn lại:** vẫn cần Postgres thật đang chạy (chưa dùng Testcontainers), và
+`ProfileServiceClientTest` của booking-service vẫn phải có Eureka + profile-service thật nên
+đã loại khỏi lượt chạy thường.
 
 ### ⚪ VD-13. Gateway trả 503 khoảng 30 giây sau khi rebuild
 
@@ -383,18 +398,13 @@ Hai yêu cầu đó kéo nhau: không đóng được lỗ hổng xem hàng ẩn
 endpoint nội bộ `/internal/products/{id}` chỉ mở trong mạng Docker). Khi có rồi, `GET
 /products/{id}` công khai mới trả 404 cho hàng đã ẩn được.
 
-### 🟢 VD-25. Test tích hợp lỗi trên Windows vì múi giờ `Asia/Saigon`
+### ✅ VD-25. Test tích hợp lỗi trên Windows vì múi giờ `Asia/Saigon` — đã sửa 24/09/2026
 
 JVM trên Windows gửi múi giờ tên cũ `Asia/Saigon`, PostgreSQL 16 từ chối:
 `FATAL: invalid value for parameter "TimeZone"`. Mọi test dùng database đều lỗi ngay lúc
 dựng context, trông như code hỏng trong khi code không sai gì.
 
-**Cách chạy test hiện tại:**
-
-```bash
-mvn test -DargLine="-Duser.timezone=Asia/Ho_Chi_Minh"
-```
-
-**Hướng sửa gọn hơn:** đặt `<argLine>-Duser.timezone=Asia/Ho_Chi_Minh</argLine>` trong cấu
-hình `maven-surefire-plugin` ở từng `pom.xml`, để không ai phải nhớ cờ này.
+**Đã sửa:** `<argLine>-Duser.timezone=Asia/Ho_Chi_Minh</argLine>` nằm trong
+`maven-surefire-plugin` của mọi `pom.xml`, không ai phải nhớ cờ này nữa. Truyền
+`-DargLine=...` trên dòng lệnh sẽ KHÔNG ghi đè được cấu hình pom — muốn đổi thì sửa pom.
 
