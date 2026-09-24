@@ -66,6 +66,30 @@ public class RabbitMQConfig {
         return BindingBuilder.bind(userStatusQueue).to(userEventsExchange).with("user.unlocked");
     }
 
+    // CN-39: staff-service phát shift.added / shift.removed khi admin xếp hoặc bỏ ca trực.
+    public static final String STAFF_EVENTS_EXCHANGE = "staff.events";
+    public static final String STAFF_SHIFT_QUEUE = "booking.staff-shifts";
+
+    @Bean
+    public TopicExchange staffEventsExchange() {
+        return new TopicExchange(STAFF_EVENTS_EXCHANGE, true, false);
+    }
+
+    @Bean
+    public Queue staffShiftQueue() {
+        return new Queue(STAFF_SHIFT_QUEUE, true);
+    }
+
+    @Bean
+    public Binding shiftAddedBinding(Queue staffShiftQueue, TopicExchange staffEventsExchange) {
+        return BindingBuilder.bind(staffShiftQueue).to(staffEventsExchange).with("shift.added");
+    }
+
+    @Bean
+    public Binding shiftRemovedBinding(Queue staffShiftQueue, TopicExchange staffEventsExchange) {
+        return BindingBuilder.bind(staffShiftQueue).to(staffEventsExchange).with("shift.removed");
+    }
+
     @Bean
     public MessageConverter messageConverter() {
         return new Jackson2JsonMessageConverter();

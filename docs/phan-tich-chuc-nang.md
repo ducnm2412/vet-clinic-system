@@ -117,10 +117,10 @@ Chú thích trạng thái: ✅ Đã hiện thực · ⚠️ Hiện thực một 
 
 | Mã CN | Tên chức năng | Tác nhân | Mô tả xử lý | Trạng thái |
 |---|---|---|---|---|
-| CN-38 | Chấm công vào/ra | AC-02, AC-03 | Ghi nhận check-in / check-out kèm mốc thời gian | ⏳ |
-| CN-39 | Quản lý lịch làm việc | AC-04 | Xếp ca trực cho bác sĩ, nhân viên theo tuần | ⏳ |
-| CN-40 | Tổng hợp giờ công | AC-04 | Tính tổng giờ làm, số ngày công theo kỳ lương | ⏳ |
-| CN-41 | Phát sự kiện chấm công | Hệ thống | Publish RabbitMQ → Reporting Service | ⏳ |
+| CN-38 | Chấm công vào/ra | AC-02, AC-03 | Ghi nhận check-in / check-out kèm mốc thời gian | ✅ |
+| CN-39 | Quản lý lịch làm việc | AC-04 | Xếp ca trực cho bác sĩ, nhân viên theo tuần | ✅ |
+| CN-40 | Tổng hợp giờ công | AC-04 | Tính tổng giờ làm, số ngày công theo kỳ lương | ✅ |
+| CN-41 | Phát sự kiện ca trực | Hệ thống | Publish RabbitMQ → booking-service mở/đóng giờ khám | ✅ |
 
 ### 2.8. Module Thông báo (`notification-service` — không có DB riêng)
 
@@ -137,7 +137,7 @@ Chú thích trạng thái: ✅ Đã hiện thực · ⚠️ Hiện thực một 
 |---|---|---|---|---|
 | CN-46 | Báo cáo doanh thu | AC-04 | Tổng hợp doanh thu bán hàng + dịch vụ khám theo ngày/tháng/quý | ✅ |
 | CN-47 | Thống kê lịch khám | AC-04 | Số lượt khám, tỉ lệ huỷ lịch, hiệu suất theo bác sĩ | ✅ |
-| CN-48 | Báo cáo chấm công | AC-04 | Tổng hợp giờ công toàn bộ nhân sự | ⏳ |
+| CN-48 | Báo cáo chấm công | AC-04 | Tổng hợp giờ công toàn bộ nhân sự | ✅ |
 | CN-49 | Dashboard quản trị | AC-04 | Bảng điều khiển tổng hợp các chỉ số vận hành | ✅ |
 
 ### 2.10. Chức năng hạ tầng (nền tảng kỹ thuật)

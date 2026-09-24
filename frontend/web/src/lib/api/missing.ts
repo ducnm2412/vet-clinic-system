@@ -1,5 +1,5 @@
 /**
- * Ba mảng giao diện chưa có API backend (xem docs/van-de-ton-dong.md — VD-18).
+ * Hai mảng giao diện chưa có API backend (xem docs/van-de-ton-dong.md — VD-18).
  *
  * Tầng này tồn tại để component không phải chứa dữ liệu giả. Mỗi mục khai báo rõ endpoint
  * còn thiếu; màn hình dùng nó sẽ hiển thị khối "chưa có dữ liệu" kèm ghi chú, chứ KHÔNG
@@ -19,11 +19,6 @@ export interface MissingEndpoint {
 }
 
 export const MISSING: Record<string, MissingEndpoint> = {
-  attendance: {
-    label: "Chấm công",
-    suggested: "GET /staff/attendance?userId=&month=",
-    reason: "staff-service chưa được triển khai.",
-  },
   petMedicalHistory: {
     label: "Lịch sử khám của thú cưng",
     suggested: "GET /booking/pets/{petId}/medical-records",

@@ -2,10 +2,12 @@ package com.vetclinic.booking.service;
 
 import com.vetclinic.booking.domain.AppointmentSlot;
 import com.vetclinic.booking.domain.ClinicSchedule;
+import com.vetclinic.booking.domain.DoctorShift;
 import com.vetclinic.booking.domain.SlotStatus;
 import com.vetclinic.booking.dto.AppointmentSlotResponse;
 import com.vetclinic.booking.dto.AvailableTimeResponse;
 import com.vetclinic.booking.repository.AppointmentSlotRepository;
+import com.vetclinic.booking.repository.DoctorShiftRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -28,10 +30,23 @@ class SlotServiceTest {
     @Autowired
     private AppointmentSlotRepository appointmentSlotRepository;
 
+    @Autowired
+    private DoctorShiftRepository doctorShiftRepository;
+
+    /**
+     * CN-39: từ 24/09 chỉ bác sĩ có ca trực mới được sinh khung giờ khám. Mỗi test tự xếp một ca
+     * phủ cả ngày để kiểm đúng thứ nó định kiểm.
+     */
+    private void givenFullDayShift(UUID doctorId, LocalDate date) {
+        doctorShiftRepository.saveAndFlush(DoctorShift.builder().doctorUserId(doctorId).date(date)
+                .startTime(LocalTime.of(0, 0)).endTime(LocalTime.of(23, 59)).build());
+    }
+
     @Test
     void generateSlots_createsOneSlotPerScheduledTime() {
         UUID doctorId = UUID.randomUUID();
         LocalDate date = LocalDate.of(2026, 10, 1);
+        givenFullDayShift(doctorId, date);
 
         List<AppointmentSlotResponse> created = slotService.generateSlots(doctorId, date);
 
@@ -45,6 +60,7 @@ class SlotServiceTest {
     void generateSlots_isIdempotent_secondCallCreatesNothing() {
         UUID doctorId = UUID.randomUUID();
         LocalDate date = LocalDate.of(2026, 10, 2);
+        givenFullDayShift(doctorId, date);
 
         List<AppointmentSlotResponse> firstCall = slotService.generateSlots(doctorId, date);
         List<AppointmentSlotResponse> secondCall = slotService.generateSlots(doctorId, date);
@@ -61,6 +77,8 @@ class SlotServiceTest {
         UUID doctorA = UUID.randomUUID();
         UUID doctorB = UUID.randomUUID();
 
+        givenFullDayShift(doctorA, date);
+        givenFullDayShift(doctorB, date);
         slotService.generateSlots(doctorA, date);
         slotService.generateSlots(doctorB, date);
 

@@ -36,6 +36,10 @@ spring:
           uri: lb://payment-service
           predicates:
             - Path=/payment/**
+        - id: staff-service
+          uri: lb://staff-service
+          predicates:
+            - Path=/staff/**
         - id: reporting-service
           uri: lb://reporting-service
           predicates:

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { Boxes, CalendarDays, CreditCard, Receipt } from "lucide-react";
-import { MISSING, bookingApi, orderManageApi, paymentApi, productApi } from "@/lib/api";
+import { bookingApi, orderManageApi, paymentApi, productApi } from "@/lib/api";
 import { PAYMENT_STATUS } from "@/lib/utils/status";
 import { formatPrice, todayISO } from "@/lib/utils/format";
 import { PageHeader } from "@/components/layout/DashboardShell";
@@ -13,7 +13,6 @@ import {
   DataTable,
   EmptyState,
   ErrorState,
-  PendingApi,
   StatusTag,
   TableFrame,
   TableSkeleton,
@@ -121,11 +120,6 @@ export default function StaffDashboard() {
             />
           )}
         </TableFrame>
-      </div>
-
-      <div className="mt-6">
-        <h2 className="mb-2 font-medium text-ink">Chấm công</h2>
-        <PendingApi endpoint={MISSING.attendance} />
       </div>
     </>
   );

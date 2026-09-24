@@ -1,9 +1,11 @@
 import type { Role } from "@/types";
 import {
   Boxes,
+  CalendarClock,
   CalendarDays,
   ClipboardPlus,
   ClipboardList,
+  Clock,
   Contact,
   CreditCard,
   LayoutDashboard,
@@ -44,6 +46,8 @@ export const NAV: Record<Role, NavSection[]> = {
         { href: "/admin/doctors", label: "Bác sĩ", icon: Stethoscope },
         { href: "/admin/staff", label: "Nhân viên", icon: Contact },
         { href: "/admin/customers", label: "Khách hàng", icon: UserRound },
+        { href: "/admin/shifts", label: "Lịch làm việc", icon: CalendarClock },
+        { href: "/admin/attendance", label: "Chấm công", icon: Clock },
       ],
     },
     {
@@ -73,7 +77,13 @@ export const NAV: Record<Role, NavSection[]> = {
         { href: "/doctor/records", label: "Bệnh án", icon: ClipboardPlus },
       ],
     },
-    { title: "Cá nhân", items: [{ href: "/doctor/profile", label: "Hồ sơ", icon: UserRound }] },
+    {
+      title: "Cá nhân",
+      items: [
+        { href: "/doctor/attendance", label: "Chấm công", icon: Clock },
+        { href: "/doctor/profile", label: "Hồ sơ", icon: UserRound },
+      ],
+    },
   ],
 
   STAFF: [
@@ -90,7 +100,13 @@ export const NAV: Record<Role, NavSection[]> = {
       title: "Kho",
       items: [{ href: "/staff/inventory", label: "Tồn kho", icon: Boxes }],
     },
-    { title: "Cá nhân", items: [{ href: "/staff/profile", label: "Hồ sơ", icon: UserRound }] },
+    {
+      title: "Cá nhân",
+      items: [
+        { href: "/staff/attendance", label: "Chấm công", icon: Clock },
+        { href: "/staff/profile", label: "Hồ sơ", icon: UserRound },
+      ],
+    },
   ],
 
   /*

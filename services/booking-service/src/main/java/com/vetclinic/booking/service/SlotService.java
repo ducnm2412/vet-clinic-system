@@ -5,7 +5,9 @@ import com.vetclinic.booking.domain.ClinicSchedule;
 import com.vetclinic.booking.dto.AppointmentSlotResponse;
 import com.vetclinic.booking.dto.AvailableTimeResponse;
 import com.vetclinic.booking.repository.AppointmentSlotRepository;
+import com.vetclinic.booking.domain.DoctorShift;
 import com.vetclinic.booking.repository.BlockedDoctorRepository;
+import com.vetclinic.booking.repository.DoctorShiftRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,6 +24,7 @@ public class SlotService {
 
     private final AppointmentSlotRepository appointmentSlotRepository;
     private final BlockedDoctorRepository blockedDoctorRepository;
+    private final DoctorShiftRepository doctorShiftRepository;
 
     @Transactional
     public List<AppointmentSlotResponse> generateSlots(UUID doctorId, LocalDate date) {
@@ -31,7 +34,17 @@ public class SlotService {
             return created;
         }
 
+        // CN-39 / VD-11: chỉ mở giờ khám trong ca đã xếp. Ngày không có ca thì bác sĩ nghỉ, và
+        // khách không đặt được — trước đây mọi bác sĩ đều có đủ khung giờ mọi ngày.
+        List<DoctorShift> shifts = doctorShiftRepository.findByDoctorUserIdAndDate(doctorId, date);
+        if (shifts.isEmpty()) {
+            return created;
+        }
+
         for (LocalTime startTime : ClinicSchedule.SLOT_TIMES) {
+            if (shifts.stream().noneMatch(shift -> shift.covers(startTime))) {
+                continue;
+            }
             if (appointmentSlotRepository.existsByDoctorUserIdAndDateAndStartTime(doctorId, date, startTime)) {
                 continue;
             }

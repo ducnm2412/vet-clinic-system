@@ -2,7 +2,7 @@
 #
 #   docker compose up -d --build
 #
-# Cac service chua code (pet, staff)
+# Cac service chua code (pet)
 # nam trong profile "future" nen KHONG chay mac dinh — chung chua co Dockerfile, neu
 # de chung o profile mac dinh thi ca lenh `up` se fail o buoc build.
 # Khi mot service duoc code xong: viet Dockerfile cho no roi xoa dong `profiles` tuong ung.
@@ -354,12 +354,29 @@ services:
         condition: service_started
 
   staff-service:
-    profiles: ["future"]
     build: ./services/staff-service
     container_name: staff-service
+    ports:
+      # 8089 da thuoc reporting-service; staff-service dung 8090.
+      - "8090:8090"
+    environment:
+      DB_HOST: staff-db
+      DB_PORT: 5432
+      DB_NAME: staff_db
+      DB_USERNAME: ${STAFF_DB_USER:-postgres}
+      DB_PASSWORD: ${STAFF_DB_PASSWORD:?STAFF_DB_PASSWORD is required}
+      EUREKA_URI: http://eureka-server:8761/eureka/
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USERNAME: ${RABBITMQ_USER:-guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
     depends_on:
-      - eureka-server
-      - staff-db
+      staff-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
 
   reporting-service:
     build: ./services/reporting-service
@@ -415,13 +432,25 @@ services:
       timeout: 5s
       retries: 10
   staff-db:
-    profiles: ["future"]
     image: postgres:16
     container_name: staff-db
+    ports:
+      # 5438 da thuoc payment-db; staff-db doi sang 5439.
+      - "5439:5432"
     environment:
       POSTGRES_DB: staff_db
+      POSTGRES_USER: ${STAFF_DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${STAFF_DB_PASSWORD:?STAFF_DB_PASSWORD is required}
+    volumes:
+      - staff-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${STAFF_DB_USER:-postgres} -d staff_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
 volumes:
+  staff-db-data:
   auth-db-data:
   profile-db-data:
   product-db-data:

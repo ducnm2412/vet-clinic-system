@@ -14,12 +14,12 @@ Tài liệu này ghi lại **những gì đã làm được**. Bảng phân tíc
 
 | Hạng mục | Số lượng |
 |---|---|
-| Service nghiệp vụ đã hiện thực | **8** / 10 |
-| Service chưa viết dòng nào | 2 (`pet`, `staff`) |
+| Service nghiệp vụ đã hiện thực | **9** / 10 |
+| Service chưa viết dòng nào | 1 (`pet`) |
 | File Java (main) | 234 |
 | File test | 35 |
 | Endpoint REST | 75 |
-| Luồng sự kiện RabbitMQ | 9 |
+| Luồng sự kiện RabbitMQ | 11 |
 | Database PostgreSQL | 6 |
 
 ---
@@ -36,6 +36,7 @@ Tài liệu này ghi lại **những gì đã làm được**. Bảng phân tíc
 | `payment-service` | 8087 | `payment_db` | 24 / 3 | V1–V3 | 3 |
 | `notification-service` | 8088 | — | 5 / 2 | — | 0 |
 | `reporting-service` | 8089 | — | 12 / 2 | — | 3 |
+| `staff-service` | 8090 | `staff_db` | 16 / 4 | V1 | 8 |
 
 Hạ tầng đi kèm: `api-gateway` (8080), `eureka-server` (8761), `frontend` Next.js (3000),
 RabbitMQ (5672 / 15672), Redis (6379), MailHog (1025 / 8025).
@@ -153,6 +154,7 @@ payment  --payment.completed----> booking         mở đơn thuốc đã trả 
 booking  --appointment.created--> notification   gửi email xác nhận lịch khám (CN-43)
 auth     --user.staff-created----> profile        tạo hồ sơ bác sĩ kèm họ tên (VD-20)
 auth     --user.locked/unlocked--> booking        chặn / mở lại giờ khám của bác sĩ bị khoá (CN-08)
+staff    --shift.added/removed--> booking        mở / đóng giờ khám theo ca trực (CN-39, CN-41)
 ```
 
 Cả hai chiều trừ / hoàn kho đều **chống xử lý trùng message**: `product-service` kiểm tra
@@ -178,6 +180,7 @@ Sau khi gộp hai nhánh phát triển song song, cổng được phân lại m�
 | payment-service | 8087 | payment-db | 5438 |
 | notification-service | 8088 | — | — |
 | reporting-service | 8089 | — | — |
+| staff-service | 8090 | staff-db | 5439 |
 | eureka-server | 8761 | — | — |
 | frontend | 3000 | — | — |
 
@@ -197,7 +200,7 @@ chạy local ngoài Docker vẫn sẽ đụng cổng.
   Hibernate chỉ đối chiếu chứ không tự sinh hay sửa bảng.
 - **Bảo mật** — JWT ký HS256, secret dùng chung qua biến môi trường; mỗi service tự
   verify, không gọi chéo.
-- **Triển khai** — một lệnh `docker compose up` dựng toàn bộ. Hai service chưa code nằm
+- **Triển khai** — một lệnh `docker compose up` dựng toàn bộ. Service chưa code nằm
   trong profile `future` nên không bị kéo theo.
 
 ---
@@ -207,9 +210,7 @@ chạy local ngoài Docker vẫn sẽ đụng cổng.
 | Mã | Chức năng | Vì sao chưa có |
 |---|---|---|
 | CN-34 | Thanh toán trực tuyến | Mới có COD; cần tài khoản merchant và URL công khai nhận IPN |
-| CN-38 → 41 | Chấm công, lịch làm việc, giờ công | `staff-service` chưa tồn tại |
 | CN-44, 45 | Thông báo đơn hàng / nhắc tái khám | `notification-service` mới làm email xác minh và xác nhận đặt lịch |
-| CN-48 | Báo cáo chấm công | Cần `staff-service`; CN-46, 47, 49 đã làm ngày 13/09 |
 
 CN-07 (làm mới phiên) và CN-08 (khoá tài khoản) từng là code khai báo sẵn nhưng không hoạt động;
 cả hai đã sửa ngày 13/09 — VD-05, VD-06.

@@ -235,16 +235,20 @@ con vật này trước đây bị gì, đã dùng thuốc nào.
 
 ## Toàn hệ thống
 
-### 🟡 VD-11. CN-22 và CN-39 chồng lấn — chưa chốt
+### ✅ VD-11. CN-22 và CN-39 chồng lấn — đã chốt 24/09/2026
 
-- `CN-22` (booking-service): "quản lý khung giờ làm việc, cấu hình ca trực"
-- `CN-39` (staff-service): "xếp ca trực cho bác sĩ, nhân viên theo tuần"
+Hai chức năng cùng nói về *ca trực của bác sĩ*, không chốt thì có hai nguồn sự thật.
 
-Hai chức năng cùng nói về *ca trực của bác sĩ*. Không chốt thì sẽ có hai nguồn sự thật và
-booking không biết hỏi ai để biết bác sĩ có rảnh không.
+**Đã chốt ngược với đề xuất cũ: `staff-service` giữ ca trực.** Ca trực là chuyện nhân sự (ai
+đi làm hôm nào), còn khung giờ khám là hệ quả của nó. `booking-service` nghe sự kiện
+`shift.added` / `shift.removed` và giữ một bản sao trong bảng `doctor_shifts` để sinh khung giờ
+mà không phải gọi sang service khác — lượt sinh slot chạy nền, không có token người dùng nào.
 
-**Đề xuất:** lịch làm việc (kế hoạch) thuộc `booking-service` vì nó cần tính slot trống theo
-thời gian thực; `staff-service` chỉ giữ chấm công thực tế (check-in/out, tổng giờ công).
+Hệ quả thấy ngay: **bác sĩ không có ca thì ngày đó khách không đặt được lịch**. Trước đây mọi
+bác sĩ đều có đủ khung giờ mọi ngày, kể cả ngày nghỉ.
+
+CN-22 (cấu hình khung giờ) còn lại đúng phần giờ mở cửa và độ dài mỗi lượt khám — vẫn là hằng
+số trong `ClinicSchedule` của booking-service.
 
 ### ✅ VD-12. Test tích hợp chạy nhầm vào database thật — đã sửa 24/09/2026
 
@@ -291,13 +295,12 @@ trong pom nên chạy `mvn test` trực tiếp cũng an toàn.
 Spring Cloud LoadBalancer cache danh sách instance từ Eureka theo chu kỳ. Không phải lỗi,
 nhưng dễ làm mất công debug nhầm. Đã ghi trong `frontend/README.md`.
 
-### 🟡 VD-18. Ba mảng giao diện quản trị chưa có API (còn lại sau 13/09)
+### 🟡 VD-18. Hai mảng giao diện quản trị chưa có API (còn lại sau 24/09)
 
 Rà khi dựng frontend Next.js. Các màn hình dưới đây không có endpoint nào phục vụ:
 
 | Màn hình | Thiếu gì |
 |---|---|
-| Chấm công | `staff-service` chưa tồn tại |
 | Lịch sử khám của thú cưng | Xem VD-17 |
 | Thông báo trong ứng dụng | `notification-service` không có REST endpoint |
 
