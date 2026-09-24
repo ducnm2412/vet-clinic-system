@@ -20,6 +20,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -73,7 +74,7 @@ class ProductServiceTest {
 
     @Test
     void adjustStock_import_increasesQuantityAndRecordsMovement() {
-        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+        when(productRepository.findByIdForUpdate(productId)).thenReturn(Optional.of(product));
 
         ProductResponse response = productService.adjustStock(productId,
                 new StockAdjustmentRequest(StockMovementType.IMPORT, 5, "Nhập thêm"), UUID.randomUUID());
@@ -88,7 +89,7 @@ class ProductServiceTest {
 
     @Test
     void adjustStock_negativeBeyondStock_throwsAndDoesNotRecord() {
-        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+        when(productRepository.findByIdForUpdate(productId)).thenReturn(Optional.of(product));
 
         assertThatThrownBy(() -> productService.adjustStock(productId,
                 new StockAdjustmentRequest(StockMovementType.ADJUSTMENT, -20, "Kiểm kê"), UUID.randomUUID()))
@@ -103,7 +104,7 @@ class ProductServiceTest {
         UUID orderId = UUID.randomUUID();
         when(stockMovementRepository.existsByProductIdAndReferenceIdAndType(
                 productId, orderId, StockMovementType.SALE)).thenReturn(false);
-        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+        when(productRepository.findByIdForUpdate(productId)).thenReturn(Optional.of(product));
 
         boolean applied = productService.applySale(productId, 4, orderId);
 
@@ -122,7 +123,7 @@ class ProductServiceTest {
         // Message tới lần hai không được trừ kho thêm lần nữa.
         assertThat(applied).isFalse();
         assertThat(product.getStockQuantity()).isEqualTo(10);
-        verify(productRepository, never()).findById(any());
+        verify(productRepository, never()).findByIdForUpdate(any());
         verify(stockMovementRepository, never()).save(any());
     }
 
@@ -131,12 +132,53 @@ class ProductServiceTest {
         UUID orderId = UUID.randomUUID();
         when(stockMovementRepository.existsByProductIdAndReferenceIdAndType(
                 productId, orderId, StockMovementType.SALE)).thenReturn(false);
-        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+        when(productRepository.findByIdForUpdate(productId)).thenReturn(Optional.of(product));
 
         assertThatThrownBy(() -> productService.applySale(productId, 999, orderId))
                 .isInstanceOf(InsufficientStockException.class);
 
         assertThat(product.getStockQuantity()).isEqualTo(10);
+    }
+
+    // ---------- VD-14: trừ kho cả đơn ----------
+
+    @Test
+    void applyOrderSale_missingOneItem_throwsSoNothingIsDeducted() {
+        // Id cố định để biết chắc thứ tự xử lý: món đủ hàng trừ trước, món thiếu ném lỗi sau —
+        // đúng tình huống nguy hiểm nhất, nửa đơn đã trừ rồi mới phát hiện thiếu.
+        UUID plentyId = UUID.fromString("00000000-0000-4000-8000-000000000001");
+        UUID scarceId = UUID.fromString("ffffffff-0000-4000-8000-000000000002");
+        UUID orderId = UUID.randomUUID();
+        Product plenty = Product.builder().id(plentyId).sku("SKU-001").name("Hạt cho chó")
+                .price(new BigDecimal("150000")).unit("gói").stockQuantity(10).active(true).build();
+        Product scarce = Product.builder().id(scarceId).sku("SKU-002").name("Sữa cho mèo")
+                .price(new BigDecimal("90000")).unit("hộp").stockQuantity(1).active(true).build();
+        when(stockMovementRepository.existsByProductIdAndReferenceIdAndType(any(), any(), any())).thenReturn(false);
+        when(productRepository.findByIdForUpdate(plentyId)).thenReturn(Optional.of(plenty));
+        when(productRepository.findByIdForUpdate(scarceId)).thenReturn(Optional.of(scarce));
+
+        assertThatThrownBy(() -> productService.applyOrderSale(orderId, List.of(
+                new ProductService.OrderLine(plentyId, 2), new ProductService.OrderLine(scarceId, 5))))
+                .isInstanceOf(InsufficientStockException.class)
+                .hasMessageContaining("Sữa cho mèo")
+                .hasMessageContaining("chỉ còn 1 hộp");
+
+        // Ném lỗi giữa chừng là cả transaction cuốn lại, nên dòng đã trừ trong bộ nhớ cũng không
+        // bao giờ xuống database. Điều test kiểm được ở đây: món thiếu không bị đụng tới.
+        assertThat(scarce.getStockQuantity()).isEqualTo(1);
+    }
+
+    @Test
+    void applyOrderSale_sameOrderTwice_deductsOnlyOnce() {
+        UUID orderId = UUID.randomUUID();
+        when(stockMovementRepository.existsByProductIdAndReferenceIdAndType(
+                productId, orderId, StockMovementType.SALE)).thenReturn(true);
+
+        int applied = productService.applyOrderSale(orderId, List.of(new ProductService.OrderLine(productId, 2)));
+
+        assertThat(applied).isZero();
+        assertThat(product.getStockQuantity()).isEqualTo(10);
+        verify(stockMovementRepository, never()).save(any());
     }
 
     @Test

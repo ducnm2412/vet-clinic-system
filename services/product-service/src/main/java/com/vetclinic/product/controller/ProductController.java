@@ -4,6 +4,8 @@ import com.vetclinic.product.dto.PageResponse;
 import com.vetclinic.product.dto.ProductRequest;
 import com.vetclinic.product.dto.ProductResponse;
 import com.vetclinic.product.dto.StockAdjustmentRequest;
+import com.vetclinic.product.dto.StockDeductionRequest;
+import com.vetclinic.product.dto.StockDeductionResponse;
 import com.vetclinic.product.dto.StockMovementResponse;
 import com.vetclinic.product.security.jwt.AuthenticatedUser;
 import com.vetclinic.product.service.ProductService;
@@ -94,6 +96,22 @@ public class ProductController {
                                        Authentication authentication) {
         AuthenticatedUser principal = (AuthenticatedUser) authentication.getPrincipal();
         return productService.adjustStock(id, request, principal.userId());
+    }
+
+    /**
+     * VD-14: order-service gọi khi nhân viên xác nhận đơn, và ĐỢI kết quả. Thiếu hàng thì trả 409
+     * và không trừ dòng nào — đơn giữ nguyên trạng thái chờ xác nhận.
+     *
+     * Đường dẫn literal "/products/stock/deduct" được Spring ưu tiên hơn mẫu "/products/{id}/...".
+     * Gọi lại với cùng orderId không trừ hai lần.
+     */
+    @PostMapping("/stock/deduct")
+    public StockDeductionResponse deductForOrder(@Valid @RequestBody StockDeductionRequest request) {
+        List<ProductService.OrderLine> lines = request.lines().stream()
+                .map(l -> new ProductService.OrderLine(l.productId(), l.quantity()))
+                .toList();
+        return new StockDeductionResponse(request.orderId(),
+                productService.applyOrderSale(request.orderId(), lines));
     }
 
     // ---------- CN-28: quản lý sản phẩm (ADMIN) ----------

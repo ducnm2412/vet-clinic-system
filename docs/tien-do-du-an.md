@@ -146,7 +146,7 @@ lúc chạy — nên:
 ```
 auth     --user.registered------> notification    gửi mail xác minh tài khoản
 auth     --user.deleted---------> profile         dọn hồ sơ mồ côi
-order    --order.completed------> product         trừ kho
+order    --order.completed------> product         (đã trừ đồng bộ lúc xác nhận — VD-14)
 order    --order.cancelled------> product         hoàn kho
 booking  --prescription.created-> payment         tạo phiếu thu tiền thuốc
 payment  --payment.completed----> booking         mở đơn thuốc đã trả tiền

@@ -25,6 +25,12 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.CONFLICT, ex.getMessage());
     }
 
+    // 503: product-service không trả lời, nhân viên bấm lại sau là được (VD-14).
+    @ExceptionHandler(StockServiceUnavailableException.class)
+    public ResponseEntity<ErrorResponse> handleStockServiceDown(StockServiceUnavailableException ex) {
+        return build(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage());
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException ex) {
         Map<String, String> fieldErrors = new LinkedHashMap<>();

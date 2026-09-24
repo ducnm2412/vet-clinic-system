@@ -1,5 +1,6 @@
 package com.vetclinic.order.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vetclinic.order.client.ProductClient;
 import com.vetclinic.order.domain.Cart;
 import com.vetclinic.order.domain.CartItem;
@@ -13,11 +14,15 @@ import com.vetclinic.order.exception.EmptyCartException;
 import com.vetclinic.order.exception.InvalidOrderStateException;
 import com.vetclinic.order.exception.ProductUnavailableException;
 import com.vetclinic.order.exception.ResourceNotFoundException;
+import com.vetclinic.order.exception.StockServiceUnavailableException;
 import com.vetclinic.order.messaging.OrderCancelledEvent;
 import com.vetclinic.order.messaging.OrderCompletedEvent;
 import com.vetclinic.order.repository.CartRepository;
 import com.vetclinic.order.repository.OrderRepository;
 import com.vetclinic.order.repository.OrderStatusHistoryRepository;
+import feign.FeignException;
+import feign.Request;
+import feign.RetryableException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,14 +35,17 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -50,9 +58,12 @@ class OrderServiceTest {
     @Mock private OrderStatusHistoryRepository historyRepository;
     @Mock private CartRepository cartRepository;
     @Mock private CartService cartService;
+    @Mock private ProductClient productClient;
     @Mock private ApplicationEventPublisher eventPublisher;
 
     private OrderService orderService;
+
+    private static final String TOKEN = "Bearer staff-token";
 
     private UUID userId;
     private UUID productId;
@@ -61,7 +72,7 @@ class OrderServiceTest {
     @BeforeEach
     void setUp() {
         orderService = new OrderService(orderRepository, historyRepository, cartRepository,
-                cartService, eventPublisher);
+                cartService, productClient, new ObjectMapper(), eventPublisher);
         ReflectionTestUtils.setField(orderService, "shippingFee", new BigDecimal("30000"));
 
         userId = UUID.randomUUID();
@@ -72,6 +83,9 @@ class OrderServiceTest {
 
         when(cartService.getOrCreateCart(userId)).thenReturn(cart);
         when(orderRepository.existsByOrderCode(any())).thenReturn(false);
+        // Mặc định product-service trừ kho thành công; test nào cần hỏng thì stub đè lên.
+        when(productClient.deductStock(any(), any()))
+                .thenReturn(new ProductClient.StockDeductionResponse(UUID.randomUUID(), 1));
     }
 
     private void stubProduct(int stock, boolean active, String price) {
@@ -164,7 +178,7 @@ class OrderServiceTest {
         Order order = existingOrder(OrderStatus.PENDING);
         when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
 
-        orderService.confirm(order.getId(), UUID.randomUUID(), "OK");
+        orderService.confirm(order.getId(), UUID.randomUUID(), "OK", TOKEN);
 
         ArgumentCaptor<OrderCompletedEvent> captor = ArgumentCaptor.forClass(OrderCompletedEvent.class);
         verify(eventPublisher).publishEvent(captor.capture());
@@ -175,11 +189,62 @@ class OrderServiceTest {
     }
 
     @Test
+    void confirm_deductsStockSynchronouslyWithStaffToken() {
+        Order order = existingOrder(OrderStatus.PENDING);
+        when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
+
+        orderService.confirm(order.getId(), UUID.randomUUID(), "OK", TOKEN);
+
+        ArgumentCaptor<ProductClient.StockDeductionRequest> captor =
+                ArgumentCaptor.forClass(ProductClient.StockDeductionRequest.class);
+        verify(productClient).deductStock(captor.capture(), eq(TOKEN));
+        assertThat(captor.getValue().orderId()).isEqualTo(order.getId());
+        assertThat(captor.getValue().lines()).singleElement()
+                .satisfies(line -> assertThat(line.quantity()).isEqualTo(2));
+    }
+
+    // VD-14: thiếu hàng thì đơn KHÔNG được xác nhận, và không phát sự kiện nào.
+    @Test
+    void confirm_whenStockRunsOut_keepsOrderPendingAndTellsStaffWhichItem() {
+        Order order = existingOrder(OrderStatus.PENDING);
+        when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
+        when(productClient.deductStock(any(), any())).thenThrow(conflict(
+                "{\"timestamp\":\"2026-09-24T10:00:00Z\",\"status\":409,"
+                        + "\"message\":\"Sản phẩm \\\"Hạt cho chó\\\" chỉ còn 1 túi, cần 2\"}"));
+
+        assertThatThrownBy(() -> orderService.confirm(order.getId(), UUID.randomUUID(), null, TOKEN))
+                .isInstanceOf(ProductUnavailableException.class)
+                .hasMessageContaining("chỉ còn 1 túi");
+
+        verify(eventPublisher, never()).publishEvent(any(OrderCompletedEvent.class));
+    }
+
+    @Test
+    void confirm_whenProductServiceIsDown_refusesInsteadOfSellingBlind() {
+        Order order = existingOrder(OrderStatus.PENDING);
+        when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
+        when(productClient.deductStock(any(), any())).thenThrow(new RetryableException(
+                -1, "Connection refused", Request.HttpMethod.POST, (Long) null,
+                Request.create(Request.HttpMethod.POST, "/products/stock/deduct", Map.of(), null, StandardCharsets.UTF_8, null)));
+
+        assertThatThrownBy(() -> orderService.confirm(order.getId(), UUID.randomUUID(), null, TOKEN))
+                .isInstanceOf(StockServiceUnavailableException.class);
+
+        verify(eventPublisher, never()).publishEvent(any(OrderCompletedEvent.class));
+    }
+
+    private static FeignException.Conflict conflict(String body) {
+        Request request = Request.create(Request.HttpMethod.POST, "/products/stock/deduct", Map.of(), null,
+                StandardCharsets.UTF_8, null);
+        return new FeignException.Conflict("conflict", request, body.getBytes(StandardCharsets.UTF_8), Map.of());
+    }
+
+    @Test
     void confirm_alreadyConfirmed_throws() {
         Order order = existingOrder(OrderStatus.CONFIRMED);
         when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
 
-        assertThatThrownBy(() -> orderService.confirm(order.getId(), UUID.randomUUID(), null))
+        assertThatThrownBy(() -> orderService.confirm(order.getId(), UUID.randomUUID(), null, TOKEN))
                 .isInstanceOf(InvalidOrderStateException.class);
     }
 

@@ -23,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
@@ -136,7 +137,7 @@ public class ProductService {
 
     @Transactional
     public ProductResponse adjustStock(UUID productId, StockAdjustmentRequest request, UUID actorUserId) {
-        Product product = findOrThrow(productId);
+        Product product = findForUpdateOrThrow(productId);
 
         int after = product.getStockQuantity() + request.quantityChange();
         if (after < 0) {
@@ -178,11 +179,12 @@ public class ProductService {
             return false;
         }
 
-        Product product = findOrThrow(productId);
+        Product product = findForUpdateOrThrow(productId);
 
         int after = product.getStockQuantity() - quantity;
         if (after < 0) {
-            throw new InsufficientStockException(productId, product.getStockQuantity(), quantity);
+            throw new InsufficientStockException(product.getName(), product.getUnit(),
+                    product.getStockQuantity(), quantity);
         }
 
         product.setStockQuantity(after);
@@ -203,14 +205,53 @@ public class ProductService {
             return false;
         }
 
-        Product product = findOrThrow(productId);
+        Product product = findForUpdateOrThrow(productId);
         product.setStockQuantity(product.getStockQuantity() + quantity);
         recordMovement(product, StockMovementType.RETURN, quantity, "Hoàn kho do huỷ đơn", orderId, null);
 
         return true;
     }
 
+    /**
+     * VD-14: trừ kho cho TOÀN BỘ một đơn, tất-cả-hoặc-không.
+     *
+     * order-service gọi hàm này ngay lúc nhân viên xác nhận đơn và đợi kết quả. Thiếu một món
+     * là ném lỗi, transaction cuốn lại, kho không đổi gì và đơn không được xác nhận — thay vì
+     * chốt bán rồi mới phát hiện thiếu hàng như cách phát sự kiện trước đây.
+     *
+     * Chạy lại với cùng orderId thì không trừ hai lần: mỗi dòng đã trừ đều có vết trong
+     * stock_movements theo (productId, orderId, SALE).
+     *
+     * @return số dòng thực sự vừa trừ (0 nghĩa là đơn này đã trừ kho từ trước).
+     */
+    @Transactional
+    public int applyOrderSale(UUID orderId, List<OrderLine> lines) {
+        // Trừ theo thứ tự productId cố định: hai đơn chứa cùng hai sản phẩm mà khoá ngược
+        // chiều nhau sẽ ôm khoá chéo và kẹt (deadlock).
+        List<OrderLine> ordered = lines.stream()
+                .sorted(Comparator.comparing(line -> line.productId().toString()))
+                .toList();
+
+        int applied = 0;
+        for (OrderLine line : ordered) {
+            if (applySale(line.productId(), line.quantity(), orderId)) {
+                applied++;
+            }
+        }
+        return applied;
+    }
+
+    /** Một dòng hàng cần trừ kho. */
+    public record OrderLine(UUID productId, int quantity) {
+    }
+
     // ---------- nội bộ ----------
+
+    /** VD-02: dùng cho mọi thao tác ĐỔI tồn kho. Đọc thường (findOrThrow) chỉ để hiển thị. */
+    private Product findForUpdateOrThrow(UUID id) {
+        return productRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found: " + id));
+    }
 
     private void recordMovement(Product product, StockMovementType type, int change,
                                 String note, UUID referenceId, UUID actorUserId) {

@@ -32,6 +32,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/products/low-stock").hasAnyRole("STAFF", "ADMIN")
                         .requestMatchers(HttpMethod.GET, "/products/*/stock-movements").hasAnyRole("STAFF", "ADMIN")
                         .requestMatchers(HttpMethod.POST, "/products/*/stock").hasAnyRole("STAFF", "ADMIN")
+                        // VD-14: order-service gọi bằng chính token của nhân viên đang xác nhận đơn.
+                        .requestMatchers(HttpMethod.POST, "/products/stock/deduct").hasAnyRole("STAFF", "ADMIN")
 
                         // --- Tra cứu (CN-29): công khai, trang bán hàng phải xem được khi chưa đăng nhập.
                         .requestMatchers(HttpMethod.GET, "/products", "/products/*").permitAll()

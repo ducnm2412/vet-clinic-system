@@ -36,15 +36,18 @@ khách sẽ hiện "(sản phẩm đã bị xoá)" với tên trống. Rủi ro 
 gốc: phải biết trước UUID, không liệt kê được. Muốn đóng hẳn thì `order-service` cần gọi bằng
 danh tính service riêng — xem VD-24.
 
-### 🟡 VD-02. Không có khoá chống tranh chấp khi sửa tồn kho
+### ✅ VD-02. Không có khoá chống tranh chấp khi sửa tồn kho — đã sửa 24/09/2026
 
-`ProductService.adjustStock` và `applySale` đọc `stockQuantity` rồi ghi đè, không có
-`@Version` hay `SELECT FOR UPDATE`. Hai thao tác đồng thời sẽ ghi đè nhau và số tồn sai.
+`adjustStock` và `applySale` đọc `stockQuantity` rồi ghi đè, không khoá gì. Hai nhân viên bấm
+nhập kho cùng lúc là một lần nhập biến mất.
 
-Hiện chưa lộ ra vì listener RabbitMQ mặc định chỉ 1 consumer thread nên sự kiện xử lý tuần
-tự. Nhưng `POST /products/{id}/stock` thì hai nhân viên bấm cùng lúc là dính ngay.
+**Đã sửa:** `ProductRepository.findByIdForUpdate` khoá dòng sản phẩm (`SELECT ... FOR UPDATE`),
+mọi chỗ ĐỔI tồn kho đều đi qua nó — người thứ hai đợi người thứ nhất commit rồi mới đọc. Cùng
+cách booking-service khoá khung giờ khám.
 
-**Hướng sửa:** thêm `@Version` vào entity `Product` (optimistic locking).
+Chọn khoá dòng thay vì `@Version`: nhân viên không phải gặp lỗi "có người vừa sửa, thử lại", và
+không phải viết vòng thử lại. `ProductStockConcurrencyTest` chạy hai luồng thật trên database
+test; bỏ khoá ra là hai test hỏng ngay (hai đơn cùng mua món cuối đều qua, và 10+5+7 ra 17).
 
 ### 🟡 VD-03. Xoá sản phẩm làm mất sạch lịch sử kho
 
@@ -56,7 +59,7 @@ có giao dịch. Nên quyết trước khi có dữ liệu thật, đổi sau s�
 
 ### 🟢 VD-04. Chưa có giữ chỗ tồn kho
 
-Kho chỉ trừ khi đơn *hoàn tất*. Hai khách cùng đặt món cuối cùng thì cả hai đều qua được
+Kho trừ khi nhân viên xác nhận đơn (sau khi sửa VD-14). Hai khách cùng đặt món cuối cùng thì cả hai đều qua được
 bước đặt hàng, đến lúc trừ kho mới phát hiện thiếu.
 
 Phải bàn cùng lúc với `order-service` (xem VD-14), không giải riêng trong `product-service`
@@ -73,15 +76,31 @@ Phải bàn cùng lúc với `order-service` (xem VD-14), không giải riêng t
 
 ## order-service
 
-### 🟡 VD-14. Kiểm tra tồn kho lúc checkout không có tính nguyên tử
+### ✅ VD-14. Xác nhận đơn không chắc còn hàng — đã sửa 24/09/2026
 
-`checkout` hỏi `product-service` xem còn đủ hàng không, nhưng giữa lúc hỏi và lúc nhân viên
-xác nhận đơn (mới thực sự trừ kho) thì hàng có thể đã bán hết cho người khác. Khi đó
-`product-service` ghi log lỗi và bỏ qua, đơn vẫn ở `CONFIRMED` nhưng kho không trừ.
+`checkout` hỏi tồn kho, nhưng tới lúc nhân viên xác nhận (mới thực sự trừ kho) thì hàng có thể
+đã bán hết. Trước đây xác nhận chỉ phát sự kiện rồi trả về ngay: `product-service` ghi log lỗi
+và bỏ qua, **đơn vẫn CONFIRMED trong khi kho không trừ** — hứa bán món không còn hàng.
 
-Đây là mặt còn lại của VD-04 (chưa có giữ chỗ tồn kho). Giải đúng thì cần API `reserve` /
-`release` bên `product-service`, hoặc để `confirm` gọi đồng bộ sang `product-service` và
-thất bại thì không cho chuyển trạng thái.
+**Đã sửa:** `order-service` gọi `POST /products/stock/deduct` ngay lúc xác nhận và **đợi kết
+quả**, trong cùng transaction với việc đổi trạng thái đơn.
+
+- Trừ cả đơn, tất-cả-hoặc-không. Thiếu một món là 409, không dòng nào bị trừ, đơn giữ nguyên
+  `PENDING`, và nhân viên đọc được đúng món nào thiếu: *Sản phẩm "..." chỉ còn 0 gói, cần 1*.
+- `product-service` tắt thì trả 503 "thử lại sau", đơn không được xác nhận — thà không chốt còn
+  hơn chốt bán mà không biết còn hàng không.
+- Gọi lại với cùng `orderId` không trừ hai lần (vết trong `stock_movements`). Nhờ vậy trường hợp
+  hiếm "bên kia trừ xong nhưng bên này commit hỏng" chỉ cần bấm xác nhận lại.
+- Endpoint mới chỉ mở cho STAFF/ADMIN, và `order-service` đính chính token của nhân viên đang
+  bấm — chưa cần danh tính riêng giữa hai service (VD-24 vẫn còn cho `GET /products/{id}`).
+- Sự kiện `order.completed` vẫn phát để service khác dùng; `product-service` nghe rồi bỏ qua vì
+  đã trừ.
+
+Kiểm chứng trên hệ thống thật: hai đơn cùng mua món cuối cùng, đơn sau nhận 409 và giữ nguyên
+`PENDING`, vết kho chỉ có một dòng `SALE`.
+
+**Còn lại:** vẫn chưa giữ chỗ lúc khách đặt hàng (VD-04) — hai khách vẫn đặt được cùng món cuối,
+chỉ là người thứ hai bị từ chối lúc nhân viên xác nhận thay vì lúc đặt.
 
 ### 🟡 VD-15. CN-34 mới dừng ở COD
 
