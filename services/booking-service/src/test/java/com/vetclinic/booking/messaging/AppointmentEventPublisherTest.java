@@ -99,6 +99,6 @@ class AppointmentEventPublisherTest {
 
     private PetResponse dummyPet() {
         return new PetResponse(UUID.randomUUID(), "Milo", "Dog", "Poodle", "MALE",
-                LocalDate.of(2020, 1, 1), null, Instant.now(), Instant.now());
+                LocalDate.of(2020, 1, 1), null, null, null, Instant.now(), Instant.now());
     }
 }

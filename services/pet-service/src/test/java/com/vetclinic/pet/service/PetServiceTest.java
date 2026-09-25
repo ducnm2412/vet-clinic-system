@@ -26,7 +26,7 @@ class PetServiceTest {
 
     private PetRequest milo() {
         return new PetRequest("  Milo  ", " Chó ", "Poodle", PetGender.MALE,
-                LocalDate.of(2023, 4, 1), BigDecimal.valueOf(5.5));
+                LocalDate.of(2023, 4, 1), BigDecimal.valueOf(5.5), "  Dị ứng Penicillin  ", "  ");
     }
 
     @Test
@@ -38,12 +38,18 @@ class PetServiceTest {
         assertThat(created.name()).isEqualTo("Milo");
         assertThat(created.species()).isEqualTo("Chó");
         assertThat(created.ownerUserId()).isEqualTo(owner);
+        // VD-22: dị ứng cắt khoảng trắng hai đầu; ô để trống thành null chứ không phải chuỗi rỗng —
+        // "chưa khai" khác hẳn "đã khai là không có gì".
+        assertThat(created.allergies()).isEqualTo("Dị ứng Penicillin");
+        assertThat(created.notes()).isNull();
         assertThat(petService.listMine(owner)).hasSize(1);
 
         PetResponse updated = petService.update(owner, created.id(),
-                new PetRequest("Milo lớn", "Chó", null, PetGender.FEMALE, null, BigDecimal.valueOf(7)));
+                new PetRequest("Milo lớn", "Chó", null, PetGender.FEMALE, null, BigDecimal.valueOf(7), null, "Sợ tiếng ồn"));
         assertThat(updated.name()).isEqualTo("Milo lớn");
         assertThat(updated.breed()).isNull();
+        assertThat(updated.allergies()).isNull();
+        assertThat(updated.notes()).isEqualTo("Sợ tiếng ồn");
 
         petService.delete(owner, created.id());
         assertThat(petService.listMine(owner)).isEmpty();
@@ -72,8 +78,8 @@ class PetServiceTest {
         UUID ownerB = UUID.randomUUID();
         UUID ownerC = UUID.randomUUID();
         PetResponse a = petService.create(ownerA, milo());
-        petService.create(ownerB, new PetRequest("Bông", "Mèo", null, null, null, null));
-        petService.create(ownerC, new PetRequest("Đen", "Mèo", null, null, null, null));
+        petService.create(ownerB, new PetRequest("Bông", "Mèo", null, null, null, null, null, null));
+        petService.create(ownerC, new PetRequest("Đen", "Mèo", null, null, null, null, null, null));
 
         assertThat(petService.getById(a.id()).name()).isEqualTo("Milo");
         assertThat(petService.list(List.of(a.id()))).hasSize(1);
@@ -89,8 +95,8 @@ class PetServiceTest {
         UUID leaving = UUID.randomUUID();
         UUID staying = UUID.randomUUID();
         petService.create(leaving, milo());
-        petService.create(leaving, new PetRequest("Bông", "Mèo", null, null, null, null));
-        petService.create(staying, new PetRequest("Đen", "Mèo", null, null, null, null));
+        petService.create(leaving, new PetRequest("Bông", "Mèo", null, null, null, null, null, null));
+        petService.create(staying, new PetRequest("Đen", "Mèo", null, null, null, null, null, null));
 
         petService.deleteAllOf(leaving);
 

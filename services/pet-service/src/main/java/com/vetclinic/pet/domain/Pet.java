@@ -63,6 +63,14 @@ public class Pet {
     @Column(name = "weight_kg", precision = 5, scale = 2)
     private BigDecimal weightKg;
 
+    /** Dị ứng thuốc hoặc thức ăn — bác sĩ phải thấy trước khi kê đơn (VD-22). */
+    @Column(columnDefinition = "TEXT")
+    private String allergies;
+
+    /** Thói quen, tính nết, những thứ chủ nuôi dặn người khám. */
+    @Column(columnDefinition = "TEXT")
+    private String notes;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;

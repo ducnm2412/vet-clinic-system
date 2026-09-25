@@ -17,25 +17,25 @@ class PetRequestValidationTest {
 
     @Test
     void blankNameOrSpecies_violation() {
-        assertThat(VALIDATOR.validate(new PetRequest(" ", "Chó", null, null, null, null))).isNotEmpty();
-        assertThat(VALIDATOR.validate(new PetRequest("Milo", "", null, null, null, null))).isNotEmpty();
+        assertThat(VALIDATOR.validate(new PetRequest(" ", "Chó", null, null, null, null, null, null))).isNotEmpty();
+        assertThat(VALIDATOR.validate(new PetRequest("Milo", "", null, null, null, null, null, null))).isNotEmpty();
     }
 
     @Test
     void negativeWeight_violation() {
-        assertThat(VALIDATOR.validate(new PetRequest("Milo", "Chó", null, null, null, BigDecimal.valueOf(-1))))
+        assertThat(VALIDATOR.validate(new PetRequest("Milo", "Chó", null, null, null, BigDecimal.valueOf(-1), null, null)))
                 .isNotEmpty();
     }
 
     @Test
     void futureDateOfBirth_violation() {
-        assertThat(VALIDATOR.validate(new PetRequest("Milo", "Chó", null, null, LocalDate.now().plusDays(1), null)))
+        assertThat(VALIDATOR.validate(new PetRequest("Milo", "Chó", null, null, LocalDate.now().plusDays(1), null, null, null)))
                 .isNotEmpty();
     }
 
     @Test
     void valid_noViolation() {
         assertThat(VALIDATOR.validate(new PetRequest("Milo", "Chó", "Poodle", PetGender.MALE,
-                LocalDate.now(), BigDecimal.TEN))).isEmpty();
+                LocalDate.now(), BigDecimal.TEN, null, null))).isEmpty();
     }
 }

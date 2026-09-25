@@ -11,6 +11,9 @@ export interface Pet {
   gender: PetGender;
   dateOfBirth: string | null;
   weightKg: number | null;
+  /** Dị ứng thuốc hoặc thức ăn; null khi chủ nuôi chưa khai (VD-22). */
+  allergies: string | null;
+  notes: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -22,6 +25,8 @@ export interface PetRequest {
   gender: PetGender;
   dateOfBirth?: string;
   weightKg?: number;
+  allergies?: string;
+  notes?: string;
 }
 
 export interface CustomerProfile {

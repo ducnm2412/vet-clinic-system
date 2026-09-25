@@ -15,6 +15,8 @@ public record PetRequest(
         @Size(max = 100) String breed,
         PetGender gender,
         @PastOrPresent LocalDate dateOfBirth,
-        @Positive BigDecimal weightKg
+        @Positive BigDecimal weightKg,
+        @Size(max = 2000) String allergies,
+        @Size(max = 2000) String notes
 ) {
 }

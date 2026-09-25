@@ -56,6 +56,8 @@ public class PetService {
                 .gender(request.gender())
                 .dateOfBirth(request.dateOfBirth())
                 .weightKg(request.weightKg())
+                .allergies(trimToNull(request.allergies()))
+                .notes(trimToNull(request.notes()))
                 .build());
         log.info("Khách {} thêm thú cưng {} ({})", ownerUserId, pet.getName(), pet.getId());
         return toResponse(pet);
@@ -70,6 +72,8 @@ public class PetService {
         pet.setGender(request.gender());
         pet.setDateOfBirth(request.dateOfBirth());
         pet.setWeightKg(request.weightKg());
+        pet.setAllergies(trimToNull(request.allergies()));
+        pet.setNotes(trimToNull(request.notes()));
         return toResponse(petRepository.saveAndFlush(pet));
     }
 
@@ -135,8 +139,18 @@ public class PetService {
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy thú cưng: " + petId));
     }
 
+    /** Ô để trống gửi lên là chuỗi rỗng, không phải null — lưu thẳng sẽ thành "đã khai, khai rỗng". */
+    private static String trimToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
     private static PetResponse toResponse(Pet pet) {
         return new PetResponse(pet.getId(), pet.getOwnerUserId(), pet.getName(), pet.getSpecies(), pet.getBreed(),
-                pet.getGender(), pet.getDateOfBirth(), pet.getWeightKg(), pet.getCreatedAt(), pet.getUpdatedAt());
+                pet.getGender(), pet.getDateOfBirth(), pet.getWeightKg(), pet.getAllergies(), pet.getNotes(),
+                pet.getCreatedAt(), pet.getUpdatedAt());
     }
 }

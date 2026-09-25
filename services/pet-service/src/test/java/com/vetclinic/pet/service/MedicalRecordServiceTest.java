@@ -57,7 +57,7 @@ class MedicalRecordServiceTest {
     void setUp() {
         owner = UUID.randomUUID();
         doctor = UUID.randomUUID();
-        pet = petService.create(owner, new PetRequest("Milo", "Chó", null, null, null, null));
+        pet = petService.create(owner, new PetRequest("Milo", "Chó", null, null, null, null, null, null));
     }
 
     /** Lịch hẹn giả lập của con vật vừa tạo. */

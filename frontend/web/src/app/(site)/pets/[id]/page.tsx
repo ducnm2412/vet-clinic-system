@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarDays, ChevronLeft, Pencil, Trash2 } from "lucide-react";
+import { CalendarDays, ChevronLeft, Pencil, TriangleAlert, Trash2 } from "lucide-react";
 import { ApiError, bookingApi, myPetApi } from "@/lib/api";
 import { formatAge, formatDate, formatTime } from "@/lib/utils/format";
 import { useToast } from "@/components/ui";
@@ -106,6 +106,20 @@ function PetProfile({ pet }: { pet: Pet }) {
               <Item label="Ngày sinh" value={formatDate(pet.dateOfBirth)} />
               <Item label="Lập hồ sơ" value={formatDate(pet.createdAt)} />
             </dl>
+
+            {(pet.allergies || pet.notes) && (
+              <div className="mt-8 max-w-xl space-y-3">
+                {pet.allergies && (
+                  <p className="flex gap-2 rounded-[var(--radius-card)] bg-white/70 p-3 text-[15px]">
+                    <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0 text-coral-deep" />
+                    <span>
+                      <span className="font-medium">Dị ứng:</span> {pet.allergies}
+                    </span>
+                  </p>
+                )}
+                {pet.notes && <p className="text-[15px] text-stone">{pet.notes}</p>}
+              </div>
+            )}
 
             <div className="mt-9 flex flex-wrap gap-3">
               <ButtonLink href="/appointments/create">Đặt lịch khám cho bé</ButtonLink>

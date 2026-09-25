@@ -424,7 +424,7 @@ Frontend tạm hướng dẫn khách ghi vào ô lý do khám.
 `serviceId` vào `AppointmentRequest`. Thời lượng còn dùng để chia slot cho đúng — hiện mọi
 ca đều cố định 30 phút bất kể làm gì.
 
-### 🟡 VD-22. `PetResponse` thiếu ảnh, dị ứng và ghi chú
+### ✅ VD-22. `PetResponse` thiếu ảnh, dị ứng và ghi chú — đã sửa 25/09/2026 (trừ ảnh)
 
 Phát hiện khi dựng trang hồ sơ thú cưng cho khách.
 
@@ -436,8 +436,16 @@ lẫn bác sĩ đều cần:
 - `allergies` — dị ứng thuốc là thông tin an toàn, phải đập vào mắt bác sĩ trước khi kê đơn.
 - `notes` — thói quen, tính nết, những thứ dặn người khám.
 
-**Hướng sửa:** thêm ba trường vào `PetRequest`/`PetResponse`. Riêng `allergies` nên hiện
-nổi bật ở màn hình khám của bác sĩ, không chỉ nằm trong hồ sơ.
+Đã thêm `allergies` và `notes` vào `PetRequest`/`PetResponse` (`V3` của `pet_db`). Ô để trống lưu
+thành `null` chứ không phải chuỗi rỗng — "chưa khai" khác hẳn "đã khai là không có gì".
+
+`allergies` theo được tới tận màn hình khám: `booking-service` trả kèm trong chi tiết lịch hẹn, và
+bác sĩ thấy nó trong một khối viền vàng riêng ngay trên chỗ kê đơn, không nằm lẫn trong danh sách
+cân nặng, giới tính.
+
+**Còn `photoUrl`:** chưa làm. Dán link ảnh thì thực tế không ai có sẵn link, còn tải ảnh lên thật
+thì cần thêm chỗ lưu file (MinIO hoặc thư mục gắn vào container) — một hạ tầng mới cho cả dự án,
+để riêng một lần khác. Giao diện vẫn dùng mái vòm màu theo loài.
 
 ### 🟢 VD-23. Bệnh án chưa có trả 404, trình duyệt vẫn ghi lỗi ra console
 

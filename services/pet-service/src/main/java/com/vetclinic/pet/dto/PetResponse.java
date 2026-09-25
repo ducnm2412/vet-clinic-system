@@ -20,6 +20,9 @@ public record PetResponse(
         PetGender gender,
         LocalDate dateOfBirth,
         BigDecimal weightKg,
+        /** Dị ứng — null khi chủ nuôi chưa khai. Khác hẳn "đã khai là không dị ứng gì". */
+        String allergies,
+        String notes,
         Instant createdAt,
         Instant updatedAt
 ) {

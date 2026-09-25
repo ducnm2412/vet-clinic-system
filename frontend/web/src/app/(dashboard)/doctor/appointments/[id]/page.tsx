@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { TriangleAlert } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError, bookingApi, medicalRecordApi } from "@/lib/api";
 import { APPOINTMENT_STATUS, PRESCRIPTION_STATUS, speciesStripe } from "@/lib/utils/status";
@@ -117,6 +118,21 @@ function PatientPanel({
                     <dd className="tnum">{pet.weightKg ? `${pet.weightKg} kg` : "—"}</dd>
                   </div>
                 </dl>
+
+                {/*
+                  VD-22: dị ứng không nằm lẫn trong danh sách trên. Đây là thông tin an toàn,
+                  phải đập vào mắt trước khi bác sĩ kê đơn — nên tách hẳn ra, viền và nền riêng.
+                */}
+                {pet.allergies && (
+                  <p className="mt-3 flex gap-2 rounded-[var(--radius-control)] border border-amber/40 bg-amber/10 p-2.5 text-sm text-ink">
+                    <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0 text-amber" />
+                    <span>
+                      <span className="font-medium">Dị ứng:</span> {pet.allergies}
+                    </span>
+                  </p>
+                )}
+
+                {pet.notes && <p className="mt-2 text-sm text-bark">Chủ nuôi dặn: {pet.notes}</p>}
               </>
             )}
           </div>

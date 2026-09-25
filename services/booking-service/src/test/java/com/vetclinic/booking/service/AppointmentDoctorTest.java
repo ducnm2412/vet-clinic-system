@@ -168,6 +168,6 @@ class AppointmentDoctorTest {
 
     private static PetResponse pet() {
         return new PetResponse(UUID.randomUUID(), "Milo", "Chó", "Poodle", "MALE",
-                LocalDate.of(2020, 1, 1), null, Instant.now(), Instant.now());
+                LocalDate.of(2020, 1, 1), null, null, null, Instant.now(), Instant.now());
     }
 }

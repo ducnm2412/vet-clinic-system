@@ -16,6 +16,9 @@ public record PetResponse(
         String gender,
         LocalDate dateOfBirth,
         BigDecimal weightKg,
+        // VD-22: dị ứng phải theo được tới màn hình khám của bác sĩ, không chỉ nằm trong hồ sơ.
+        String allergies,
+        String notes,
         Instant createdAt,
         Instant updatedAt
 ) {
