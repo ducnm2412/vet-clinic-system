@@ -92,7 +92,7 @@ class DoctorBlockTest {
 
     @Test
     void cancellingAppointmentOfLockedDoctorDoesNotReopenTheSlot() {
-        when(petServiceClient.getMyPet(any(), any())).thenReturn(new PetResponse(UUID.randomUUID(), "Milo", "Chó", null, null,
+        when(petServiceClient.getMyPet(any(), any())).thenReturn(new PetResponse(UUID.randomUUID(), UUID.randomUUID(), "Milo", "Chó", null, null,
                 null, null, null, null, Instant.now(), Instant.now()));
         // Ngày rất xa, ngoài tầm sinh slot tự động — không bác sĩ nào khác trống cùng giờ.
         LocalDate date = today.plusDays(400);

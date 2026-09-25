@@ -56,3 +56,12 @@ export interface TokenClaims {
   roles?: Role[];
   exp?: number;
 }
+
+/** CN-19: lễ tân mở tài khoản cho khách tại quầy — có số điện thoại, không có confirmPassword. */
+export interface CreateCustomerAccountRequest {
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+  phone?: string;
+}

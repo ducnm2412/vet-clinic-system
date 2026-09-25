@@ -50,12 +50,34 @@ public class AppointmentService {
         return createAppointment(customerUserId, null, bearerToken, request);
     }
 
+    /**
+     * CN-19: lễ tân đặt lịch hộ khách tại quầy.
+     *
+     * Khác đường đặt lịch của khách ở chỗ kiểm quyền sở hữu: nhân viên không phải chủ con vật nên
+     * không hỏi được {@code /pets/me}. Ở đây tra hồ sơ con vật rồi đối chiếu chủ nuôi với khách
+     * nhân viên chọn — vẫn không cho gắn nhầm con vật của người khác, chỉ là kiểm ở chỗ khác.
+     */
+    @Transactional
+    public AppointmentResponse createWalkInAppointment(UUID customerUserId, String bearerToken,
+                                                      AppointmentRequest request) {
+        PetResponse pet = petServiceClient.getPetById(request.petId(), bearerToken);
+        if (!customerUserId.equals(pet.ownerUserId())) {
+            throw new ResourceNotFoundException(
+                    "Thú cưng " + request.petId() + " không thuộc về khách đã chọn");
+        }
+        return book(customerUserId, null, request, pet);
+    }
+
     /** `customerEmail` lấy từ JWT của khách, dùng cho email xác nhận lịch (CN-43). */
     @Transactional
     public AppointmentResponse createAppointment(UUID customerUserId, String customerEmail, String bearerToken,
                                                  AppointmentRequest request) {
-        PetResponse pet = validateOwnsPet(request.petId(), bearerToken);
+        return book(customerUserId, customerEmail, request, validateOwnsPet(request.petId(), bearerToken));
+    }
 
+    /** Phần chung của hai đường đặt lịch — quyền sở hữu con vật đã kiểm xong trước khi vào đây. */
+    private AppointmentResponse book(UUID customerUserId, String customerEmail, AppointmentRequest request,
+                                    PetResponse pet) {
         // Chặn đặt vào khung giờ đã trôi qua của hôm nay — kể cả khi client gọi thẳng API,
         // bỏ qua bộ lọc đã có ở SlotService.getAvailableTimes.
         if (request.date().isEqual(LocalDate.now(ClinicSchedule.ZONE_ID))

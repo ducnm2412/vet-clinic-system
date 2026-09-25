@@ -3,6 +3,7 @@ import type {
   AuthResponse,
   PageResponse,
   UserFilters,
+  CreateCustomerAccountRequest,
   CreateStaffAccountRequest,
   CurrentUser,
   RegisterRequest,
@@ -43,6 +44,17 @@ export const authApi = {
   /** Chỉ ADMIN. Backend chỉ cho tạo tài khoản DOCTOR và STAFF. */
   createStaffAccount: (body: CreateStaffAccountRequest) =>
     http.post<{ message: string }>("/admin/users", body),
+
+  /**
+   * CN-19: lễ tân mở tài khoản cho khách đang đứng ở quầy. Tài khoản dùng được ngay, không chờ
+   * xác minh email. STAFF hoặc ADMIN.
+   */
+  createCustomerAccount: (body: CreateCustomerAccountRequest) =>
+    http.post<CurrentUser>("/auth/customers", body),
+
+  /** CN-19: tìm khách để đặt lịch hộ. Chỉ trả tài khoản khách, không có bác sĩ hay quản trị. */
+  searchCustomers: (keyword?: string) =>
+    http.get<PageResponse<CurrentUser>>(`/auth/customers${qs({ keyword, size: 20 })}`),
 
   /** Chỉ ADMIN. Nguồn duy nhất có họ tên, email, vai trò và trạng thái của mọi tài khoản. */
   listUsers: (filters: UserFilters = {}) =>

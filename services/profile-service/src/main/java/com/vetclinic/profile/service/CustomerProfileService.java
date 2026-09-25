@@ -113,6 +113,21 @@ public class CustomerProfileService {
         addressRepository.delete(address);
     }
 
+    /**
+     * CN-19: hồ sơ cho khách vừa được mở tài khoản tại quầy, kèm số điện thoại nhân viên nhập.
+     *
+     * Không ghi đè nếu hồ sơ đã có số điện thoại: tài khoản trùng email là chuyện của auth-service
+     * chặn, còn ở đây nếu vì lý do nào đó gọi lại thì dữ liệu khách tự khai vẫn được giữ.
+     */
+    @Transactional
+    public void ensureProfileWithPhone(UUID userId, String phone) {
+        CustomerProfile profile = getOrCreateProfile(userId);
+        if (phone != null && !phone.isBlank() && (profile.getPhone() == null || profile.getPhone().isBlank())) {
+            profile.setPhone(phone.trim());
+            customerProfileRepository.saveAndFlush(profile);
+        }
+    }
+
     private CustomerProfile getOrCreateProfile(UUID userId) {
         return customerProfileRepository.findByUserId(userId)
                 .orElseGet(() -> customerProfileRepository.saveAndFlush(

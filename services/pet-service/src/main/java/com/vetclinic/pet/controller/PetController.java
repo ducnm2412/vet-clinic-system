@@ -1,6 +1,7 @@
 package com.vetclinic.pet.controller;
 
 import com.vetclinic.pet.dto.MedicalRecordResponse;
+import com.vetclinic.pet.dto.PetForOwnerRequest;
 import com.vetclinic.pet.dto.PetRequest;
 import com.vetclinic.pet.dto.PetResponse;
 import com.vetclinic.pet.service.MedicalRecordService;
@@ -85,6 +86,17 @@ public class PetController {
     }
 
     // ---------- tra cứu trong phòng khám ----------
+
+    /**
+     * CN-19: nhân viên lập hồ sơ thú cưng hộ khách tại quầy. Chủ nuôi nằm trong thân request —
+     * nhánh duy nhất không lấy chủ nuôi từ token, và chỉ nhân viên phòng khám gọi được.
+     */
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
+    public PetResponse createForOwner(@Valid @RequestBody PetForOwnerRequest request) {
+        return petService.createFor(request.ownerUserId(), request.pet());
+    }
 
     /** Thú cưng của nhiều chủ một lượt — trang Khách hàng của admin dùng. */
     @GetMapping("/by-owners")

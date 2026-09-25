@@ -34,7 +34,7 @@ Chú thích trạng thái: ✅ Đã hiện thực · ⚠️ Hiện thực một 
 | CN-04 | Xem thông tin phiên đăng nhập | AC-01→04 | Giải mã JWT lấy email → truy vấn hồ sơ user | JWT | Thông tin user + danh sách role | ✅ |
 | CN-05 | Tạo tài khoản Bác sĩ/Nhân viên | AC-04 | Tạo tài khoản `status=ACTIVE` ngay, chỉ cho phép role DOCTOR/STAFF | Họ tên, email, mật khẩu, role | Thông báo tạo thành công | ✅ |
 | CN-06 | Phân quyền truy cập (RBAC) | Hệ thống | Filter JWT stateless chặn theo route và role, không truy vấn DB mỗi request | JWT trong header | Cho phép / 401 / 403 | ✅ |
-| CN-07 | Làm mới access token | AC-01→04 | Dùng refresh token cấp lại access token khi hết hạn | `refreshToken` | `accessToken` mới | ⏳ |
+| CN-07 | Làm mới access token | AC-01→04 | Dùng refresh token cấp lại access token khi hết hạn | `refreshToken` | `accessToken` mới | ✅ |
 | CN-08 | Khoá / mở khoá tài khoản | AC-04 | Chuyển `status=LOCKED`, chặn đăng nhập | ID tài khoản | Kết quả cập nhật | ✅ |
 
 ### 2.2. Module Hồ sơ người dùng (`profile-service` — `profile_db`)
@@ -53,12 +53,12 @@ Chú thích trạng thái: ✅ Đã hiện thực · ⚠️ Hiện thực một 
 
 | Mã CN | Tên chức năng | Tác nhân | Mô tả xử lý | Trạng thái |
 |---|---|---|---|---|
-| CN-17 | Tra cứu khung giờ trống | AC-01 | Hiển thị lịch làm việc và slot còn trống theo bác sĩ/ngày | ⏳ |
-| CN-18 | Đặt lịch khám online | AC-01 | Chọn thú cưng, dịch vụ, bác sĩ, khung giờ → tạo lịch hẹn, phát sự kiện lên RabbitMQ | ⏳ |
-| CN-19 | Đặt lịch tại quầy | AC-03 | Lễ tân tạo lịch hộ khách vãng lai | ⏳ |
-| CN-20 | Huỷ / đổi lịch hẹn | AC-01, AC-03 | Cập nhật trạng thái lịch, giải phóng khung giờ | ⏳ |
-| CN-21 | Quản lý trạng thái lịch khám | AC-02, AC-03 | Luồng: Chờ xác nhận → Đã xác nhận → Đang khám → Hoàn tất / Đã huỷ | ⏳ |
-| CN-22 | Quản lý khung giờ làm việc | AC-04 | Cấu hình ca trực, số slot tối đa mỗi khung giờ | ⏳ |
+| CN-17 | Tra cứu khung giờ trống | AC-01 | Hiển thị lịch làm việc và slot còn trống theo bác sĩ/ngày | ✅ |
+| CN-18 | Đặt lịch khám online | AC-01 | Chọn thú cưng, dịch vụ và khung giờ → tạo lịch hẹn, hệ thống tự xếp bác sĩ, phát sự kiện lên RabbitMQ | ✅ |
+| CN-19 | Đặt lịch tại quầy | AC-03 | Lễ tân tìm khách hoặc mở tài khoản ngay tại quầy, lập hồ sơ thú cưng rồi đặt lịch hộ | ✅ |
+| CN-20 | Huỷ / đổi lịch hẹn | AC-01, AC-03 | Huỷ xong là giải phóng khung giờ. **Đổi lịch chưa có** — khách phải huỷ rồi đặt lại | ⚠️ |
+| CN-21 | Quản lý trạng thái lịch khám | AC-02, AC-03 | Luồng: Chờ xác nhận → Đã xác nhận → Đang khám → Hoàn tất / Đã huỷ | ✅ |
+| CN-22 | Quản lý khung giờ làm việc | AC-04 | Cấu hình ca trực, số slot tối đa mỗi khung giờ | ✅ |
 
 ### 2.4. Module Hồ sơ thú cưng, Bệnh án & Đơn thuốc (`pet-service` — `pet_db`)
 
@@ -128,7 +128,7 @@ Chú thích trạng thái: ✅ Đã hiện thực · ⚠️ Hiện thực một 
 | Mã CN | Tên chức năng | Tác nhân | Mô tả xử lý | Trạng thái |
 |---|---|---|---|---|
 | CN-42 | Gửi email xác minh tài khoản | Hệ thống | Nhận sự kiện đăng ký → gửi mail chứa link xác minh | ⚠️ Hiện chỉ ghi log ra console tại `auth-service` |
-| CN-43 | Thông báo đặt lịch thành công | Hệ thống | Consume sự kiện booking → gửi Email/Zalo OA cho khách | ⏳ |
+| CN-43 | Thông báo đặt lịch thành công | Hệ thống | Consume sự kiện booking → gửi Email/Zalo OA cho khách | ✅ |
 | CN-44 | Thông báo đơn hàng | Hệ thống | Consume sự kiện order → xác nhận đơn, cập nhật giao hàng | ⏳ |
 | CN-45 | Nhắc lịch tái khám / tiêm phòng | Hệ thống | Gửi nhắc theo lịch định kỳ | ⏳ |
 
@@ -148,7 +148,7 @@ Chú thích trạng thái: ✅ Đã hiện thực · ⚠️ Hiện thực một 
 | CN-50 | Đăng ký & khám phá dịch vụ | `eureka-server` | Các service tự đăng ký, tra cứu nhau qua tên logic thay vì IP/port | ✅ |
 | CN-51 | Định tuyến tập trung | `api-gateway` | Một điểm vào duy nhất (cổng 8080), route `lb://` theo Eureka | ✅ (mới khai báo route `auth-service`) |
 | CN-52 | Quản lý phiên bản schema CSDL | Flyway | Migration có phiên bản, Hibernate chạy `ddl-auto: validate` | ✅ (auth, profile) |
-| CN-53 | Giao tiếp bất đồng bộ | RabbitMQ | Truyền sự kiện giữa các service, giảm phụ thuộc trực tiếp | ⏳ |
+| CN-53 | Giao tiếp bất đồng bộ | RabbitMQ | Truyền sự kiện giữa các service, giảm phụ thuộc trực tiếp | ✅ |
 | CN-54 | Đóng gói & triển khai | Docker Compose | Khởi chạy toàn bộ hệ thống + 7 PostgreSQL + RabbitMQ + Redis | ✅ (khung) |
 
 ---

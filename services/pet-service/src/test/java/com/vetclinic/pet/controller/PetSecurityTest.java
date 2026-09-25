@@ -116,6 +116,32 @@ class PetSecurityTest {
     }
 
     @Test
+    void clinicStaffCreateAPetForACustomerAtTheCounter() throws Exception {
+        UUID owner = UUID.randomUUID();
+        String body = """
+                {"ownerUserId":"%s","pet":{"name":"Mun","species":"Cho"}}
+                """.formatted(owner);
+
+        // CN-19: nhánh duy nhất nhận chủ nuôi từ thân request — chỉ nhân viên phòng khám gọi được.
+        mockMvc.perform(post("/pets").header("Authorization", bearer("STAFF"))
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.ownerUserId").value(owner.toString()))
+                .andExpect(jsonPath("$.name").value("Mun"));
+
+        // Con vật vừa lập thuộc về khách đó, không thuộc nhân viên vừa bấm nút.
+        mockMvc.perform(get("/pets/me").header("Authorization", bearer("CUSTOMER", owner)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1));
+
+        for (String role : List.of("CUSTOMER", "DOCTOR")) {
+            mockMvc.perform(post("/pets").header("Authorization", bearer(role))
+                            .contentType(MediaType.APPLICATION_JSON).content(body))
+                    .andExpect(status().isForbidden());
+        }
+    }
+
+    @Test
     void invalidBodyIsRejectedBeforeItReachesTheDatabase() throws Exception {
         String customer = bearer("CUSTOMER");
 

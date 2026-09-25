@@ -26,6 +26,13 @@ export const petLookupApi = {
     http.get<Pet[]>(`/pets/by-owners?ownerUserIds=${ownerUserIds.map(encodeURIComponent).join(",")}`),
   /** CN-24: toàn bộ lượt khám trước đây của một con vật. */
   history: (petId: string) => http.get<MedicalRecord[]>(`/pets/${petId}/medical-records`),
+
+  /**
+   * CN-19: nhân viên lập hồ sơ thú cưng hộ khách tại quầy. Nhánh duy nhất gửi chủ nuôi lên —
+   * khách tự thêm thì chủ nuôi lấy từ token.
+   */
+  createFor: (ownerUserId: string, pet: PetRequest) =>
+    http.post<Pet>("/pets", { ownerUserId, pet }),
 };
 
 /**

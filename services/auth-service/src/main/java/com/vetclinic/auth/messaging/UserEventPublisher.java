@@ -15,12 +15,19 @@ public class UserEventPublisher {
     private static final String ROUTING_KEY_USER_DELETED = "user.deleted";
     private static final String ROUTING_KEY_USER_REGISTERED = "user.registered";
     private static final String ROUTING_KEY_STAFF_CREATED = "user.staff-created";
+    private static final String ROUTING_KEY_CUSTOMER_CREATED = "user.customer-created";
     private static final String ROUTING_KEY_USER_LOCKED = "user.locked";
     private static final String ROUTING_KEY_USER_UNLOCKED = "user.unlocked";
 
     private final RabbitTemplate rabbitTemplate;
 
     // AFTER_COMMIT: chỉ đẩy message lên RabbitMQ khi transaction xoá user đã commit thành công.
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onCustomerAccountCreated(CustomerAccountCreatedEvent event) {
+        rabbitTemplate.convertAndSend(RabbitMQConfig.USER_EVENTS_EXCHANGE, ROUTING_KEY_CUSTOMER_CREATED, event);
+        log.info("Published user.customer-created event for userId={}", event.userId());
+    }
+
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onUserDeleted(UserDeletedEvent event) {
         rabbitTemplate.convertAndSend(RabbitMQConfig.USER_EVENTS_EXCHANGE, ROUTING_KEY_USER_DELETED, event);

@@ -23,6 +23,13 @@ export const bookingApi = {
 
   mine: () => http.get<Appointment[]>("/booking/appointments/me"),
 
+  /**
+   * CN-19: lễ tân đặt lịch hộ khách đang đứng ở quầy. Backend đối chiếu con vật có đúng của khách
+   * đã chọn không — nhân viên không phải chủ nên không đi đường /pets/me được.
+   */
+  createWalkIn: (customerUserId: string, appointment: AppointmentRequest) =>
+    http.post<Appointment>("/booking/appointments/walk-in", { customerUserId, appointment }),
+
   /** Lịch của chính bác sĩ đang đăng nhập. */
   forMeAsDoctor: (date?: string) =>
     http.get<Appointment[]>(`/booking/appointments/doctor/me${qs({ date })}`),

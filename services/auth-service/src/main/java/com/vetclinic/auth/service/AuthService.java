@@ -5,6 +5,8 @@ import com.vetclinic.auth.domain.RoleName;
 import com.vetclinic.auth.domain.User;
 import com.vetclinic.auth.domain.UserStatus;
 import com.vetclinic.auth.dto.AuthResponse;
+import com.vetclinic.auth.dto.CreateCustomerAccountRequest;
+import com.vetclinic.auth.messaging.CustomerAccountCreatedEvent;
 import com.vetclinic.auth.dto.CreateStaffAccountRequest;
 import com.vetclinic.auth.dto.LoginRequest;
 import com.vetclinic.auth.dto.MessageResponse;
@@ -109,6 +111,42 @@ public class AuthService {
                 (user.getFirstName() + " " + user.getLastName()).trim(), request.role().name()));
 
         return new MessageResponse("Account created for " + request.email() + " with role " + request.role());
+    }
+
+    /**
+     * CN-19: nhân viên mở tài khoản cho khách đang đứng ở quầy.
+     *
+     * Khác đăng ký online ở chỗ tài khoản ACTIVE ngay, không phải chờ bấm link trong email: người
+     * thật đang đứng trước mặt, bắt họ mở hộp thư ở quầy là vô lý. Đổi lại, email vẫn phải nhập để
+     * sau này khách tự đăng nhập được, và mật khẩu do nhân viên đặt rồi đọc lại cho khách.
+     */
+    @Transactional
+    public UserResponse createCustomerAccount(CreateCustomerAccountRequest request) {
+        if (userRepository.existsByEmail(request.email())) {
+            throw new EmailAlreadyExistsException(request.email());
+        }
+
+        Role role = roleRepository.findByName(RoleName.CUSTOMER)
+                .orElseThrow(() -> new IllegalStateException("Role not seeded: CUSTOMER"));
+
+        User user = User.builder()
+                .firstName(request.firstName())
+                .lastName(request.lastName())
+                .email(request.email())
+                .passwordHash(passwordEncoder.encode(request.password()))
+                .status(UserStatus.ACTIVE)
+                .roles(new HashSet<>(Set.of(role)))
+                .build();
+
+        userRepository.saveAndFlush(user);
+
+        // Mang số điện thoại sang profile-service: khách vãng lai gần như không bao giờ tự mở
+        // trang hồ sơ để điền, mà phòng khám thì cần gọi lại được.
+        applicationEventPublisher.publishEvent(new CustomerAccountCreatedEvent(user.getId(), user.getEmail(),
+                (user.getFirstName() + " " + user.getLastName()).trim(), request.phone()));
+
+        return new UserResponse(user.getId(), user.getFirstName(), user.getLastName(), user.getEmail(),
+                user.getStatus(), extractRoleNames(user), user.getCreatedAt());
     }
 
     @Transactional

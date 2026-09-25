@@ -92,6 +92,15 @@ public class PetService {
         petRepository.delete(pet);
     }
 
+    /**
+     * CN-19: nhân viên lập hồ sơ hộ khách. Cùng một việc với {@link #create}, chỉ khác chỗ lấy
+     * chủ nuôi — nên gọi thẳng vào đó thay vì chép lại.
+     */
+    @Transactional
+    public PetResponse createFor(UUID ownerUserId, PetRequest request) {
+        return create(ownerUserId, request);
+    }
+
     // ---------- tra cứu cho người trong phòng khám ----------
 
     @Transactional(readOnly = true)

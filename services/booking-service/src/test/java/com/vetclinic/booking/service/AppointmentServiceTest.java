@@ -129,6 +129,43 @@ class AppointmentServiceTest {
 
     @Test
     @Transactional
+    void walkIn_staffBooksForACustomerWhoOwnsThePet() {
+        UUID customer = UUID.randomUUID();
+        UUID petId = UUID.randomUUID();
+        when(petServiceClient.getPetById(any(), any())).thenReturn(petOf(customer, petId));
+
+        LocalDate date = LocalDate.of(2026, 12, 10);
+        LocalTime time = LocalTime.of(9, 0);
+        appointmentSlotRepository.saveAndFlush(AppointmentSlot.builder()
+                .doctorUserId(UUID.randomUUID()).date(date).startTime(time).endTime(time.plusMinutes(30)).build());
+
+        AppointmentResponse response = appointmentService.createWalkInAppointment(customer, "Bearer staff",
+                new AppointmentRequest(petId, date, time, null, "Khách đến quầy"));
+
+        assertThat(response.customerUserId()).isEqualTo(customer);
+        assertThat(response.petId()).isEqualTo(petId);
+    }
+
+    @Test
+    @Transactional
+    void walkIn_petOfSomeoneElseIsRefused() {
+        UUID chosenCustomer = UUID.randomUUID();
+        UUID petId = UUID.randomUUID();
+        // Nhân viên chọn nhầm khách: con vật này của người khác.
+        when(petServiceClient.getPetById(any(), any())).thenReturn(petOf(UUID.randomUUID(), petId));
+
+        LocalDate date = LocalDate.of(2026, 12, 11);
+        LocalTime time = LocalTime.of(9, 0);
+        appointmentSlotRepository.saveAndFlush(AppointmentSlot.builder()
+                .doctorUserId(UUID.randomUUID()).date(date).startTime(time).endTime(time.plusMinutes(30)).build());
+
+        assertThatThrownBy(() -> appointmentService.createWalkInAppointment(chosenCustomer, "Bearer staff",
+                new AppointmentRequest(petId, date, time, null, null)))
+                .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    @Transactional
     void createAppointment_petNotOwnedByCustomer_throwsResourceNotFound() {
         when(petServiceClient.getMyPet(any(), any())).thenThrow(notFoundFromPetService());
 
@@ -359,8 +396,13 @@ class AppointmentServiceTest {
         appointmentSlotRepository.deleteById(slot.getId());
     }
 
+    private PetResponse petOf(UUID ownerUserId, UUID petId) {
+        return new PetResponse(petId, ownerUserId, "Milo", "Dog", "Poodle", "MALE",
+                LocalDate.of(2020, 1, 1), null, null, null, Instant.now(), Instant.now());
+    }
+
     private PetResponse dummyPet() {
-        return new PetResponse(UUID.randomUUID(), "Milo", "Dog", "Poodle", "MALE",
+        return new PetResponse(UUID.randomUUID(), UUID.randomUUID(), "Milo", "Dog", "Poodle", "MALE",
                 LocalDate.of(2020, 1, 1), null, null, null, Instant.now(), Instant.now());
     }
 

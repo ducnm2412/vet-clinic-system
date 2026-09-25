@@ -16,6 +16,9 @@ public class RabbitMQConfig {
     public static final String USER_DELETED_QUEUE = "profile-service.user-deleted";
     private static final String ROUTING_KEY_USER_DELETED = "user.deleted";
     public static final String STAFF_CREATED_QUEUE = "profile-service.staff-created";
+    // CN-19: nhân viên mở tài khoản cho khách tại quầy, mang theo số điện thoại.
+    public static final String CUSTOMER_CREATED_QUEUE = "profile-service.customer-created";
+    private static final String ROUTING_KEY_CUSTOMER_CREATED = "user.customer-created";
     private static final String ROUTING_KEY_STAFF_CREATED = "user.staff-created";
 
     @Bean
@@ -41,6 +44,16 @@ public class RabbitMQConfig {
     @Bean
     public Binding staffCreatedBinding(Queue staffCreatedQueue, TopicExchange userEventsExchange) {
         return BindingBuilder.bind(staffCreatedQueue).to(userEventsExchange).with(ROUTING_KEY_STAFF_CREATED);
+    }
+
+    @Bean
+    public Queue customerCreatedQueue() {
+        return new Queue(CUSTOMER_CREATED_QUEUE, true);
+    }
+
+    @Bean
+    public Binding customerCreatedBinding(Queue customerCreatedQueue, TopicExchange userEventsExchange) {
+        return BindingBuilder.bind(customerCreatedQueue).to(userEventsExchange).with(ROUTING_KEY_CUSTOMER_CREATED);
     }
 
     @Bean
