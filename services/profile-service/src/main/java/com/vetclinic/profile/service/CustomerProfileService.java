@@ -2,17 +2,13 @@ package com.vetclinic.profile.service;
 
 import com.vetclinic.profile.domain.Address;
 import com.vetclinic.profile.domain.CustomerProfile;
-import com.vetclinic.profile.domain.Pet;
 import com.vetclinic.profile.dto.AddressRequest;
 import com.vetclinic.profile.dto.AddressResponse;
 import com.vetclinic.profile.dto.CustomerProfileRequest;
 import com.vetclinic.profile.dto.CustomerProfileResponse;
-import com.vetclinic.profile.dto.PetRequest;
-import com.vetclinic.profile.dto.PetResponse;
 import com.vetclinic.profile.exception.ResourceNotFoundException;
 import com.vetclinic.profile.repository.AddressRepository;
 import com.vetclinic.profile.repository.CustomerProfileRepository;
-import com.vetclinic.profile.repository.PetRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,7 +22,6 @@ public class CustomerProfileService {
 
     private final CustomerProfileRepository customerProfileRepository;
     private final AddressRepository addressRepository;
-    private final PetRepository petRepository;
 
     @Transactional
     public CustomerProfileResponse getMyProfile(UUID userId) {
@@ -34,7 +29,8 @@ public class CustomerProfileService {
     }
 
     // Gọi từ UserDeletedListener khi auth-service báo user đã bị xoá — dọn dữ liệu mồ côi.
-    // Addresses/Pet tự xoá theo qua FK ON DELETE CASCADE trong DB, không cần xử lý riêng.
+    // Addresses tự xoá theo qua FK ON DELETE CASCADE trong DB. Thú cưng giờ nằm ở pet-service,
+    // service đó tự nghe user.deleted và tự dọn.
     @Transactional
     public void deleteByUserId(UUID userId) {
         customerProfileRepository.findByUserId(userId).ifPresent(customerProfileRepository::delete);
@@ -117,67 +113,6 @@ public class CustomerProfileService {
         addressRepository.delete(address);
     }
 
-    // KHÔNG readOnly: getOrCreateProfile có thể phải INSERT profile mới cho customer lần đầu gọi.
-    @Transactional
-    public List<PetResponse> listPets(UUID userId) {
-        CustomerProfile profile = getOrCreateProfile(userId);
-        return petRepository.findByCustomerProfileId(profile.getId()).stream()
-                .map(this::toPetResponse)
-                .toList();
-    }
-
-    // KHÔNG readOnly: getOrCreateProfile có thể phải INSERT profile mới cho customer lần đầu gọi.
-    @Transactional
-    public PetResponse getPet(UUID userId, UUID petId) {
-        CustomerProfile profile = getOrCreateProfile(userId);
-        Pet pet = petRepository.findByIdAndCustomerProfileId(petId, profile.getId())
-                .orElseThrow(() -> new ResourceNotFoundException("Pet not found: " + petId));
-        return toPetResponse(pet);
-    }
-
-    @Transactional
-    public PetResponse createPet(UUID userId, PetRequest request) {
-        CustomerProfile profile = getOrCreateProfile(userId);
-
-        Pet pet = Pet.builder()
-                .customerProfile(profile)
-                .name(request.name())
-                .species(request.species())
-                .breed(request.breed())
-                .gender(request.gender())
-                .dateOfBirth(request.dateOfBirth())
-                .weightKg(request.weightKg())
-                .build();
-
-        petRepository.saveAndFlush(pet);
-        return toPetResponse(pet);
-    }
-
-    @Transactional
-    public PetResponse updatePet(UUID userId, UUID petId, PetRequest request) {
-        CustomerProfile profile = getOrCreateProfile(userId);
-        Pet pet = petRepository.findByIdAndCustomerProfileId(petId, profile.getId())
-                .orElseThrow(() -> new ResourceNotFoundException("Pet not found: " + petId));
-
-        pet.setName(request.name());
-        pet.setSpecies(request.species());
-        pet.setBreed(request.breed());
-        pet.setGender(request.gender());
-        pet.setDateOfBirth(request.dateOfBirth());
-        pet.setWeightKg(request.weightKg());
-
-        petRepository.saveAndFlush(pet);
-        return toPetResponse(pet);
-    }
-
-    @Transactional
-    public void deletePet(UUID userId, UUID petId) {
-        CustomerProfile profile = getOrCreateProfile(userId);
-        Pet pet = petRepository.findByIdAndCustomerProfileId(petId, profile.getId())
-                .orElseThrow(() -> new ResourceNotFoundException("Pet not found: " + petId));
-        petRepository.delete(pet);
-    }
-
     private CustomerProfile getOrCreateProfile(UUID userId) {
         return customerProfileRepository.findByUserId(userId)
                 .orElseGet(() -> customerProfileRepository.saveAndFlush(
@@ -207,8 +142,4 @@ public class CustomerProfileService {
                 address.getCity(), address.isDefault(), address.getCreatedAt(), address.getUpdatedAt());
     }
 
-    private PetResponse toPetResponse(Pet pet) {
-        return new PetResponse(pet.getId(), pet.getName(), pet.getSpecies(), pet.getBreed(), pet.getGender(),
-                pet.getDateOfBirth(), pet.getWeightKg(), pet.getCreatedAt(), pet.getUpdatedAt());
-    }
 }

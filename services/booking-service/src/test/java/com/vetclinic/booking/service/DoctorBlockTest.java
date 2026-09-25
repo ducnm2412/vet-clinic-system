@@ -1,5 +1,6 @@
 package com.vetclinic.booking.service;
 
+import com.vetclinic.booking.client.PetServiceClient;
 import com.vetclinic.booking.client.ProfileServiceClient;
 import com.vetclinic.booking.domain.AppointmentSlot;
 import com.vetclinic.booking.domain.DoctorShift;
@@ -42,6 +43,7 @@ class DoctorBlockTest {
     @Autowired private AppointmentSlotRepository slotRepository;
     @Autowired private BlockedDoctorRepository blockedDoctorRepository;
     @Autowired private DoctorShiftRepository doctorShiftRepository;
+    @MockBean private PetServiceClient petServiceClient;
     @MockBean private ProfileServiceClient profileServiceClient;
 
     private final UUID doctor = UUID.randomUUID();
@@ -90,7 +92,7 @@ class DoctorBlockTest {
 
     @Test
     void cancellingAppointmentOfLockedDoctorDoesNotReopenTheSlot() {
-        when(profileServiceClient.getMyPet(any(), any())).thenReturn(new PetResponse(UUID.randomUUID(), "Milo", "Chó", null, null,
+        when(petServiceClient.getMyPet(any(), any())).thenReturn(new PetResponse(UUID.randomUUID(), "Milo", "Chó", null, null,
                 null, null, Instant.now(), Instant.now()));
         // Ngày rất xa, ngoài tầm sinh slot tự động — không bác sĩ nào khác trống cùng giờ.
         LocalDate date = today.plusDays(400);

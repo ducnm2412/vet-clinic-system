@@ -1,6 +1,6 @@
 package com.vetclinic.booking.service;
 
-import com.vetclinic.booking.client.ProfileServiceClient;
+import com.vetclinic.booking.client.PetServiceClient;
 import com.vetclinic.booking.domain.AppointmentSlot;
 import com.vetclinic.booking.domain.AppointmentStatus;
 import com.vetclinic.booking.domain.SlotStatus;
@@ -53,12 +53,12 @@ class AppointmentServiceTest {
     private AppointmentRepository appointmentRepository;
 
     @MockBean
-    private ProfileServiceClient profileServiceClient;
+    private PetServiceClient petServiceClient;
 
     @Test
     @Transactional
     void createAppointment_bookAvailableSlot_success() {
-        when(profileServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
+        when(petServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
 
         LocalDate date = LocalDate.of(2026, 12, 1);
         LocalTime time = LocalTime.of(9, 0);
@@ -82,7 +82,7 @@ class AppointmentServiceTest {
     @Test
     @Transactional
     void createAppointment_petNotOwnedByCustomer_throwsResourceNotFound() {
-        when(profileServiceClient.getMyPet(any(), any())).thenThrow(notFoundFromProfileService());
+        when(petServiceClient.getMyPet(any(), any())).thenThrow(notFoundFromPetService());
 
         LocalDate date = LocalDate.of(2026, 12, 2);
         LocalTime time = LocalTime.of(9, 0);
@@ -100,7 +100,7 @@ class AppointmentServiceTest {
     @Test
     @Transactional
     void createAppointment_slotFullyBooked_suggestsNearestSameDayTime() {
-        when(profileServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
+        when(petServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
 
         LocalDate date = LocalDate.of(2026, 12, 3);
         LocalTime requestedTime = LocalTime.of(9, 0);
@@ -122,7 +122,7 @@ class AppointmentServiceTest {
 
     @Test
     void createAppointment_preventsDoubleBooking_underConcurrency() throws InterruptedException {
-        when(profileServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
+        when(petServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
 
         LocalDate date = LocalDate.of(2026, 12, 4);
         LocalTime time = LocalTime.of(9, 0);
@@ -168,9 +168,9 @@ class AppointmentServiceTest {
 
     @Test
     @Transactional
-    void getAppointmentDetail_enrichesWithPetFromProfileService() {
-        when(profileServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
-        when(profileServiceClient.getPetById(any(), any())).thenReturn(dummyPet());
+    void getAppointmentDetail_enrichesWithPetFromPetService() {
+        when(petServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
+        when(petServiceClient.getPetById(any(), any())).thenReturn(dummyPet());
 
         LocalDate date = LocalDate.of(2026, 12, 5);
         LocalTime time = LocalTime.of(9, 0);
@@ -196,7 +196,7 @@ class AppointmentServiceTest {
     @Test
     @Transactional
     void listMyAppointments_returnsOnlyOwnAppointments() {
-        when(profileServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
+        when(petServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
 
         LocalDate date = LocalDate.of(2026, 12, 6);
         appointmentSlotRepository.saveAndFlush(AppointmentSlot.builder()
@@ -222,7 +222,7 @@ class AppointmentServiceTest {
     @Test
     @Transactional
     void search_filtersByDoctorAndDate() {
-        when(profileServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
+        when(petServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
 
         LocalDate date = LocalDate.of(2026, 12, 7);
         UUID doctorA = UUID.randomUUID();
@@ -248,7 +248,7 @@ class AppointmentServiceTest {
     @Test
     @Transactional
     void cancelAppointment_byNonOwnerCustomer_throwsResourceNotFound() {
-        when(profileServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
+        when(petServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
 
         LocalDate date = LocalDate.of(2026, 12, 8);
         LocalTime time = LocalTime.of(9, 0);
@@ -266,7 +266,7 @@ class AppointmentServiceTest {
     @Test
     @Transactional
     void updateStatus_updatesAppointmentStatus() {
-        when(profileServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
+        when(petServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
 
         LocalDate date = LocalDate.of(2026, 12, 9);
         LocalTime time = LocalTime.of(9, 0);
@@ -286,7 +286,7 @@ class AppointmentServiceTest {
     // trước migration, insert thứ 2 sẽ ném DataIntegrityViolationException do vi phạm unique cũ.
     @Test
     void cancelAppointment_releasesSlot_andAllowsRebookingSameSlot() {
-        when(profileServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
+        when(petServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
 
         LocalDate date = LocalDate.of(2026, 12, 11);
         LocalTime time = LocalTime.of(9, 0);
@@ -316,11 +316,11 @@ class AppointmentServiceTest {
                 LocalDate.of(2020, 1, 1), null, Instant.now(), Instant.now());
     }
 
-    private FeignException notFoundFromProfileService() {
-        Request request = Request.create(Request.HttpMethod.GET, "/profile/customer/me/pets/x",
+    private FeignException notFoundFromPetService() {
+        Request request = Request.create(Request.HttpMethod.GET, "/pets/me/x",
                 Map.of(), null, StandardCharsets.UTF_8, null);
         Response response = Response.builder()
                 .status(404).reason("Not Found").request(request).headers(Map.of()).build();
-        return FeignException.errorStatus("ProfileServiceClient#getMyPet", response);
+        return FeignException.errorStatus("PetServiceClient#getMyPet", response);
     }
 }

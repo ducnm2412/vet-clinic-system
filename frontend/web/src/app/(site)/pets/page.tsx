@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
-import { customerApi } from "@/lib/api";
+import { myPetApi } from "@/lib/api";
 import { formatAge } from "@/lib/utils/format";
 import type { Pet } from "@/types";
 import { Container, SiteButton } from "@/components/site/primitives";
@@ -22,7 +22,7 @@ export default function PetsPage() {
 
 function PetsBody() {
   const [adding, setAdding] = useState(false);
-  const pets = useQuery({ queryKey: ["pets", "mine"], queryFn: customerApi.pets });
+  const pets = useQuery({ queryKey: ["pets", "mine"], queryFn: myPetApi.list });
 
   const list = pets.data ?? [];
 

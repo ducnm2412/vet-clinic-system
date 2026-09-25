@@ -1,6 +1,6 @@
-package com.vetclinic.profile.dto;
+package com.vetclinic.pet.dto;
 
-import com.vetclinic.profile.domain.PetGender;
+import com.vetclinic.pet.domain.PetGender;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.PastOrPresent;
 import jakarta.validation.constraints.Positive;

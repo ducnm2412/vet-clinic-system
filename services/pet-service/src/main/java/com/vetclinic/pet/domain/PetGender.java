@@ -1,4 +1,4 @@
-package com.vetclinic.profile.domain;
+package com.vetclinic.pet.domain;
 
 public enum PetGender {
     MALE,

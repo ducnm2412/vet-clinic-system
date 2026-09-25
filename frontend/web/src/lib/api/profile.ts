@@ -9,8 +9,6 @@ import type {
   DoctorLicenseRequest,
   DoctorProfile,
   DoctorPublic,
-  Pet,
-  PetRequest,
   StaffProfile,
 } from "@/types";
 
@@ -26,13 +24,6 @@ export const customerApi = {
   updateAddress: (id: string, body: AddressRequest) =>
     http.put<Address>(`/profile/customer/me/addresses/${id}`, body),
   deleteAddress: (id: string) => http.del<void>(`/profile/customer/me/addresses/${id}`),
-
-  pets: () => http.get<Pet[]>("/profile/customer/me/pets"),
-  pet: (id: string) => http.get<Pet>(`/profile/customer/me/pets/${id}`),
-  addPet: (body: PetRequest) => http.post<Pet>("/profile/customer/me/pets", body),
-  updatePet: (id: string, body: PetRequest) =>
-    http.put<Pet>(`/profile/customer/me/pets/${id}`, body),
-  deletePet: (id: string) => http.del<void>(`/profile/customer/me/pets/${id}`),
 };
 
 /** Hồ sơ của chính bác sĩ. Backend giới hạn cho role DOCTOR. */
@@ -61,16 +52,10 @@ export const staffApi = {
   list: () => http.get<StaffProfile[]>("/profile/staff"),
 };
 
-export const petLookupApi = {
-  /** DOCTOR/STAFF/ADMIN tra cứu thú cưng của mọi khách. */
-  list: () => http.get<Pet[]>("/profile/pets"),
-  byId: (id: string) => http.get<Pet>(`/profile/pets/${id}`),
-};
-
 export const customerLookupApi = {
   /**
-   * Chỉ ADMIN. Điện thoại, địa chỉ và thú cưng của các khách đang hiện trên một trang bảng
-   * (tối đa 100). Khách chưa từng mở trang hồ sơ thì không có trong kết quả.
+   * Chỉ ADMIN. Điện thoại và địa chỉ của các khách đang hiện trên một trang bảng (tối đa 100).
+   * Khách chưa từng mở trang hồ sơ thì không có trong kết quả. Thú cưng lấy riêng ở pet-service.
    */
   summary: (userIds: string[]) =>
     http.get<CustomerSummary[]>(`/profile/customers/summary?userIds=${userIds.map(encodeURIComponent).join(",")}`),

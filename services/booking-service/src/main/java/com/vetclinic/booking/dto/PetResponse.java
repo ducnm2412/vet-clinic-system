@@ -5,8 +5,9 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
 
-// Mirror của profile-service PetResponse — chỉ để deserialize kết quả gọi qua ProfileServiceClient,
-// gender để String thay vì enum riêng vì booking-service không cần validate giá trị này.
+// Mirror của pet-service PetResponse — chỉ để deserialize kết quả gọi qua PetServiceClient.
+// gender để String thay vì enum riêng vì booking-service không cần validate giá trị này; ownerUserId
+// pet-service có trả nhưng ở đây không cần, Jackson bỏ qua trường lạ.
 public record PetResponse(
         UUID id,
         String name,

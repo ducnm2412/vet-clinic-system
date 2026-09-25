@@ -37,13 +37,12 @@ Chú thích trạng thái: ✅ Đã hiện thực · ⚠️ Hiện thực một 
 | CN-07 | Làm mới access token | AC-01→04 | Dùng refresh token cấp lại access token khi hết hạn | `refreshToken` | `accessToken` mới | ⏳ |
 | CN-08 | Khoá / mở khoá tài khoản | AC-04 | Chuyển `status=LOCKED`, chặn đăng nhập | ID tài khoản | Kết quả cập nhật | ✅ |
 
-### 2.2. Module Hồ sơ người dùng & Thú cưng (`profile-service` — `profile_db`)
+### 2.2. Module Hồ sơ người dùng (`profile-service` — `profile_db`)
 
 | Mã CN | Tên chức năng | Tác nhân | Mô tả xử lý | Đầu vào | Đầu ra | Trạng thái |
 |---|---|---|---|---|---|---|
 | CN-09 | Xem/Cập nhật hồ sơ khách hàng | AC-01 | Đọc & sửa thông tin cá nhân gắn với `userId` trong JWT | Số điện thoại, ngày sinh, giới tính… | Hồ sơ khách hàng | ✅ |
 | CN-10 | Quản lý sổ địa chỉ | AC-01 | Thêm / sửa / xoá / liệt kê địa chỉ giao hàng | Thông tin địa chỉ | Danh sách địa chỉ | ✅ |
-| CN-11 | Quản lý hồ sơ thú cưng | AC-01 | Thêm / sửa / xoá / liệt kê thú cưng (tên, loài, giống, giới tính, cân nặng…) | Thông tin thú cưng | Danh sách thú cưng | ✅ |
 | CN-12 | Xem/Cập nhật hồ sơ bác sĩ | AC-02 | Chuyên khoa, kinh nghiệm, mô tả giới thiệu | Thông tin chuyên môn | Hồ sơ bác sĩ | ✅ |
 | CN-13 | Quản lý chứng chỉ hành nghề | AC-02 | Thêm / sửa / xoá / liệt kê chứng chỉ của chính bác sĩ | Số hiệu, nơi cấp, hạn | Danh sách chứng chỉ | ✅ |
 | CN-14 | Tra cứu danh sách bác sĩ công khai | Public | Trả danh sách bác sĩ rút gọn cho trang đặt lịch (không cần đăng nhập) | — | Danh sách bác sĩ | ✅ |
@@ -61,16 +60,18 @@ Chú thích trạng thái: ✅ Đã hiện thực · ⚠️ Hiện thực một 
 | CN-21 | Quản lý trạng thái lịch khám | AC-02, AC-03 | Luồng: Chờ xác nhận → Đã xác nhận → Đang khám → Hoàn tất / Đã huỷ | ⏳ |
 | CN-22 | Quản lý khung giờ làm việc | AC-04 | Cấu hình ca trực, số slot tối đa mỗi khung giờ | ⏳ |
 
-### 2.4. Module Bệnh án & Đơn thuốc (`pet-service` — `pet_db`)
+### 2.4. Module Hồ sơ thú cưng, Bệnh án & Đơn thuốc (`pet-service` — `pet_db`)
 
 | Mã CN | Tên chức năng | Tác nhân | Mô tả xử lý | Trạng thái |
 |---|---|---|---|---|
+| CN-11 | Quản lý hồ sơ thú cưng | AC-01 | Thêm / sửa / xoá / liệt kê thú cưng (tên, loài, giống, giới tính, cân nặng…); chủ nuôi lấy từ token | ✅ |
+| CN-11b | Tra cứu thú cưng của khách | AC-02, AC-03, AC-04 | Bác sĩ và nhân viên xem mọi thú cưng, kể cả theo nhiều chủ một lượt | ✅ |
 | CN-23 | Lập hồ sơ bệnh án | AC-02 | Ghi triệu chứng, chẩn đoán, kết quả điều trị theo mỗi lượt khám | ⏳ |
 | CN-24 | Tra cứu lịch sử khám bệnh | AC-01, AC-02 | Xem toàn bộ lượt khám trước đây của một thú cưng | ⏳ |
 | CN-25 | Kê đơn thuốc | AC-02 | Lập đơn thuốc gắn với bệnh án, liều dùng, số lượng | ⏳ |
 | CN-26 | Nhắc lịch tái khám / tiêm phòng | Hệ thống | Sinh sự kiện nhắc lịch gửi sang Notification Service | ⏳ |
 
-> **Ghi chú thiết kế:** entity `Pet` hiện nằm trong `profile-service` (thuộc hồ sơ khách hàng). Do đó `pet-service` nên thu hẹp phạm vi thành **bệnh án & đơn thuốc**, tránh trùng lặp quyền sở hữu dữ liệu giữa hai service.
+> **Ghi chú thiết kế (cập nhật 25/09/2026):** entity `Pet` trước đây nằm trong `profile-service`. Đã tách thật sang `pet-service` (VD-10, chặng 1) thay vì thu hẹp `pet-service` thành bệnh án — thú cưng là thực thể trung tâm của phòng khám thú y, lịch hẹn và bệnh án đều trỏ vào nó. Bệnh án và đơn thuốc (CN-23 → CN-26) hiện vẫn ở `booking-service`, sẽ chuyển sang đây ở chặng 2.
 
 ### 2.5. Module Sản phẩm & Tồn kho (`product-service` — `product_db`)
 

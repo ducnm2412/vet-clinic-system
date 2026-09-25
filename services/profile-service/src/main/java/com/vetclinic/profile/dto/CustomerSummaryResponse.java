@@ -1,6 +1,5 @@
 package com.vetclinic.profile.dto;
 
-import java.util.List;
 import java.util.UUID;
 
 /**
@@ -8,6 +7,9 @@ import java.util.UUID;
  * nằm ở auth-service, frontend ghép theo userId.
  *
  * {@code address}: địa chỉ mặc định, không có thì địa chỉ đầu tiên; null khi chưa khai.
+ *
+ * Tên thú cưng không còn ở đây — hồ sơ thú cưng đã chuyển sang pet-service, frontend lấy riêng
+ * qua {@code GET /pets/by-owners}.
  */
-public record CustomerSummaryResponse(UUID userId, String phone, String address, List<String> petNames) {
+public record CustomerSummaryResponse(UUID userId, String phone, String address) {
 }

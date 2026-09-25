@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Lock, LockOpen, Search } from "lucide-react";
-import { ApiError, ROLE_LABEL, authApi, customerLookupApi } from "@/lib/api";
+import { ApiError, ROLE_LABEL, authApi, customerLookupApi, petLookupApi } from "@/lib/api";
 import { useAuth } from "@/lib/auth/context";
 import { LockAccountDialog } from "./LockAccountDialog";
 import { formatDate } from "@/lib/utils/format";
@@ -30,8 +30,8 @@ const STATUSES: UserStatus[] = ["ACTIVE", "INACTIVE", "LOCKED"];
 
 /**
  * Bảng tài khoản đọc từ GET /admin/users. Trang Tài khoản dùng đủ bộ lọc; trang Khách hàng
- * khoá cứng `role="CUSTOMER"`, ẩn cột vai trò và ghép điện thoại, địa chỉ, thú cưng từ
- * profile-service cho đúng các khách đang hiện trên trang.
+ * khoá cứng `role="CUSTOMER"`, ẩn cột vai trò và ghép điện thoại, địa chỉ (profile-service)
+ * cùng thú cưng (pet-service) cho đúng các khách đang hiện trên trang — hai service, hai lượt gọi.
  *
  * Không có nút xoá: xoá làm lịch khám và đơn hàng cũ mất người liên quan — dùng Khoá (CN-08).
  */
@@ -62,6 +62,18 @@ export function UserTable({ role, title, unitLabel }: { role?: Role; title: stri
     enabled: isCustomerList && pageIds.length > 0,
     placeholderData: keepPreviousData,
   });
+  const pets = useQuery({
+    queryKey: ["customer-pets", pageIds],
+    queryFn: () => petLookupApi.byOwners(pageIds),
+    enabled: isCustomerList && pageIds.length > 0,
+    placeholderData: keepPreviousData,
+  });
+  // Nhiều con một chủ: gom theo chủ, giữ thứ tự pet-service trả về (cũ nhất trước).
+  const petsOf = new Map<string, string[]>();
+  for (const pet of pets.data ?? []) {
+    petsOf.set(pet.ownerUserId, [...(petsOf.get(pet.ownerUserId) ?? []), pet.name]);
+  }
+
   const summaryOf = new Map((summaries.data ?? []).map((s) => [s.userId, s]));
   // Đang tải hiện "…"; không có hồ sơ (khách chưa từng mở trang hồ sơ) hoặc tải hỏng hiện "—".
   // Không lặp chữ "chưa khai" ở cả ba cột — một dòng đọc thành một bức tường chữ xám.
@@ -117,10 +129,11 @@ export function UserTable({ role, title, unitLabel }: { role?: Role; title: stri
           {
             key: "pets",
             header: "Thú cưng",
-            cell: (u: CurrentUser) =>
-              profileCell(u.id, (s) =>
-                s.petNames.length ? s.petNames.join(", ") : <span className="text-bark">Chưa có</span>,
-              ),
+            cell: (u: CurrentUser) => {
+              if (pets.isLoading) return <span className="text-bark">…</span>;
+              const names = petsOf.get(u.id);
+              return names?.length ? names.join(", ") : <span className="text-bark">—</span>;
+            },
           },
         ]
       : []),

@@ -2,7 +2,7 @@
 
 **Kiến trúc:** Microservices (Spring Boot + Spring Cloud), Database per Service
 **Thời gian:** 27/07/2026 → 09/09/2026 · 27 commit
-**Cập nhật lần cuối:** 13/09/2026
+**Cập nhật lần cuối:** 25/09/2026
 
 Tài liệu này ghi lại **những gì đã làm được**. Bảng phân tích chức năng đầy đủ nằm ở
 [phan-tich-chuc-nang.md](phan-tich-chuc-nang.md), nợ kỹ thuật ở
@@ -14,13 +14,18 @@ Tài liệu này ghi lại **những gì đã làm được**. Bảng phân tíc
 
 | Hạng mục | Số lượng |
 |---|---|
-| Service nghiệp vụ đã hiện thực | **9** / 10 |
-| Service chưa viết dòng nào | 1 (`pet`) |
-| File Java (main) | 234 |
-| File test | 35 |
-| Endpoint REST | 75 |
-| Luồng sự kiện RabbitMQ | 11 |
-| Database PostgreSQL | 6 |
+| Service nghiệp vụ đã hiện thực | **10** / 10 |
+| Service chưa viết dòng nào | 0 |
+| File Java (main) | 320 |
+| File test | 74 |
+| Test tự động | 327 |
+| Endpoint REST | 108 |
+| Luồng sự kiện RabbitMQ | 12 |
+| Database PostgreSQL | 8 |
+
+Số file đếm bằng `find services -path "*/src/main/java/*" -name "*.java"` (và `src/test`); số
+endpoint đếm theo annotation `@GetMapping`/`@PostMapping`/`@PutMapping`/`@DeleteMapping`; số test
+là tổng báo cáo của `bash scripts/test.sh`.
 
 ---
 
@@ -28,15 +33,16 @@ Tài liệu này ghi lại **những gì đã làm được**. Bảng phân tíc
 
 | Service | Cổng | Database | main/test | Migration | Endpoint |
 |---|---|---|---|---|---|
-| `auth-service` | 8081 | `auth_db` | 32 / 5 | V1–V3 | 6 |
-| `profile-service` | 8083 | `profile_db` | 45 / 10 | V1 | 24 |
-| `product-service` | 8084 | `product_db` | 33 / 4 | V1 | 13 |
-| `order-service` | 8085 | `order_db` | 42 / 3 | V1 | 16 |
-| `booking-service` | 8086 | `booking_db` | 53 / 8 | V1–V3 | 13 |
-| `payment-service` | 8087 | `payment_db` | 24 / 3 | V1–V3 | 3 |
-| `notification-service` | 8088 | — | 5 / 2 | — | 0 |
-| `reporting-service` | 8089 | — | 12 / 2 | — | 3 |
-| `staff-service` | 8090 | `staff_db` | 16 / 4 | V1 | 8 |
+| `auth-service` | 8081 | `auth_db` | 44 / 11 | V1–V4 | 11 |
+| `profile-service` | 8083 | `profile_db` | 43 / 14 | V1–V3 | 18 |
+| `product-service` | 8084 | `product_db` | 35 / 7 | V1 | 14 |
+| `order-service` | 8085 | `order_db` | 46 / 6 | V1 | 19 |
+| `booking-service` | 8086 | `booking_db` | 67 / 14 | V1–V5 | 18 |
+| `payment-service` | 8087 | `payment_db` | 26 / 6 | V1–V3 | 4 |
+| `notification-service` | 8088 | — | 7 / 4 | — | 0 |
+| `reporting-service` | 8089 | — | 13 / 2 | — | 7 |
+| `staff-service` | 8090 | `staff_db` | 21 / 5 | V1 | 9 |
+| `pet-service` | 8091 | `pet_db` | 18 / 5 | V1 | 8 |
 
 Hạ tầng đi kèm: `api-gateway` (8080), `eureka-server` (8761), `frontend` Next.js (3000),
 RabbitMQ (5672 / 15672), Redis (6379), MailHog (1025 / 8025).
@@ -50,19 +56,21 @@ RabbitMQ (5672 / 15672), Redis (6379), MailHog (1025 / 8025).
 Đăng ký, xác minh email bằng token, đăng nhập, xem thông tin phiên. Endpoint
 `/admin/users` cho phép `ADMIN` tạo và xoá tài khoản Bác sĩ / Nhân viên.
 
-Là nơi **duy nhất** phát hành JWT. Sáu service còn lại tự xác thực chữ ký bằng
+Là nơi **duy nhất** phát hành JWT. Chín service còn lại tự xác thực chữ ký bằng
 `JWT_SECRET` dùng chung, không gọi ngược lại `auth-service` — tránh biến nó thành
 điểm nghẽn của toàn hệ thống.
 
 ### 3.2. `profile-service` — hồ sơ người dùng
 
-Nhiều endpoint nhất (24). Ba loại hồ sơ tách riêng:
+Ba loại hồ sơ tách riêng:
 
-- **Khách hàng** — thông tin cá nhân, sổ địa chỉ, hồ sơ thú cưng
+- **Khách hàng** — thông tin cá nhân, sổ địa chỉ
 - **Bác sĩ** — thông tin chuyên môn, chứng chỉ hành nghề
 - **Nhân viên** — thông tin nhân sự
 
 `GET /profile/doctors` là endpoint công khai để tra cứu danh sách bác sĩ.
+
+Hồ sơ thú cưng **không còn ở đây** — đã tách sang `pet-service` (mục 3.10).
 
 ### 3.3. `product-service` — sản phẩm và tồn kho
 
@@ -142,11 +150,41 @@ lúc chạy — nên:
 
 ---
 
+### 3.9. `staff-service` — chấm công và ca trực
+
+CN-38 nhân viên/bác sĩ tự vào ca ra ca, CN-40 và CN-48 bảng công của cả phòng khám cho ADMIN,
+CN-39 và CN-41 xếp ca trực. Một người một ngày một dòng chấm công (`UNIQUE(user_id, date)`),
+mốc giờ tính theo `Asia/Ho_Chi_Minh`.
+
+Ca trực **quyết định giờ khám**: xếp ca cho bác sĩ thì `staff-service` phát `shift.added`, và
+`booking-service` mới mở slot trong khung giờ đó. Xoá ca thì các slot còn trống bị đóng, slot đã
+có người đặt vẫn giữ — huỷ lịch của khách là quyết định của con người, không phải hệ quả của một
+thao tác xếp ca.
+
+### 3.10. `pet-service` — hồ sơ thú cưng
+
+CN-09 đến CN-12: khách tự thêm, sửa, xoá thú cưng của mình; bác sĩ và nhân viên tra cứu mọi con.
+Tách khỏi `profile-service` ngày 25/09/2026 (VD-10) — thú cưng là thực thể trung tâm của phòng
+khám thú y, lịch hẹn và bệnh án đều trỏ vào nó.
+
+Chủ nuôi lưu bằng `owner_user_id` (userId của `auth-service`), không phải `customer_profile_id`:
+`pet-service` không cần biết `profile-service` lưu hồ sơ khách thế nào.
+
+Hai nhánh đường dẫn tách hẳn: `/pets/me/**` cho khách (chủ nuôi lấy từ token, client không khai
+được), `/pets/**` cho người trong phòng khám. Khách hỏi con vật không phải của mình nhận **404**
+chứ không phải 403 — 403 tự xác nhận con vật đó có thật.
+
+Dữ liệu cũ chuyển sang bằng `scripts/migrate-pets-to-pet-service.sh`, giữ nguyên `id` từng con vì
+`booking_db` đang trỏ tới. Bảng cũ trong `profile_db` chỉ đổi tên thành
+`pets_moved_to_pet_service_backup`, không xoá.
+
+---
+
 ## 4. Luồng sự kiện RabbitMQ
 
 ```
 auth     --user.registered------> notification    gửi mail xác minh tài khoản
-auth     --user.deleted---------> profile         dọn hồ sơ mồ côi
+auth     --user.deleted---------> profile, pet    dọn hồ sơ mồ côi (hai service, hai queue)
 order    --order.completed------> product         (đã trừ đồng bộ lúc xác nhận — VD-14)
 order    --order.cancelled------> product         hoàn kho
 booking  --prescription.created-> payment         tạo phiếu thu tiền thuốc
@@ -181,6 +219,7 @@ Sau khi gộp hai nhánh phát triển song song, cổng được phân lại m�
 | notification-service | 8088 | — | — |
 | reporting-service | 8089 | — | — |
 | staff-service | 8090 | staff-db | 5439 |
+| pet-service | 8091 | pet-db | 5440 |
 | eureka-server | 8761 | — | — |
 | frontend | 3000 | — | — |
 
@@ -194,14 +233,14 @@ chạy local ngoài Docker vẫn sẽ đụng cổng.
 
 - **Service discovery** — Eureka, mọi service tự đăng ký; gateway định tuyến bằng
   `lb://` nên không cần biết địa chỉ cụ thể.
-- **API Gateway** — 6 route khai báo tay, tắt auto-route theo tên service để client gọi
+- **API Gateway** — 9 route khai báo tay, tắt auto-route theo tên service để client gọi
   thẳng `/auth/**`, `/products/**` như gọi trực tiếp.
-- **Quản lý schema** — Flyway ở cả 6 service có database, `ddl-auto: validate` để
+- **Quản lý schema** — Flyway ở cả 8 service có database, `ddl-auto: validate` để
   Hibernate chỉ đối chiếu chứ không tự sinh hay sửa bảng.
 - **Bảo mật** — JWT ký HS256, secret dùng chung qua biến môi trường; mỗi service tự
   verify, không gọi chéo.
-- **Triển khai** — một lệnh `docker compose up` dựng toàn bộ. Service chưa code nằm
-  trong profile `future` nên không bị kéo theo.
+- **Triển khai** — một lệnh `docker compose up` dựng toàn bộ. Không còn service nào nằm
+  trong profile `future`: cả 10 service đều đã code thật và có Dockerfile.
 
 ---
 

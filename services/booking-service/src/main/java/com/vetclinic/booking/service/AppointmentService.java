@@ -1,5 +1,6 @@
 package com.vetclinic.booking.service;
 
+import com.vetclinic.booking.client.PetServiceClient;
 import com.vetclinic.booking.client.ProfileServiceClient;
 import com.vetclinic.booking.domain.Appointment;
 import com.vetclinic.booking.domain.AppointmentSlot;
@@ -38,6 +39,7 @@ public class AppointmentService {
     private final AppointmentRepository appointmentRepository;
     private final BlockedDoctorRepository blockedDoctorRepository;
     private final ProfileServiceClient profileServiceClient;
+    private final PetServiceClient petServiceClient;
     private final SuggestionService suggestionService;
     private final ApplicationEventPublisher applicationEventPublisher;
 
@@ -103,7 +105,7 @@ public class AppointmentService {
     @Transactional(readOnly = true)
     public AppointmentDetailResponse getAppointmentDetail(UUID appointmentId, String bearerToken) {
         Appointment appointment = getAppointmentOrThrow(appointmentId);
-        PetResponse pet = profileServiceClient.getPetById(appointment.getPetId(), bearerToken);
+        PetResponse pet = petServiceClient.getPetById(appointment.getPetId(), bearerToken);
         return toDetailResponse(appointment, pet);
     }
 
@@ -175,7 +177,7 @@ public class AppointmentService {
 
     private PetResponse validateOwnsPet(UUID petId, String bearerToken) {
         try {
-            return profileServiceClient.getMyPet(petId, bearerToken);
+            return petServiceClient.getMyPet(petId, bearerToken);
         } catch (FeignException.NotFound | FeignException.Forbidden e) {
             throw new ResourceNotFoundException("Pet not found or not owned by customer: " + petId);
         }

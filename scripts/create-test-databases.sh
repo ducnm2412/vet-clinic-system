@@ -9,7 +9,7 @@
 set -u
 
 # container:database — cổng không cần vì chạy psql ngay trong container.
-TARGETS="auth-db:auth_db profile-db:profile_db product-db:product_db order-db:order_db booking-db:booking_db payment-db:payment_db staff-db:staff_db"
+TARGETS="auth-db:auth_db profile-db:profile_db product-db:product_db order-db:order_db booking-db:booking_db payment-db:payment_db staff-db:staff_db pet-db:pet_db"
 
 status=0
 for target in $TARGETS; do

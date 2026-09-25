@@ -1,5 +1,6 @@
 package com.vetclinic.booking.messaging;
 
+import com.vetclinic.booking.client.PetServiceClient;
 import com.vetclinic.booking.client.ProfileServiceClient;
 import com.vetclinic.booking.domain.AppointmentSlot;
 import com.vetclinic.booking.dto.AppointmentRequest;
@@ -51,6 +52,9 @@ class AppointmentEventPublisherTest {
     private org.springframework.amqp.rabbit.core.RabbitTemplate rabbitTemplate;
 
     @MockBean
+    private PetServiceClient petServiceClient;
+
+    @MockBean
     private ProfileServiceClient profileServiceClient;
 
     @AfterEach
@@ -68,7 +72,7 @@ class AppointmentEventPublisherTest {
         amqpAdmin.declareQueue(queue);
         amqpAdmin.declareBinding(binding);
 
-        when(profileServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
+        when(petServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
 
         UUID doctorId = UUID.randomUUID();
         LocalDate date = LocalDate.of(2026, 12, 10);

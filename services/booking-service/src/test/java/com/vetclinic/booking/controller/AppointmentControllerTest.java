@@ -1,5 +1,6 @@
 package com.vetclinic.booking.controller;
 
+import com.vetclinic.booking.client.PetServiceClient;
 import com.vetclinic.booking.client.ProfileServiceClient;
 import com.vetclinic.booking.domain.Appointment;
 import com.vetclinic.booking.domain.AppointmentSlot;
@@ -52,6 +53,9 @@ class AppointmentControllerTest {
     private String jwtSecret;
 
     @MockBean
+    private PetServiceClient petServiceClient;
+
+    @MockBean
     private ProfileServiceClient profileServiceClient;
 
     private String customerToken(UUID userId) {
@@ -64,7 +68,7 @@ class AppointmentControllerTest {
     @Test
     @Transactional
     void createAppointment_autoAssignsLeastBusyDoctor() throws Exception {
-        when(profileServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
+        when(petServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
 
         LocalDate date = LocalDate.of(2027, 3, 1);
         LocalTime targetTime = LocalTime.of(9, 0);
@@ -110,7 +114,7 @@ class AppointmentControllerTest {
     // lại phải nhận 409 (SlotFullyBookedException), không có double-booking hay lỗi 500.
     @Test
     void createAppointment_underConcurrency_onlyOneRequestSucceeds() throws Exception {
-        when(profileServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
+        when(petServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
 
         LocalDate date = LocalDate.of(2027, 3, 2);
         LocalTime time = LocalTime.of(9, 0);
@@ -146,7 +150,7 @@ class AppointmentControllerTest {
     @Test
     @Transactional
     void createAppointment_slotFullyBooked_suggestedTimesOrderedByProximity() throws Exception {
-        when(profileServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
+        when(petServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
 
         LocalDate date = LocalDate.of(2027, 3, 3);
         LocalTime requestedTime = LocalTime.of(10, 0);

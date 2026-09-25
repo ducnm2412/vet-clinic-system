@@ -190,11 +190,29 @@ Chưa có `POST /auth/change-password` lẫn luồng reset qua email.
 
 ## profile-service
 
-### 🟡 VD-10. Ranh giới `Pet` chồng lấn với `pet-service`
+### ✅ VD-10. Ranh giới `Pet` chồng lấn với `pet-service` — đã sửa 25/09/2026 (chặng 1)
 
-Entity `Pet` đang nằm trong `profile-service` (thuộc hồ sơ khách hàng), trong khi roadmap có
-`pet-service` riêng. Đã thống nhất trong `phan-tich-chuc-nang.md` mục 2.4: thu hẹp
-`pet-service` thành **bệnh án & đơn thuốc**. Cần bám đúng ranh giới này khi làm tới nơi.
+Entity `Pet` nằm trong `profile-service` trong khi roadmap có `pet-service` riêng. Đã chọn tách
+thật thay vì thu hẹp `pet-service`: thú cưng là thực thể trung tâm của phòng khám thú y — lịch hẹn,
+bệnh án, đơn thuốc đều trỏ vào nó — nên để nó lẫn trong hồ sơ hành chính của khách là sai chỗ.
+
+**Chặng 1 (xong):**
+
+- `pet-service` mới, port `8091`, `pet_db` riêng (host `5440`). Chủ nuôi lưu bằng `owner_user_id`
+  (userId của `auth-service`) chứ không phải `customer_profile_id`, nên `pet-service` không phụ
+  thuộc vào cách `profile-service` lưu hồ sơ khách.
+- `profile-service` bỏ hẳn phần thú cưng. Bảng cũ **không bị DROP**, chỉ đổi tên thành
+  `pets_moved_to_pet_service_backup` (`V3__move_pets_to_pet_service.sql`) — dữ liệu đã chạy thật,
+  giữ lại để đối chiếu.
+- Di trú dữ liệu: `scripts/migrate-pets-to-pet-service.sh`, join qua `customer_profiles` để đổi
+  khoá, **giữ nguyên `id` từng con vật** vì `booking_db` đang trỏ tới. Chạy lại nhiều lần được.
+- `booking-service` gọi `PetServiceClient` thay cho `ProfileServiceClient`, truyền nguyên token của
+  người dùng nên `pet-service` tự quyết quyền sở hữu.
+- Bảng Khách hàng của admin giờ gọi hai service: điện thoại/địa chỉ từ `profile-service`, thú cưng
+  từ `GET /pets/by-owners`. `CustomerSummaryResponse` không còn `petNames`.
+
+**Chặng 2 (còn lại):** chuyển bệnh án và đơn thuốc từ `booking-service` sang `pet-service`, và đấu
+lại luồng `prescription.created` → `payment-service`.
 
 ---
 

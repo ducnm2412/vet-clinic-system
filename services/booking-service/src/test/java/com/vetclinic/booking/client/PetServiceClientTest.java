@@ -19,25 +19,25 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 
 // KHÔNG tắt eureka.client.enabled — test này cần đăng ký thật vào Eureka để Feign LoadBalancer
-// resolve được tên "profile-service" ra instance thật đang chạy (bắt buộc profile-service phải
-// đang chạy sẵn cùng Eureka server thật khi chạy test này).
+// resolve được tên "pet-service" ra instance thật đang chạy (bắt buộc pet-service phải đang chạy
+// sẵn cùng Eureka server thật, và pet_db phải có con vật TEST_PET_ID, khi chạy test này).
 @SpringBootTest
-class ProfileServiceClientTest {
+class PetServiceClientTest {
 
     private static final UUID TEST_PET_ID = UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
     private static final UUID TEST_CUSTOMER_USER_ID = UUID.fromString("9a83e065-8ded-4b6c-8fc7-33880c181df4");
 
     @Autowired
-    private ProfileServiceClient profileServiceClient;
+    private PetServiceClient petServiceClient;
 
     @Value("${jwt.secret}")
     private String jwtSecret;
 
     @Test
-    void getPetById_fetchesRealPetFromProfileServiceOverEureka() {
+    void getPetById_fetchesRealPetFromPetServiceOverEureka() {
         String token = "Bearer " + signToken(TEST_CUSTOMER_USER_ID, "STAFF");
 
-        PetResponse pet = profileServiceClient.getPetById(TEST_PET_ID, token);
+        PetResponse pet = petServiceClient.getPetById(TEST_PET_ID, token);
 
         assertThat(pet.name()).isEqualTo("Milo");
         assertThat(pet.species()).isEqualTo("Dog");
@@ -47,7 +47,7 @@ class ProfileServiceClientTest {
     void getMyPet_asOwningCustomer_fetchesOwnPet() {
         String token = "Bearer " + signToken(TEST_CUSTOMER_USER_ID, "CUSTOMER");
 
-        PetResponse pet = profileServiceClient.getMyPet(TEST_PET_ID, token);
+        PetResponse pet = petServiceClient.getMyPet(TEST_PET_ID, token);
 
         assertThat(pet.name()).isEqualTo("Milo");
     }

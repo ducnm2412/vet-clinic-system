@@ -1,5 +1,6 @@
 package com.vetclinic.booking.service;
 
+import com.vetclinic.booking.client.PetServiceClient;
 import com.vetclinic.booking.client.ProfileServiceClient;
 import com.vetclinic.booking.domain.AppointmentSlot;
 import com.vetclinic.booking.domain.AppointmentStatus;
@@ -56,13 +57,16 @@ class AppointmentDoctorTest {
     @MockBean
     private ProfileServiceClient profileServiceClient;
 
+    @MockBean
+    private PetServiceClient petServiceClient;
+
     private AppointmentSlot slotFor(UUID doctorUserId, LocalTime start) {
         return appointmentSlotRepository.saveAndFlush(AppointmentSlot.builder()
                 .doctorUserId(doctorUserId).date(DATE).startTime(start).endTime(start.plusMinutes(30)).build());
     }
 
     private AppointmentResponse book(UUID customer, LocalTime start) {
-        when(profileServiceClient.getMyPet(any(), any())).thenReturn(pet());
+        when(petServiceClient.getMyPet(any(), any())).thenReturn(pet());
         return appointmentService.createAppointment(customer, "Bearer t", new AppointmentRequest(UUID.randomUUID(), DATE, start, null));
     }
 
@@ -107,7 +111,7 @@ class AppointmentDoctorTest {
         UUID doctor = UUID.randomUUID();
         slotFor(doctor, NINE);
         AppointmentResponse created = book(UUID.randomUUID(), NINE);
-        when(profileServiceClient.getPetById(any(), any())).thenReturn(pet());
+        when(petServiceClient.getPetById(any(), any())).thenReturn(pet());
 
         AppointmentDetailResponse detail = appointmentService.getAppointmentDetail(created.id(), "Bearer staff");
 
@@ -133,7 +137,7 @@ class AppointmentDoctorTest {
         // CN-43: notification-service chỉ soạn email, không gọi ngược sang auth/profile.
         UUID doctor = UUID.randomUUID();
         slotFor(doctor, NINE);
-        when(profileServiceClient.getMyPet(any(), any())).thenReturn(pet());
+        when(petServiceClient.getMyPet(any(), any())).thenReturn(pet());
         when(profileServiceClient.listDoctors()).thenReturn(List.of(
                 new DoctorSummaryResponse(UUID.randomUUID(), doctor, "Trần Minh Khoa", "Nội khoa", null, 8)));
 
@@ -152,7 +156,7 @@ class AppointmentDoctorTest {
         // Tra tên bác sĩ hỏng thì email bớt một dòng, KHÔNG được làm hỏng việc đặt lịch.
         UUID doctor = UUID.randomUUID();
         slotFor(doctor, NINE);
-        when(profileServiceClient.getMyPet(any(), any())).thenReturn(pet());
+        when(petServiceClient.getMyPet(any(), any())).thenReturn(pet());
         when(profileServiceClient.listDoctors()).thenThrow(new RuntimeException("profile-service down"));
 
         AppointmentResponse res = appointmentService.createAppointment(UUID.randomUUID(), "khach@example.com",

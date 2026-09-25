@@ -4,7 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { ApiError, customerApi } from "@/lib/api";
+import { ApiError, myPetApi } from "@/lib/api";
 import { useToast } from "@/components/ui";
 import type { Pet } from "@/types";
 import { SiteButton } from "./primitives";
@@ -67,7 +67,7 @@ export function PetFormDialog({
         dateOfBirth: v.dateOfBirth || undefined,
         weightKg: v.weightKg,
       };
-      return pet ? customerApi.updatePet(pet.id, body) : customerApi.addPet(body);
+      return pet ? myPetApi.update(pet.id, body) : myPetApi.add(body);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["pets"] });

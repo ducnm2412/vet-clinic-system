@@ -2,12 +2,8 @@
 #
 #   docker compose up -d --build
 #
-# Cac service chua code (pet)
-# nam trong profile "future" nen KHONG chay mac dinh — chung chua co Dockerfile, neu
-# de chung o profile mac dinh thi ca lenh `up` se fail o buoc build.
-# Khi mot service duoc code xong: viet Dockerfile cho no roi xoa dong `profiles` tuong ung.
-#
-# Muon xem ca cac service chua code:  docker compose --profile future config
+# Moi service trong he thong da duoc code that va co Dockerfile — khong con service nao
+# nam trong profile "future".
 
 services:
   eureka-server:
@@ -283,21 +279,30 @@ services:
     ports:
       - "6379:6379"
 
-  # ==========================================================================
-  # Duoi day la cac service chua duoc code (chi co README, chua co Dockerfile).
-  # Profile "future" giu chung ngoai lenh `docker compose up` mac dinh.
-  # Da roi khoi danh sach nay: booking-service, product-service, order-service,
-  # payment-service va notification-service - da code xong that, dinh nghia
-  # day du nam o dau file.
-  # ==========================================================================
-
   pet-service:
-    profiles: ["future"]
     build: ./services/pet-service
     container_name: pet-service
+    ports:
+      # 8090 da thuoc staff-service; pet-service dung 8091.
+      - "8091:8091"
+    environment:
+      DB_HOST: pet-db
+      DB_PORT: 5432
+      DB_NAME: pet_db
+      DB_USERNAME: ${PET_DB_USER:-postgres}
+      DB_PASSWORD: ${PET_DB_PASSWORD:?PET_DB_PASSWORD is required}
+      EUREKA_URI: http://eureka-server:8761/eureka/
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USERNAME: ${RABBITMQ_USER:-guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
     depends_on:
-      - eureka-server
-      - pet-db
+      pet-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
 
   product-service:
     build: ./services/product-service
@@ -394,11 +399,23 @@ services:
         condition: service_started
 
   pet-db:
-    profiles: ["future"]
     image: postgres:16
     container_name: pet-db
+    ports:
+      # 5439 da thuoc staff-db; pet-db doi sang 5440.
+      - "5440:5432"
     environment:
       POSTGRES_DB: pet_db
+      POSTGRES_USER: ${PET_DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${PET_DB_PASSWORD:?PET_DB_PASSWORD is required}
+    volumes:
+      - pet-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PET_DB_USER:-postgres} -d pet_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   product-db:
     image: postgres:16
     container_name: product-db
@@ -451,6 +468,7 @@ services:
 
 volumes:
   staff-db-data:
+  pet-db-data:
   auth-db-data:
   profile-db-data:
   product-db-data:

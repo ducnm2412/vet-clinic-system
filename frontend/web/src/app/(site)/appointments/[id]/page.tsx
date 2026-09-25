@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarDays, ChevronLeft, Clock3, MapPin, Pill, Stethoscope } from "lucide-react";
-import { ApiError, bookingApi, customerApi, medicalRecordApi } from "@/lib/api";
+import { ApiError, bookingApi, medicalRecordApi, myPetApi } from "@/lib/api";
 import { formatDate, formatTime, todayISO } from "@/lib/utils/format";
 import { useToast } from "@/components/ui";
 import { CLINIC } from "@/config/clinic";
@@ -34,7 +34,7 @@ function AppointmentDetailBody() {
   const { id } = useParams<{ id: string }>();
 
   const appointments = useQuery({ queryKey: ["appointments", "mine"], queryFn: bookingApi.mine });
-  const pets = useQuery({ queryKey: ["pets", "mine"], queryFn: customerApi.pets });
+  const pets = useQuery({ queryKey: ["pets", "mine"], queryFn: myPetApi.list });
   const doctors = useDoctorDirectory();
 
   const appointment = (appointments.data ?? []).find((a) => a.id === id) ?? null;

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarDays, ChevronLeft, Pencil, Trash2 } from "lucide-react";
-import { ApiError, bookingApi, customerApi } from "@/lib/api";
+import { ApiError, bookingApi, myPetApi } from "@/lib/api";
 import { formatAge, formatDate, formatTime } from "@/lib/utils/format";
 import { useToast } from "@/components/ui";
 import type { Appointment, Pet } from "@/types";
@@ -28,7 +28,7 @@ export default function PetDetailPage() {
 function PetDetailBody() {
   const { id } = useParams<{ id: string }>();
 
-  const pet = useQuery({ queryKey: ["pets", id], queryFn: () => customerApi.pet(id) });
+  const pet = useQuery({ queryKey: ["pets", id], queryFn: () => myPetApi.get(id) });
 
   if (pet.isLoading) return <PetSkeleton />;
 
@@ -60,7 +60,7 @@ function PetProfile({ pet }: { pet: Pet }) {
   const router = useRouter();
 
   const remove = useMutation({
-    mutationFn: () => customerApi.deletePet(pet.id),
+    mutationFn: () => myPetApi.remove(pet.id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["pets"] });
       toast.success(`Đã xoá hồ sơ ${pet.name}`);

@@ -20,12 +20,14 @@ vet-clinic-system/
 ├── api-gateway/                 # Spring Cloud Gateway
 ├── services/
 │   ├── auth-service/            # đăng nhập, JWT, RBAC — auth_db
-│   ├── booking-service/         # đặt lịch khám — booking_db
+│   ├── profile-service/         # hồ sơ khách, bác sĩ, nhân viên — profile_db
 │   ├── pet-service/             # hồ sơ thú cưng — pet_db
+│   ├── booking-service/         # đặt lịch khám, bệnh án — booking_db
 │   ├── product-service/         # sản phẩm, tồn kho — product_db
-│   ├── order-service/           # giỏ hàng, đơn hàng, thanh toán — order_db
-│   ├── staff-service/           # chấm công — staff_db
-│   ├── notification-service/    # gửi email/Zalo qua RabbitMQ
+│   ├── order-service/           # giỏ hàng, đơn hàng — order_db
+│   ├── payment-service/         # thu tiền đơn thuốc — payment_db
+│   ├── staff-service/           # chấm công, ca trực — staff_db
+│   ├── notification-service/    # gửi email qua RabbitMQ
 │   └── reporting-service/       # tổng hợp báo cáo cho Admin
 ├── frontend/                    # React/Next.js
 └── shared/                      # DTO, config dùng chung (Maven module/JAR nội bộ)

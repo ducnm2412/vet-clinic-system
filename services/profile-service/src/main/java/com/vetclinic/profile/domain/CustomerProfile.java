@@ -49,10 +49,6 @@ public class CustomerProfile {
     @Builder.Default
     private List<Address> addresses = new ArrayList<>();
 
-    @OneToMany(mappedBy = "customerProfile", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<Pet> pets = new ArrayList<>();
-
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;

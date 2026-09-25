@@ -28,11 +28,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Transactional
 class DoctorShiftTest {
 
+    @MockBean private ProfileServiceClient profileServiceClient;
+
     @Autowired private ShiftChangedListener listener;
     @Autowired private SlotService slotService;
     @Autowired private AppointmentSlotRepository slotRepository;
     @Autowired private DoctorShiftRepository doctorShiftRepository;
-    @MockBean private ProfileServiceClient profileServiceClient;
 
     private final UUID doctor = UUID.randomUUID();
     private final LocalDate workday = LocalDate.now().plusDays(3);

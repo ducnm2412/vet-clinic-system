@@ -1,5 +1,6 @@
 package com.vetclinic.booking.service;
 
+import com.vetclinic.booking.client.PetServiceClient;
 import com.vetclinic.booking.client.ProfileServiceClient;
 import com.vetclinic.booking.domain.AppointmentSlot;
 import com.vetclinic.booking.domain.MedicalRecord;
@@ -52,11 +53,14 @@ class MedicalRecordServiceTest {
     private MedicalRecordRepository medicalRecordRepository;
 
     @MockBean
+    private PetServiceClient petServiceClient;
+
+    @MockBean
     private ProfileServiceClient profileServiceClient;
 
     @Test
     void createOrUpdateMedicalRecord_thenGet_roundTripsWithPrescriptionItems() {
-        when(profileServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
+        when(petServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
         UUID customerUserId = UUID.randomUUID();
         AppointmentResponse appointment = bookAppointment(customerUserId, LocalDate.of(2026, 12, 20), LocalTime.of(9, 0));
 
@@ -77,7 +81,7 @@ class MedicalRecordServiceTest {
 
     @Test
     void createOrUpdateMedicalRecord_calledTwice_replacesPrescriptionItems() {
-        when(profileServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
+        when(petServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
         AppointmentResponse appointment = bookAppointment(UUID.randomUUID(), LocalDate.of(2026, 12, 21), LocalTime.of(9, 0));
 
         medicalRecordService.createOrUpdateMedicalRecord(appointment.id(), new MedicalRecordRequest(
@@ -95,7 +99,7 @@ class MedicalRecordServiceTest {
 
     @Test
     void getMedicalRecord_asNonOwningCustomer_throwsResourceNotFound() {
-        when(profileServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
+        when(petServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
         UUID owner = UUID.randomUUID();
         AppointmentResponse appointment = bookAppointment(owner, LocalDate.of(2026, 12, 22), LocalTime.of(9, 0));
         medicalRecordService.createOrUpdateMedicalRecord(appointment.id(),
@@ -110,7 +114,7 @@ class MedicalRecordServiceTest {
 
     @Test
     void getMedicalRecord_noneCreatedYet_throwsResourceNotFound() {
-        when(profileServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
+        when(petServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
         AppointmentResponse appointment = bookAppointment(UUID.randomUUID(), LocalDate.of(2026, 12, 23), LocalTime.of(9, 0));
 
         assertThatThrownBy(() -> medicalRecordService.getMedicalRecord(appointment.id(), UUID.randomUUID(), true))
@@ -119,7 +123,7 @@ class MedicalRecordServiceTest {
 
     @Test
     void receivePrescription_beforePayment_throwsPrescriptionNotPaid() {
-        when(profileServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
+        when(petServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
         AppointmentResponse appointment = bookAppointment(UUID.randomUUID(), LocalDate.of(2026, 12, 24), LocalTime.of(9, 0));
         medicalRecordService.createOrUpdateMedicalRecord(appointment.id(),
                 new MedicalRecordRequest("Diagnosis", null, null, null));
@@ -133,7 +137,7 @@ class MedicalRecordServiceTest {
     void markPrescriptionPaid_transitionsPendingDirectlyToReceived() {
         // Phòng khám thu tiền và giao thuốc cùng một lượt ở quầy — event payment.completed
         // phải đưa thẳng PENDING -> RECEIVED, không dừng ở PAID chờ staff tiếp nhận thêm bước nữa.
-        when(profileServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
+        when(petServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
         AppointmentResponse appointment = bookAppointment(UUID.randomUUID(), LocalDate.of(2026, 12, 24), LocalTime.of(9, 0));
         MedicalRecordResponse created = medicalRecordService.createOrUpdateMedicalRecord(appointment.id(),
                 new MedicalRecordRequest("Diagnosis", null, null, null));
@@ -150,7 +154,7 @@ class MedicalRecordServiceTest {
         // receivePrescription() vẫn còn đó cho trường hợp cần tiếp nhận thủ công (vd: record cũ
         // đang dừng ở PAID từ trước khi có thay đổi này) — gọi lại trên record đã RECEIVED không
         // lỗi, chỉ trả về đúng trạng thái hiện tại.
-        when(profileServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
+        when(petServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
         AppointmentResponse appointment = bookAppointment(UUID.randomUUID(), LocalDate.of(2026, 12, 24), LocalTime.of(9, 0));
         medicalRecordService.createOrUpdateMedicalRecord(appointment.id(),
                 new MedicalRecordRequest("Diagnosis", null, null, null));
@@ -168,7 +172,7 @@ class MedicalRecordServiceTest {
 
     @Test
     void receivePrescription_noRecordYet_throwsResourceNotFound() {
-        when(profileServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
+        when(petServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
         AppointmentResponse appointment = bookAppointment(UUID.randomUUID(), LocalDate.of(2026, 12, 25), LocalTime.of(9, 0));
 
         assertThatThrownBy(() -> medicalRecordService.receivePrescription(appointment.id()))
@@ -186,7 +190,7 @@ class MedicalRecordServiceTest {
         // markPrescriptionPaid() không còn để lại record nào ở PAID (đi thẳng sang RECEIVED) —
         // dựng trạng thái PAID trực tiếp qua repository để kiểm truy vấn của
         // listPendingPrescriptions() vẫn lọc đúng, phòng khi có record cũ còn kẹt ở PAID.
-        when(profileServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
+        when(petServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
         AppointmentResponse notYetPaid = bookAppointment(UUID.randomUUID(), LocalDate.of(2026, 12, 26), LocalTime.of(9, 0));
         AppointmentResponse paidAndPending = bookAppointment(UUID.randomUUID(), LocalDate.of(2026, 12, 26), LocalTime.of(9, 30));
         AppointmentResponse alreadyReceived = bookAppointment(UUID.randomUUID(), LocalDate.of(2026, 12, 26), LocalTime.of(10, 0));

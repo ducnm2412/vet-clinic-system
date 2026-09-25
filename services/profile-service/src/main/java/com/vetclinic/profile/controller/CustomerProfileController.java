@@ -4,8 +4,6 @@ import com.vetclinic.profile.dto.AddressRequest;
 import com.vetclinic.profile.dto.AddressResponse;
 import com.vetclinic.profile.dto.CustomerProfileRequest;
 import com.vetclinic.profile.dto.CustomerProfileResponse;
-import com.vetclinic.profile.dto.PetRequest;
-import com.vetclinic.profile.dto.PetResponse;
 import com.vetclinic.profile.security.jwt.AuthenticatedUser;
 import com.vetclinic.profile.service.CustomerProfileService;
 import jakarta.validation.Valid;
@@ -64,36 +62,6 @@ public class CustomerProfileController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteAddress(@AuthenticationPrincipal AuthenticatedUser principal, @PathVariable UUID addressId) {
         customerProfileService.deleteAddress(principal.userId(), addressId);
-    }
-
-    @GetMapping("/profile/customer/me/pets")
-    public List<PetResponse> listPets(@AuthenticationPrincipal AuthenticatedUser principal) {
-        return customerProfileService.listPets(principal.userId());
-    }
-
-    @GetMapping("/profile/customer/me/pets/{petId}")
-    public PetResponse getPet(@AuthenticationPrincipal AuthenticatedUser principal, @PathVariable UUID petId) {
-        return customerProfileService.getPet(principal.userId(), petId);
-    }
-
-    @PostMapping("/profile/customer/me/pets")
-    @ResponseStatus(HttpStatus.CREATED)
-    public PetResponse createPet(@AuthenticationPrincipal AuthenticatedUser principal,
-                                  @Valid @RequestBody PetRequest request) {
-        return customerProfileService.createPet(principal.userId(), request);
-    }
-
-    @PutMapping("/profile/customer/me/pets/{petId}")
-    public PetResponse updatePet(@AuthenticationPrincipal AuthenticatedUser principal,
-                                  @PathVariable UUID petId,
-                                  @Valid @RequestBody PetRequest request) {
-        return customerProfileService.updatePet(principal.userId(), petId, request);
-    }
-
-    @DeleteMapping("/profile/customer/me/pets/{petId}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deletePet(@AuthenticationPrincipal AuthenticatedUser principal, @PathVariable UUID petId) {
-        customerProfileService.deletePet(principal.userId(), petId);
     }
 
     // Staff/Admin tra cứu hồ sơ 1 khách hàng cụ thể theo id — path "by-id" tách biệt hẳn khỏi

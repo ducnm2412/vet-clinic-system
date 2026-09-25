@@ -45,7 +45,7 @@ if [ $# -gt 0 ] && [ -d "$ROOT/services/$1" ]; then
 else
   status=0
   for svc in auth-service profile-service product-service order-service booking-service \
-             payment-service staff-service notification-service reporting-service; do
+             payment-service staff-service pet-service notification-service reporting-service; do
     run_one "$svc" "$@" || status=1
   done
   exit $status

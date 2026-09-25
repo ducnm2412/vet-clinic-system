@@ -20,6 +20,10 @@ spring:
           uri: lb://profile-service
           predicates:
             - Path=/profile/**
+        - id: pet-service
+          uri: lb://pet-service
+          predicates:
+            - Path=/pets/**
         - id: booking-service
           uri: lb://booking-service
           predicates:

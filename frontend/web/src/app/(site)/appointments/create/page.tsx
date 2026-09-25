@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Check, ChevronLeft, Plus } from "lucide-react";
-import { ApiError, bookingApi, customerApi, suggestionsFrom } from "@/lib/api";
+import { ApiError, bookingApi, myPetApi, suggestionsFrom } from "@/lib/api";
 import { formatAge, formatDate, formatTime, todayISO } from "@/lib/utils/format";
 import { cn } from "@/lib/utils/cn";
 import { useToast } from "@/components/ui";
@@ -46,7 +46,7 @@ function BookingFlow() {
   const [suggestions, setSuggestions] = useState<SuggestedSlot[]>([]);
   const [addingPet, setAddingPet] = useState(false);
 
-  const pets = useQuery({ queryKey: ["pets", "mine"], queryFn: customerApi.pets });
+  const pets = useQuery({ queryKey: ["pets", "mine"], queryFn: myPetApi.list });
 
   const times = useQuery({
     queryKey: ["available-times", date],

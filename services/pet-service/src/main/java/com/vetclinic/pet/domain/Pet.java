@@ -1,15 +1,12 @@
-package com.vetclinic.profile.domain;
+package com.vetclinic.pet.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -24,6 +21,13 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
 
+/**
+ * Hồ sơ một con thú cưng.
+ *
+ * Chủ nuôi lưu bằng userId của auth-service, không phải customer_profile_id như hồi còn nằm
+ * trong profile-service — nhờ vậy pet-service không phải biết gì về cách profile-service lưu
+ * hồ sơ khách.
+ */
 @Entity
 @Table(name = "pets")
 @Getter
@@ -37,16 +41,16 @@ public class Pet {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "customer_profile_id", nullable = false)
-    private CustomerProfile customerProfile;
+    @Column(name = "owner_user_id", nullable = false)
+    private UUID ownerUserId;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 100)
     private String name;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 50)
     private String species;
 
+    @Column(length = 100)
     private String breed;
 
     @Enumerated(EnumType.STRING)

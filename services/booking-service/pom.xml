@@ -172,10 +172,10 @@
                         <app.scheduling.slot-generation.enabled>false</app.scheduling.slot-generation.enabled>
                     </systemPropertyVariables>
                     <excludes>
-                        <!-- Cần Eureka và profile-service đang chạy thật mới resolve được Feign,
+                        <!-- Cần Eureka và pet-service đang chạy thật mới resolve được Feign,
                              nên không chạy trong lượt test thường. Chạy riêng khi hệ thống đang bật:
-                             mvn test -Dtest=ProfileServiceClientTest -Dsurefire.failIfNoSpecifiedTests=false -->
-                        <exclude>**/ProfileServiceClientTest.java</exclude>
+                             mvn test -Dtest=PetServiceClientTest -Dsurefire.failIfNoSpecifiedTests=false -->
+                        <exclude>**/PetServiceClientTest.java</exclude>
                     </excludes>
                 </configuration>
             </plugin>

@@ -318,7 +318,7 @@
       ]
     },
     {
-      "name": "04. Profile - Customer",
+      "name": "04. Profile & Pets - Customer",
       "item": [
         {
           "name": "11 - Get My Profile (Customer)",
@@ -439,7 +439,7 @@
               "mode": "raw",
               "raw": "{\n  \"name\": \"Miu\",\n  \"species\": \"Cat\",\n  \"breed\": \"British Shorthair\",\n  \"gender\": \"FEMALE\",\n  \"dateOfBirth\": \"2022-01-15\",\n  \"weightKg\": 3.5\n}"
             },
-            "url": "{{baseUrl}}/profile/customer/me/pets",
+            "url": "{{baseUrl}}/pets/me",
             "description": "gender: MALE | FEMALE | UNKNOWN. petId luu lai se duoc dung xuyen suot phan Booking o duoi."
           }
         },
@@ -448,7 +448,7 @@
           "request": {
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{customerAccessToken}}" }],
-            "url": "{{baseUrl}}/profile/customer/me/pets"
+            "url": "{{baseUrl}}/pets/me"
           }
         },
         {
@@ -456,7 +456,7 @@
           "request": {
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{customerAccessToken}}" }],
-            "url": "{{baseUrl}}/profile/customer/me/pets/{{petId}}"
+            "url": "{{baseUrl}}/pets/me/{{petId}}"
           }
         }
       ]
@@ -580,8 +580,8 @@
           "request": {
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{staffAccessToken}}" }],
-            "url": "{{baseUrl}}/profile/pets/{{petId}}",
-            "description": "Dung boi DOCTOR/STAFF/ADMIN (vd: booking-service goi Feign) - khac voi /profile/customer/me/pets/{id} chi cho chinh chu."
+            "url": "{{baseUrl}}/pets/{{petId}}",
+            "description": "Dung boi DOCTOR/STAFF/ADMIN (vd: booking-service goi Feign) - khac voi /pets/me/{id} chi cho chinh chu."
           }
         },
         {
@@ -589,7 +589,7 @@
           "request": {
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{staffAccessToken}}" }],
-            "url": "{{baseUrl}}/profile/pets?ids={{petId}}"
+            "url": "{{baseUrl}}/pets?ids={{petId}}"
           }
         },
         {
@@ -842,7 +842,7 @@
           "request": {
             "method": "DELETE",
             "header": [{ "key": "Authorization", "value": "Bearer {{customerAccessToken}}" }],
-            "url": "{{baseUrl}}/profile/customer/me/pets/{{petId}}"
+            "url": "{{baseUrl}}/pets/me/{{petId}}"
           }
         },
         {

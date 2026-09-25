@@ -49,7 +49,7 @@ class CustomerProfileControllerTest {
     }
 
     @Test
-    void getMe_thenPutMe_thenAddressAndPetFlow() throws Exception {
+    void getMe_thenPutMe_thenAddressFlow() throws Exception {
         String token = customerToken();
 
         mockMvc.perform(get("/profile/customer/me").header("Authorization", "Bearer " + token))
@@ -77,15 +77,6 @@ class CustomerProfileControllerTest {
         mockMvc.perform(get("/profile/customer/me/addresses").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].city").value("HCM"));
-
-        mockMvc.perform(post("/profile/customer/me/pets")
-                        .header("Authorization", "Bearer " + token)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"name":"Milo","species":"Dog"}
-                                """))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.name").value("Milo"));
     }
 
     @Test
@@ -100,17 +91,6 @@ class CustomerProfileControllerTest {
                 .andExpect(jsonPath("$.fieldErrors.city").exists());
     }
 
-    @Test
-    void postPet_negativeWeight_returns400() throws Exception {
-        mockMvc.perform(post("/profile/customer/me/pets")
-                        .header("Authorization", "Bearer " + customerToken())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"name":"Bad","species":"Cat","weightKg":-1}
-                                """))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.fieldErrors.weightKg").exists());
-    }
 
     @Test
     void getById_withStaffToken_returns200() throws Exception {
