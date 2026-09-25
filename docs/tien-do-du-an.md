@@ -16,11 +16,11 @@ Tài liệu này ghi lại **những gì đã làm được**. Bảng phân tíc
 |---|---|
 | Service nghiệp vụ đã hiện thực | **10** / 10 |
 | Service chưa viết dòng nào | 0 |
-| File Java (main) | 324 |
-| File test | 75 |
-| Test tự động | 335 |
-| Endpoint REST | 111 |
-| Luồng sự kiện RabbitMQ | 12 |
+| File Java (main) | 336 |
+| File test | 77 |
+| Test tự động | 353 |
+| Endpoint REST | 121 |
+| Luồng sự kiện RabbitMQ | 13 |
 | Database PostgreSQL | 8 |
 
 Số file đếm bằng `find services -path "*/src/main/java/*" -name "*.java"` (và `src/test`); số
@@ -33,16 +33,16 @@ là tổng báo cáo của `bash scripts/test.sh`.
 
 | Service | Cổng | Database | main/test | Migration | Endpoint |
 |---|---|---|---|---|---|
-| `auth-service` | 8081 | `auth_db` | 44 / 11 | V1–V4 | 11 |
-| `profile-service` | 8083 | `profile_db` | 43 / 14 | V1–V3 | 18 |
-| `product-service` | 8084 | `product_db` | 35 / 7 | V1 | 14 |
+| `auth-service` | 8081 | `auth_db` | 46 / 12 | V1–V4 | 13 |
+| `profile-service` | 8083 | `profile_db` | 45 / 14 | V1–V3 | 18 |
+| `product-service` | 8084 | `product_db` | 35 / 7 | V1 | 15 |
 | `order-service` | 8085 | `order_db` | 46 / 6 | V1 | 19 |
-| `booking-service` | 8086 | `booking_db` | 51 / 13 | V1–V6 | 13 |
+| `booking-service` | 8086 | `booking_db` | 58 / 14 | V1–V7 | 19 |
 | `payment-service` | 8087 | `payment_db` | 26 / 6 | V1–V3 | 4 |
 | `notification-service` | 8088 | — | 7 / 4 | — | 0 |
 | `reporting-service` | 8089 | — | 13 / 2 | — | 7 |
 | `staff-service` | 8090 | `staff_db` | 21 / 5 | V1 | 9 |
-| `pet-service` | 8091 | `pet_db` | 38 / 7 | V1–V2 | 16 |
+| `pet-service` | 8091 | `pet_db` | 39 / 7 | V1–V3 | 17 |
 
 Hạ tầng đi kèm: `api-gateway` (8080), `eureka-server` (8761), `frontend` Next.js (3000),
 RabbitMQ (5672 / 15672), Redis (6379), MailHog (1025 / 8025).
@@ -202,6 +202,7 @@ pet      --prescription.created-> payment         tạo phiếu thu tiền thu�
 payment  --payment.completed----> pet             đóng đơn thuốc đã trả tiền
 booking  --appointment.created--> notification   gửi email xác nhận lịch khám (CN-43)
 auth     --user.staff-created----> profile        tạo hồ sơ bác sĩ kèm họ tên (VD-20)
+auth     --user.customer-created-> profile        tạo hồ sơ khách kèm số điện thoại khi mở tài khoản tại quầy (CN-19)
 auth     --user.locked/unlocked--> booking        chặn / mở lại giờ khám của bác sĩ bị khoá (CN-08)
 staff    --shift.added/removed--> booking        mở / đóng giờ khám theo ca trực (CN-39, CN-41)
 ```
@@ -260,6 +261,8 @@ chạy local ngoài Docker vẫn sẽ đụng cổng.
 | Mã | Chức năng | Vì sao chưa có |
 |---|---|---|
 | CN-34 | Thanh toán trực tuyến | Mới có COD; cần tài khoản merchant và URL công khai nhận IPN |
+| CN-20 (một phần) | Đổi lịch hẹn | Mới có huỷ; đổi lịch phải huỷ rồi đặt lại |
+| CN-26 | Nhắc tái khám, tiêm phòng | Cần lịch nhắc và một scheduler riêng |
 | CN-44, 45 | Thông báo đơn hàng / nhắc tái khám | `notification-service` mới làm email xác minh và xác nhận đặt lịch |
 
 CN-07 (làm mới phiên) và CN-08 (khoá tài khoản) từng là code khai báo sẵn nhưng không hoạt động;
