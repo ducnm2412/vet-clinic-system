@@ -13,7 +13,7 @@ export { customerApi, doctorApi, staffApi, customerLookupApi } from "./profile";
 export { myPetApi, petLookupApi, medicalRecordApi } from "./pets";
 export { productApi, categoryApi } from "./products";
 export { cartApi, orderApi, orderManageApi, nextActions } from "./orders";
-export { bookingApi, suggestionsFrom } from "./bookings";
+export { bookingApi, clinicServiceApi, suggestionsFrom } from "./bookings";
 export { paymentApi } from "./payments";
 export { reportingApi, type ReportRange } from "./reporting";
 export { attendanceApi, shiftApi, type DateRange } from "./staff";

@@ -121,6 +121,12 @@ function AppointmentDetailBody() {
             <p className="measure t-body mt-3 text-stone">
               {appointment.reason?.trim() || "Bạn không ghi lý do khi đặt lịch."}
             </p>
+            {/* VD-21: dịch vụ đã chọn; lịch hẹn đặt trước khi có danh mục thì không có. */}
+            {appointment.serviceName && (
+              <p className="mt-3 text-[15px] text-stone">
+                Dịch vụ: <span className="text-ink">{appointment.serviceName}</span>
+              </p>
+            )}
           </section>
 
           <MedicalRecordSection appointment={appointment} />

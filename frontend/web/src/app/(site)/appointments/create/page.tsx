@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Check, ChevronLeft, Plus } from "lucide-react";
-import { ApiError, bookingApi, myPetApi, suggestionsFrom } from "@/lib/api";
+import { ApiError, bookingApi, clinicServiceApi, myPetApi, suggestionsFrom } from "@/lib/api";
 import { formatAge, formatDate, formatTime, todayISO } from "@/lib/utils/format";
 import { cn } from "@/lib/utils/cn";
 import { useToast } from "@/components/ui";
@@ -14,7 +14,7 @@ import { Container, SiteButton } from "@/components/site/primitives";
 import { CustomerOnly } from "@/components/site/CustomerOnly";
 import { PetAvatar } from "@/components/site/PetAvatar";
 import { PetFormDialog } from "@/components/site/PetFormDialog";
-import { SiteTextarea } from "@/components/site/fields";
+import { SiteSelect, SiteTextarea } from "@/components/site/fields";
 
 const STEPS = ["Chọn bé", "Chọn ngày", "Chọn giờ", "Xác nhận"] as const;
 
@@ -43,6 +43,7 @@ function BookingFlow() {
   const [date, setDate] = useState(todayISO());
   const [startTime, setStartTime] = useState("");
   const [reason, setReason] = useState("");
+  const [serviceId, setServiceId] = useState("");
   const [suggestions, setSuggestions] = useState<SuggestedSlot[]>([]);
   const [addingPet, setAddingPet] = useState(false);
 
@@ -75,7 +76,14 @@ function BookingFlow() {
   }, [todayBookable]);
 
   const book = useMutation({
-    mutationFn: () => bookingApi.create({ petId, date, startTime, reason: reason || undefined }),
+    mutationFn: () =>
+      bookingApi.create({
+        petId,
+        date,
+        startTime,
+        serviceId: serviceId || undefined,
+        reason: reason || undefined,
+      }),
     onSuccess: (appointment) => {
       toast.success("Đã đặt lịch khám");
       router.push(`/appointments/${appointment.id}`);
@@ -197,6 +205,8 @@ function BookingFlow() {
                 startTime={startTime}
                 reason={reason}
                 onReason={setReason}
+                serviceId={serviceId}
+                onServiceId={setServiceId}
               />
             )}
 
@@ -526,13 +536,23 @@ function StepConfirm({
   startTime,
   reason,
   onReason,
+  serviceId,
+  onServiceId,
 }: {
   pet: Pet | null;
   date: string;
   startTime: string;
   reason: string;
   onReason: (v: string) => void;
+  serviceId: string;
+  onServiceId: (v: string) => void;
 }) {
+  // VD-21: danh mục dịch vụ lấy từ backend. Gọi hỏng thì ẩn ô chọn đi, khách vẫn đặt được và
+  // mô tả ở ô lý do — không chặn việc đặt lịch chỉ vì thiếu một ô không bắt buộc.
+  const services = useQuery({ queryKey: ["clinic-services"], queryFn: clinicServiceApi.list });
+  const list = services.data ?? [];
+  const chosen = list.find((x) => x.id === serviceId) ?? null;
+
   return (
     <section>
       <h2 className="t-h2">Bé đang bị gì?</h2>
@@ -551,17 +571,27 @@ function StepConfirm({
         />
       </div>
 
-      {/*
-        TODO(backend, VD-21): AppointmentRequest không có trường dịch vụ, nên khách không
-        chọn được "tiêm phòng" hay "phẫu thuật" thành một mục riêng. Tạm hướng dẫn viết vào
-        ô lý do. Cần bổ sung: serviceId trong AppointmentRequest và một danh mục dịch vụ.
-      */}
-      <p className="measure mt-4 text-[15px] text-stone">
-        Cần tiêm phòng hay làm thủ thuật? Ghi luôn vào ô trên, phòng khám sẽ chuẩn bị trước.
-      </p>
+      {list.length > 0 && (
+        <div className="mt-6 max-w-xl">
+          <SiteSelect
+            label="Cần dịch vụ gì?"
+            value={serviceId}
+            onChange={(e) => onServiceId(e.target.value)}
+            hint="Không bắt buộc. Chưa rõ thì cứ để trống, bác sĩ xem bé rồi quyết."
+          >
+            <option value="">Chưa rõ, để bác sĩ xem</option>
+            {list.map((x) => (
+              <option key={x.id} value={x.id}>
+                {x.name} · khoảng {x.durationMinutes} phút
+              </option>
+            ))}
+          </SiteSelect>
+        </div>
+      )}
 
       <dl className="mt-10 max-w-xl divide-y divide-mist rounded-[var(--radius-card)] border border-mist px-6">
         <Line label="Bé" value={pet?.name ?? "Chưa chọn"} />
+        {chosen && <Line label="Dịch vụ" value={chosen.name} />}
         <Line label="Ngày" value={formatDate(date)} />
         <Line label="Giờ" value={formatTime(startTime)} />
         <Line label="Tại" value={CLINIC.address} />

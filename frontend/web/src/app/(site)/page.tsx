@@ -1,16 +1,17 @@
 import Image from "next/image";
 import Link from "next/link";
-import { CLINIC, BOOKING_STEPS, COMMITMENTS, REASONS, SERVICES } from "@/config/clinic";
+import { CLINIC, BOOKING_STEPS, COMMITMENTS, REASONS } from "@/config/clinic";
 import { ButtonLink, Container, Section, SectionHead } from "@/components/site/primitives";
 import { FeaturedProducts } from "@/components/site/FeaturedProducts";
 import { DoctorTeam } from "@/components/site/DoctorTeam";
+import { ClinicServices } from "@/components/site/ClinicServices";
 
 export default function HomePage() {
   return (
     <>
       <Hero />
       <BrandStory />
-      <Services />
+      <ClinicServices />
       <WhyUs />
       <DoctorTeam />
       <FeaturedProducts />
@@ -172,37 +173,6 @@ function BrandStory() {
  * Dịch vụ trình bày thành hàng có đường kẻ ngăn, không phải lưới thẻ giống hệt nhau —
  * bốn cái thẻ bo góc như nhau là dấu hiệu rõ nhất của giao diện dựng bằng khuôn mẫu.
  */
-function Services() {
-  return (
-    <Section id="dich-vu" tone="white">
-      <SectionHead
-        title="Bé cần gì, phòng khám làm được gì"
-        lede="Bốn nhóm việc chúng tôi làm hằng ngày. Ca phức tạp hơn thì bác sĩ hội chẩn rồi báo bạn hướng xử lý."
-      />
-
-      <ul className="grid gap-x-14 sm:grid-cols-2">
-        {SERVICES.map((s) => (
-          <li
-            key={s.name}
-            className="flex gap-5 border-t border-mist py-8 first:border-t-0 sm:[&:nth-child(2)]:border-t-0"
-          >
-            <span
-              aria-hidden
-              className="arch-sm grid size-14 shrink-0 place-items-center bg-mint text-teal"
-            >
-              <s.icon className="size-6" />
-            </span>
-            <div className="min-w-0">
-              <h3 className="t-h3">{s.name}</h3>
-              <p className="mt-2 text-stone">{s.description}</p>
-            </div>
-          </li>
-        ))}
-      </ul>
-    </Section>
-  );
-}
-
 function WhyUs() {
   const [lead, ...rest] = REASONS;
 

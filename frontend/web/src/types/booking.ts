@@ -18,7 +18,31 @@ export interface AppointmentRequest {
   petId: string;
   date: string;
   startTime: string;
+  /** VD-21: không bắt buộc — khách chưa rõ cần gì thì mô tả ở ô lý do khám. */
+  serviceId?: string;
   reason?: string;
+}
+
+/** booking-service: ClinicServiceResponse — danh mục dịch vụ của phòng khám (VD-21). */
+export interface ClinicService {
+  id: string;
+  /** Ổn định theo thời gian: giao diện chọn biểu tượng theo slug. */
+  slug: string;
+  name: string;
+  description: string | null;
+  durationMinutes: number;
+  referencePrice: number | null;
+  active: boolean;
+  displayOrder: number;
+}
+
+export interface ClinicServiceRequest {
+  slug: string;
+  name: string;
+  description?: string;
+  durationMinutes?: number;
+  referencePrice?: number;
+  displayOrder?: number;
 }
 
 export interface Appointment {
@@ -31,6 +55,9 @@ export interface Appointment {
   endTime: string;
   customerUserId: string;
   petId: string;
+  /** VD-21: dịch vụ khách chọn; null với lịch hẹn cũ hoặc khách không chọn. */
+  serviceId: string | null;
+  serviceName: string | null;
   reason: string | null;
   status: AppointmentStatus;
   createdAt: string;

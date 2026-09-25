@@ -11,6 +11,7 @@ import {
   LayoutDashboard,
   PackageSearch,
   PawPrint,
+  Syringe,
   Receipt,
   Stethoscope,
   UserRound,
@@ -54,6 +55,7 @@ export const NAV: Record<Role, NavSection[]> = {
       title: "Khám chữa",
       items: [
         { href: "/admin/appointments", label: "Lịch khám", icon: CalendarDays },
+        { href: "/admin/services", label: "Dịch vụ", icon: Syringe },
         { href: "/admin/pets", label: "Thú cưng", icon: PawPrint },
       ],
     },

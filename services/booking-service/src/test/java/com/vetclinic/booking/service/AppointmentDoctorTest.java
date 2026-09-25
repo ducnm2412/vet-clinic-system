@@ -67,7 +67,7 @@ class AppointmentDoctorTest {
 
     private AppointmentResponse book(UUID customer, LocalTime start) {
         when(petServiceClient.getMyPet(any(), any())).thenReturn(pet());
-        return appointmentService.createAppointment(customer, "Bearer t", new AppointmentRequest(UUID.randomUUID(), DATE, start, null));
+        return appointmentService.createAppointment(customer, "Bearer t", new AppointmentRequest(UUID.randomUUID(), DATE, start, null, null));
     }
 
     @Test
@@ -142,7 +142,7 @@ class AppointmentDoctorTest {
                 new DoctorSummaryResponse(UUID.randomUUID(), doctor, "Trần Minh Khoa", "Nội khoa", null, 8)));
 
         appointmentService.createAppointment(UUID.randomUUID(), "khach@example.com", "Bearer t",
-                new AppointmentRequest(UUID.randomUUID(), DATE, NINE, "Bỏ ăn"));
+                new AppointmentRequest(UUID.randomUUID(), DATE, NINE, null, "Bỏ ăn"));
 
         AppointmentCreatedEvent e = events.stream(AppointmentCreatedEvent.class).findFirst().orElseThrow();
         assertThat(e.customerEmail()).isEqualTo("khach@example.com");
@@ -160,7 +160,7 @@ class AppointmentDoctorTest {
         when(profileServiceClient.listDoctors()).thenThrow(new RuntimeException("profile-service down"));
 
         AppointmentResponse res = appointmentService.createAppointment(UUID.randomUUID(), "khach@example.com",
-                "Bearer t", new AppointmentRequest(UUID.randomUUID(), DATE, NINE, null));
+                "Bearer t", new AppointmentRequest(UUID.randomUUID(), DATE, NINE, null, null));
 
         assertThat(res.doctorUserId()).isEqualTo(doctor);
         assertThat(events.stream(AppointmentCreatedEvent.class).findFirst().orElseThrow().doctorName()).isNull();

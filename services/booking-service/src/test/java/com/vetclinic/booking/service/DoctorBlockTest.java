@@ -99,7 +99,7 @@ class DoctorBlockTest {
         AppointmentSlot s = slot(date, SlotStatus.AVAILABLE);
         UUID customer = UUID.randomUUID();
         AppointmentResponse booked = appointmentService.createAppointment(customer, "Bearer t",
-                new AppointmentRequest(UUID.randomUUID(), date, s.getStartTime(), "Khám"));
+                new AppointmentRequest(UUID.randomUUID(), date, s.getStartTime(), null, "Khám"));
         assertThat(booked.slotId()).isEqualTo(s.getId());
 
         listener.onUserStatusChanged(new UserStatusChangedEvent(doctor, List.of("DOCTOR"), true));

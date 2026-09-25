@@ -3,6 +3,7 @@ package com.vetclinic.booking.service;
 import com.vetclinic.booking.client.PetServiceClient;
 import com.vetclinic.booking.client.ProfileServiceClient;
 import com.vetclinic.booking.domain.Appointment;
+import com.vetclinic.booking.domain.ClinicService;
 import com.vetclinic.booking.domain.AppointmentSlot;
 import com.vetclinic.booking.domain.AppointmentStatus;
 import com.vetclinic.booking.domain.ClinicSchedule;
@@ -39,6 +40,7 @@ public class AppointmentService {
     private final AppointmentRepository appointmentRepository;
     private final BlockedDoctorRepository blockedDoctorRepository;
     private final ProfileServiceClient profileServiceClient;
+    private final ClinicServiceCatalog clinicServiceCatalog;
     private final PetServiceClient petServiceClient;
     private final SuggestionService suggestionService;
     private final ApplicationEventPublisher applicationEventPublisher;
@@ -86,6 +88,8 @@ public class AppointmentService {
                 .slot(slot)
                 .customerUserId(customerUserId)
                 .petId(request.petId())
+                // VD-21: kiểm dịch vụ có thật và còn cung cấp; null thì bỏ qua, khách không chọn.
+                .service(clinicServiceCatalog.requireBookable(request.serviceId()))
                 .reason(request.reason())
                 .build();
 
@@ -185,15 +189,19 @@ public class AppointmentService {
 
     private AppointmentResponse toResponse(Appointment appointment) {
         AppointmentSlot slot = appointment.getSlot();
+        ClinicService service = appointment.getService();
         return new AppointmentResponse(appointment.getId(), slot.getId(), slot.getDoctorUserId(), slot.getDate(),
                 slot.getStartTime(), slot.getEndTime(), appointment.getCustomerUserId(), appointment.getPetId(),
+                service == null ? null : service.getId(), service == null ? null : service.getName(),
                 appointment.getReason(), appointment.getStatus(), appointment.getCreatedAt(), appointment.getUpdatedAt());
     }
 
     private AppointmentDetailResponse toDetailResponse(Appointment appointment, PetResponse pet) {
         AppointmentSlot slot = appointment.getSlot();
+        ClinicService service = appointment.getService();
         return new AppointmentDetailResponse(appointment.getId(), slot.getId(), slot.getDoctorUserId(), slot.getDate(),
                 slot.getStartTime(), slot.getEndTime(), appointment.getCustomerUserId(), appointment.getPetId(),
+                service == null ? null : service.getId(), service == null ? null : service.getName(),
                 appointment.getReason(), appointment.getStatus(), appointment.getCreatedAt(), appointment.getUpdatedAt(),
                 pet);
     }

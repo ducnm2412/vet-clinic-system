@@ -83,7 +83,7 @@ class AppointmentEventPublisherTest {
         UUID customerUserId = UUID.randomUUID();
         UUID petId = UUID.randomUUID();
         appointmentService.createAppointment(customerUserId, "Bearer test-token",
-                new AppointmentRequest(petId, date, time, "Checkup"));
+                new AppointmentRequest(petId, date, time, null, "Checkup"));
 
         AppointmentCreatedEvent event = (AppointmentCreatedEvent) rabbitTemplate.receiveAndConvert(TEST_QUEUE, 5000);
 

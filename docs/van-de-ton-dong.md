@@ -407,7 +407,7 @@ một lần: lấy `first_name || ' ' || last_name` từ `auth_db.users` ghi và
 
 **Còn lại:** chưa có ảnh chân dung (`photoUrl`).
 
-### 🟡 VD-21. `AppointmentRequest` không có trường dịch vụ
+### ✅ VD-21. `AppointmentRequest` không có trường dịch vụ — đã sửa 25/09/2026 (trừ chia slot)
 
 Phát hiện khi dựng luồng đặt lịch cho khách.
 
@@ -420,9 +420,22 @@ nội dung tĩnh trong `frontend/web/src/config/clinic.ts`.
 
 Frontend tạm hướng dẫn khách ghi vào ô lý do khám.
 
-**Hướng sửa:** một bảng `services` (tên, mô tả, thời lượng, giá tham khảo) và thêm
-`serviceId` vào `AppointmentRequest`. Thời lượng còn dùng để chia slot cho đúng — hiện mọi
-ca đều cố định 30 phút bất kể làm gì.
+Đã thêm bảng `clinic_services` trong `booking_db` (`V7`), seed sẵn bốn dịch vụ chuyển nguyên văn
+từ `frontend/web/src/config/clinic.ts`, kèm `GET /booking/services` công khai và thêm/sửa cho ADMIN.
+Tên bảng và lớp là `clinic_services`/`ClinicService` chứ không phải `services`/`Service`: trong dự án
+này "service" còn nghĩa là microservice, đọc code sẽ lẫn.
+
+`appointments.service_id` để trống được — lịch hẹn cũ không có, và khách chưa rõ cần gì thì vẫn đặt
+được rồi mô tả ở ô lý do khám. Bắt chọn sẽ đẩy người ta chọn bừa. Chọn dịch vụ vừa bị ngừng thì trả
+409 kèm tên dịch vụ, không lặng lẽ tạo lịch hẹn trống.
+
+Trang chủ giờ đọc danh mục từ backend thay vì nội dung tĩnh; biểu tượng vẫn ở frontend, tra theo
+`slug`. Admin có trang Dịch vụ để thêm, sửa, ngừng cung cấp — không có xoá, vì lịch hẹn cũ vẫn trỏ
+tới (cùng lý do với VD-03).
+
+**Còn thời lượng chia slot:** chưa làm. `durationMinutes` hiện chỉ để hiện cho khách và nhân viên
+ước lượng; mọi ca vẫn cố định 30 phút. Chia slot theo thời lượng đụng vào sinh slot, đặt lịch và ca
+trực cùng lúc, và làm vỡ lịch đã đặt — để riêng một lần khác.
 
 ### ✅ VD-22. `PetResponse` thiếu ảnh, dị ứng và ghi chú — đã sửa 25/09/2026 (trừ ảnh)
 

@@ -166,6 +166,13 @@ function PatientPanel({
         <div className="mt-3 border-t border-line pt-3">
           <p className="text-sm text-bark">Lý do khám</p>
           <p className="mt-0.5 text-sm text-ink">{a.reason || "Chủ nuôi không ghi"}</p>
+          {/* VD-21: dịch vụ khách chọn lúc đặt lịch — lịch hẹn cũ không có thì bỏ dòng này. */}
+          {a.serviceName && (
+            <p className="mt-2 text-sm">
+              <span className="text-bark">Dịch vụ: </span>
+              <span className="text-ink">{a.serviceName}</span>
+            </p>
+          )}
         </div>
       </section>
 

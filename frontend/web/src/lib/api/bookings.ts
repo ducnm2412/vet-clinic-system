@@ -7,6 +7,8 @@ import type {
   AppointmentSlot,
   AppointmentStatus,
   AvailableTime,
+  ClinicService,
+  ClinicServiceRequest,
   SuggestedSlot,
 } from "@/types";
 
@@ -48,6 +50,24 @@ export const bookingApi = {
   /** Sinh khung giờ cho một bác sĩ trong một ngày. Scheduler cũng chạy việc này định kỳ. */
   generateSlots: (doctorUserId: string, date: string) =>
     http.post<AppointmentSlot[]>("/booking/slots/generate", { doctorUserId, date }),
+};
+
+/**
+ * VD-21: danh mục dịch vụ của phòng khám. Danh sách công khai — trang chủ và trang đặt lịch đọc
+ * được khi khách chưa đăng nhập; nhân viên và quản trị thấy thêm dịch vụ đã ngừng.
+ */
+export const clinicServiceApi = {
+  /**
+   * Không đánh dấu publicRoute: khách chưa đăng nhập vẫn gọi được (backend cho phép), còn nhân
+   * viên và quản trị cần gửi token mới thấy dịch vụ đã ngừng cung cấp.
+   */
+  list: () => http.get<ClinicService[]>("/booking/services"),
+  create: (body: ClinicServiceRequest) => http.post<ClinicService>("/booking/services", body),
+  update: (id: string, body: ClinicServiceRequest) =>
+    http.put<ClinicService>(`/booking/services/${id}`, body),
+  /** Không có xoá: lịch hẹn cũ vẫn trỏ tới dịch vụ này. */
+  hide: (id: string) => http.put<ClinicService>(`/booking/services/${id}/hide`),
+  unhide: (id: string) => http.put<ClinicService>(`/booking/services/${id}/unhide`),
 };
 
 /**

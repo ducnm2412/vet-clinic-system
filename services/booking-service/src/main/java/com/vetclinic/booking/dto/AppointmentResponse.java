@@ -18,6 +18,9 @@ public record AppointmentResponse(
         LocalTime endTime,
         UUID customerUserId,
         UUID petId,
+        // Tên dịch vụ trả kèm để màn hình không phải gọi thêm lượt nữa; null khi khách không chọn.
+        UUID serviceId,
+        String serviceName,
         String reason,
         AppointmentStatus status,
         Instant createdAt,
