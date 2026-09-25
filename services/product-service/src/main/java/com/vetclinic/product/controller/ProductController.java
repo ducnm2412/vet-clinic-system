@@ -17,7 +17,6 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -131,9 +130,16 @@ public class ProductController {
         return productService.update(id, request);
     }
 
-    @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable UUID id) {
-        productService.delete(id);
+    // VD-03: không có DELETE. Ẩn rồi bán lại, giống khoá / mở khoá tài khoản — xoá sẽ cuốn theo
+    // lịch sử kho của mặt hàng đó, mà đơn hàng cũ vẫn đang trỏ tới nó.
+
+    @PutMapping("/{id}/hide")
+    public ProductResponse hide(@PathVariable UUID id) {
+        return productService.setActive(id, false);
+    }
+
+    @PutMapping("/{id}/unhide")
+    public ProductResponse unhide(@PathVariable UUID id) {
+        return productService.setActive(id, true);
     }
 }

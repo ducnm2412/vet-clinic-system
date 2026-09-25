@@ -140,10 +140,19 @@ public class ProductService {
         return toResponse(product);
     }
 
+    /**
+     * VD-03: không có xoá sản phẩm, chỉ ẩn khỏi cửa hàng.
+     *
+     * {@code stock_movements.product_id} có ON DELETE CASCADE, nên xoá một mặt hàng là cuốn theo
+     * toàn bộ vết nhập xuất của nó — trái hẳn mục đích ghi vết để đối soát. Đơn hàng cũ cũng còn
+     * trỏ tới sản phẩm này. Giống cách đã làm với tài khoản (CN-08): khoá, không xoá.
+     */
     @Transactional
-    public void delete(UUID id) {
+    public ProductResponse setActive(UUID id, boolean active) {
         Product product = findOrThrow(id);
-        productRepository.delete(product);
+        product.setActive(active);
+        log.info("{} sản phẩm {} ({})", active ? "Bán lại" : "Ẩn", product.getName(), id);
+        return toResponse(productRepository.saveAndFlush(product));
     }
 
     // ---------- CN-30: tồn kho ----------

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Boxes, Pencil, Plus, Trash2 } from "lucide-react";
+import { Boxes, Eye, EyeOff, Pencil, Plus } from "lucide-react";
 import { ApiError, categoryApi, productApi } from "@/lib/api";
 import { STOCK_STATUS } from "@/lib/utils/status";
 import { formatPrice } from "@/lib/utils/format";
@@ -46,14 +46,16 @@ export default function AdminProductsPage() {
     queryFn: () => productApi.search({ page, size: 20, ...applied }),
   });
 
-  const remove = useMutation({
-    mutationFn: (id: string) => productApi.remove(id),
-    onSuccess: () => {
+  // VD-03: không xoá sản phẩm, chỉ ẩn khỏi cửa hàng — xoá sẽ mất luôn lịch sử kho và làm
+  // đơn hàng cũ trỏ vào khoảng không.
+  const toggleVisibility = useMutation({
+    mutationFn: (p: Product) => (p.active ? productApi.hide(p.id) : productApi.unhide(p.id)),
+    onSuccess: (saved) => {
       qc.invalidateQueries({ queryKey: ["products"] });
-      toast.success("Đã xoá sản phẩm");
+      toast.success(saved.active ? `Đã bán lại ${saved.name}` : `Đã ẩn ${saved.name} khỏi cửa hàng`);
     },
     onError: (err) =>
-      toast.error(err instanceof ApiError ? err.message : "Không xoá được sản phẩm."),
+      toast.error(err instanceof ApiError ? err.message : "Không đổi được trạng thái bán."),
   });
 
   function openCreate() {
@@ -113,17 +115,16 @@ export default function AdminProductsPage() {
             <Pencil aria-hidden className="size-4" />
           </IconButton>
           <IconButton
-            label={`Xoá ${p.name}`}
+            label={p.active ? `Ẩn ${p.name} khỏi cửa hàng` : `Bán lại ${p.name}`}
             variant="ghost"
             size="sm"
-            onClick={() => {
-              // Xoá sản phẩm kéo theo mất lịch sử kho (VD-03) nên hỏi lại cho chắc.
-              if (confirm(`Xoá "${p.name}"? Lịch sử biến động kho của mặt hàng này cũng mất theo.`)) {
-                remove.mutate(p.id);
-              }
-            }}
+            onClick={() => toggleVisibility.mutate(p)}
           >
-            <Trash2 aria-hidden className="size-4" />
+            {p.active ? (
+              <EyeOff aria-hidden className="size-4" />
+            ) : (
+              <Eye aria-hidden className="size-4" />
+            )}
           </IconButton>
         </div>
       ),

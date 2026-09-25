@@ -45,13 +45,17 @@ Chọn khoá dòng thay vì `@Version`: nhân viên không phải gặp lỗi "c
 không phải viết vòng thử lại. `ProductStockConcurrencyTest` chạy hai luồng thật trên database
 test; bỏ khoá ra là hai test hỏng ngay (hai đơn cùng mua món cuối đều qua, và 10+5+7 ra 17).
 
-### 🟡 VD-03. Xoá sản phẩm làm mất sạch lịch sử kho
+### ✅ VD-03. Xoá sản phẩm làm mất sạch lịch sử kho — đã sửa 25/09/2026
 
 `stock_movements.product_id` có `ON DELETE CASCADE`, nên `DELETE /products/{id}` cuốn theo
-toàn bộ vết nhập/xuất — mâu thuẫn với chính mục đích "ghi vết để đối soát".
+toàn bộ vết nhập/xuất — mâu thuẫn với chính mục đích "ghi vết để đối soát". Đơn hàng cũ cũng còn
+trỏ tới sản phẩm đó.
 
-**Hướng sửa:** chuyển sang soft delete (đặt `active=false`), hoặc chặn xoá sản phẩm đã từng
-có giao dịch. Nên quyết trước khi có dữ liệu thật, đổi sau sẽ phải di trú.
+Đã bỏ hẳn endpoint xoá, thay bằng `PUT /products/{id}/hide` và `/unhide` — giống cách đã làm với
+tài khoản (CN-08): khoá, không xoá. Cột `active` đã có sẵn nên không phải di trú gì.
+
+Hàng đã ẩn biến mất khỏi cửa hàng với khách (VD-01, VD-24) nhưng nhân viên vẫn tra được và tồn kho
+vẫn nguyên. Nút "Xoá" ở trang quản trị đổi thành "Ẩn khỏi cửa hàng" / "Bán lại".
 
 ### 🟢 VD-04. Chưa có giữ chỗ tồn kho
 

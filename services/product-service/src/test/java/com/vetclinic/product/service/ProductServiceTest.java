@@ -73,6 +73,18 @@ class ProductServiceTest {
     }
 
     @Test
+    void hideAndUnhide_keepsTheProductAndItsStockHistory() {
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+        when(productRepository.saveAndFlush(any(Product.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        // VD-03: không có xoá. Ẩn là đổi cờ active, hàng và lịch sử kho vẫn nguyên.
+        assertThat(productService.setActive(productId, false).active()).isFalse();
+        verify(productRepository, never()).delete(any(Product.class));
+
+        assertThat(productService.setActive(productId, true).active()).isTrue();
+    }
+
+    @Test
     void adjustStock_import_increasesQuantityAndRecordsMovement() {
         when(productRepository.findByIdForUpdate(productId)).thenReturn(Optional.of(product));
 
