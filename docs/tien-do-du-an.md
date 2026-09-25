@@ -16,10 +16,10 @@ Tài liệu này ghi lại **những gì đã làm được**. Bảng phân tíc
 |---|---|
 | Service nghiệp vụ đã hiện thực | **10** / 10 |
 | Service chưa viết dòng nào | 0 |
-| File Java (main) | 320 |
-| File test | 74 |
-| Test tự động | 327 |
-| Endpoint REST | 108 |
+| File Java (main) | 324 |
+| File test | 75 |
+| Test tự động | 335 |
+| Endpoint REST | 111 |
 | Luồng sự kiện RabbitMQ | 12 |
 | Database PostgreSQL | 8 |
 
@@ -37,12 +37,12 @@ là tổng báo cáo của `bash scripts/test.sh`.
 | `profile-service` | 8083 | `profile_db` | 43 / 14 | V1–V3 | 18 |
 | `product-service` | 8084 | `product_db` | 35 / 7 | V1 | 14 |
 | `order-service` | 8085 | `order_db` | 46 / 6 | V1 | 19 |
-| `booking-service` | 8086 | `booking_db` | 67 / 14 | V1–V5 | 18 |
+| `booking-service` | 8086 | `booking_db` | 51 / 13 | V1–V6 | 13 |
 | `payment-service` | 8087 | `payment_db` | 26 / 6 | V1–V3 | 4 |
 | `notification-service` | 8088 | — | 7 / 4 | — | 0 |
 | `reporting-service` | 8089 | — | 13 / 2 | — | 7 |
 | `staff-service` | 8090 | `staff_db` | 21 / 5 | V1 | 9 |
-| `pet-service` | 8091 | `pet_db` | 18 / 5 | V1 | 8 |
+| `pet-service` | 8091 | `pet_db` | 38 / 7 | V1–V2 | 16 |
 
 Hạ tầng đi kèm: `api-gateway` (8080), `eureka-server` (8761), `frontend` Next.js (3000),
 RabbitMQ (5672 / 15672), Redis (6379), MailHog (1025 / 8025).
@@ -99,10 +99,12 @@ nhân viên: xác nhận → giao hàng → hoàn tất, hoặc huỷ.
 Đường dẫn quản trị đặt ở `/orders/manage/**` chứ không phải `/admin/**` vì gateway đã
 dành `/admin/**` cho `auth-service`.
 
-### 3.5. `booking-service` — lịch khám và bệnh án
+### 3.5. `booking-service` — lịch khám
 
-Đặt lịch, xem lịch theo vai trò (khách / bác sĩ / quản trị), huỷ, đổi trạng thái, lập
-bệnh án, kê đơn thuốc, tra cứu khung giờ trống. Có scheduler tự sinh khung giờ.
+Đặt lịch, xem lịch theo vai trò (khách / bác sĩ / quản trị), huỷ, đổi trạng thái, tra cứu
+khung giờ trống. Có scheduler tự sinh khung giờ.
+
+Bệnh án và đơn thuốc đã chuyển sang `pet-service` (mục 3.10, VD-10 chặng 2).
 
 Migration `V2` đặt **partial unique index** trên khung giờ đang hoạt động để hai người
 không đặt trùng một slot.
@@ -161,11 +163,11 @@ Ca trực **quyết định giờ khám**: xếp ca cho bác sĩ thì `staff-ser
 có người đặt vẫn giữ — huỷ lịch của khách là quyết định của con người, không phải hệ quả của một
 thao tác xếp ca.
 
-### 3.10. `pet-service` — hồ sơ thú cưng
+### 3.10. `pet-service` — hồ sơ thú cưng, bệnh án và đơn thuốc
 
-CN-09 đến CN-12: khách tự thêm, sửa, xoá thú cưng của mình; bác sĩ và nhân viên tra cứu mọi con.
-Tách khỏi `profile-service` ngày 25/09/2026 (VD-10) — thú cưng là thực thể trung tâm của phòng
-khám thú y, lịch hẹn và bệnh án đều trỏ vào nó.
+CN-11 hồ sơ thú cưng, CN-23 bệnh án, CN-24 lịch sử khám, CN-25 đơn thuốc. Tách khỏi
+`profile-service` và `booking-service` ngày 25/09/2026 (VD-10) — thú cưng là thực thể trung tâm của
+phòng khám thú y, lịch hẹn và bệnh án đều trỏ vào nó.
 
 Chủ nuôi lưu bằng `owner_user_id` (userId của `auth-service`), không phải `customer_profile_id`:
 `pet-service` không cần biết `profile-service` lưu hồ sơ khách thế nào.
@@ -174,9 +176,18 @@ Hai nhánh đường dẫn tách hẳn: `/pets/me/**` cho khách (chủ nuôi l�
 được), `/pets/**` cho người trong phòng khám. Khách hỏi con vật không phải của mình nhận **404**
 chứ không phải 403 — 403 tự xác nhận con vật đó có thật.
 
-Dữ liệu cũ chuyển sang bằng `scripts/migrate-pets-to-pet-service.sh`, giữ nguyên `id` từng con vì
-`booking_db` đang trỏ tới. Bảng cũ trong `profile_db` chỉ đổi tên thành
-`pets_moved_to_pet_service_backup`, không xoá.
+Bệnh án giữ sẵn `pet_id`, chủ nuôi và bác sĩ — chép từ `booking-service` lúc bác sĩ lập bệnh án, chứ
+không nhận từ client và cũng không hỏi lại mỗi lần đọc. Nhờ vậy hồ sơ lâm sàng tra được cả khi
+`booking-service` đang tắt, và lịch sử khám của một con vật (CN-24) chỉ là một câu lọc thường thay
+vì join ba bảng qua hai database (VD-17).
+
+Thú cưng đã có bệnh án thì không xoá được hồ sơ, và xoá tài khoản khách cũng không kéo theo con đó:
+bệnh án là hồ sơ lâm sàng của phòng khám.
+
+Dữ liệu cũ chuyển sang bằng hai script `scripts/migrate-pets-to-pet-service.sh` và
+`scripts/migrate-medical-records-to-pet-service.sh`, giữ nguyên `id` vì `booking_db` trỏ tới id thú
+cưng và `payment_db` trỏ tới id bệnh án. Bảng cũ ở hai database kia chỉ đổi tên thành
+`*_moved_to_pet_service_backup`, không xoá.
 
 ---
 
@@ -187,8 +198,8 @@ auth     --user.registered------> notification    gửi mail xác minh tài kho�
 auth     --user.deleted---------> profile, pet    dọn hồ sơ mồ côi (hai service, hai queue)
 order    --order.completed------> product         (đã trừ đồng bộ lúc xác nhận — VD-14)
 order    --order.cancelled------> product         hoàn kho
-booking  --prescription.created-> payment         tạo phiếu thu tiền thuốc
-payment  --payment.completed----> booking         mở đơn thuốc đã trả tiền
+pet      --prescription.created-> payment         tạo phiếu thu tiền thuốc
+payment  --payment.completed----> pet             đóng đơn thuốc đã trả tiền
 booking  --appointment.created--> notification   gửi email xác nhận lịch khám (CN-43)
 auth     --user.staff-created----> profile        tạo hồ sơ bác sĩ kèm họ tên (VD-20)
 auth     --user.locked/unlocked--> booking        chặn / mở lại giờ khám của bác sĩ bị khoá (CN-08)

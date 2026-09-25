@@ -1,4 +1,4 @@
-package com.vetclinic.booking.messaging;
+package com.vetclinic.pet.messaging;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,12 +16,11 @@ public class PrescriptionEventPublisher {
 
     private final RabbitTemplate rabbitTemplate;
 
-    // AFTER_COMMIT: chỉ publish khi transaction lưu đơn thuốc đã commit thành công (giống
-    // AppointmentEventPublisher/UserEventPublisher) — tránh yêu cầu thanh toán cho một đơn
-    // thuốc mà DB thực ra đã rollback.
+    // AFTER_COMMIT: chỉ phát khi transaction lưu đơn thuốc đã commit — tránh đòi tiền một đơn
+    // thuốc mà database thực ra đã rollback.
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onPrescriptionCreated(PrescriptionCreatedEvent event) {
-        rabbitTemplate.convertAndSend(RabbitMQConfig.BOOKING_EVENTS_EXCHANGE, ROUTING_KEY_PRESCRIPTION_CREATED, event);
-        log.info("Published prescription.created event for medicalRecordId={}", event.medicalRecordId());
+        rabbitTemplate.convertAndSend(RabbitMQConfig.PET_EVENTS_EXCHANGE, ROUTING_KEY_PRESCRIPTION_CREATED, event);
+        log.info("Đã phát prescription.created cho medicalRecordId={}", event.medicalRecordId());
     }
 }

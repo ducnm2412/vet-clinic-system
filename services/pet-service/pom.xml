@@ -69,7 +69,14 @@
             <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
         </dependency>
 
-        <!-- Messaging: lắng nghe prescription.created (booking-service), publish payment.completed -->
+        <!-- Gọi booking-service qua tên service đã đăng ký Eureka: xác nhận lịch hẹn có thật và
+             lấy petId / chủ nuôi / bác sĩ lúc bác sĩ lập bệnh án -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-openfeign</artifactId>
+        </dependency>
+
+        <!-- Messaging: publish prescription.created, lắng nghe payment.completed và user.deleted -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-amqp</artifactId>

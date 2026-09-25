@@ -1,7 +1,9 @@
 package com.vetclinic.pet.controller;
 
+import com.vetclinic.pet.dto.MedicalRecordResponse;
 import com.vetclinic.pet.dto.PetRequest;
 import com.vetclinic.pet.dto.PetResponse;
+import com.vetclinic.pet.service.MedicalRecordService;
 import com.vetclinic.pet.security.jwt.AuthenticatedUser;
 import com.vetclinic.pet.service.PetService;
 import jakarta.validation.Valid;
@@ -36,6 +38,7 @@ import java.util.UUID;
 public class PetController {
 
     private final PetService petService;
+    private final MedicalRecordService medicalRecordService;
 
     // ---------- khách tự quản lý thú cưng của mình ----------
 
@@ -73,6 +76,14 @@ public class PetController {
         petService.delete(me.userId(), petId);
     }
 
+    /** CN-24: lịch sử khám của con vật mình nuôi, mới nhất trước. */
+    @GetMapping("/me/{petId}/medical-records")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    public List<MedicalRecordResponse> myPetHistory(@PathVariable UUID petId,
+                                                   @AuthenticationPrincipal AuthenticatedUser me) {
+        return medicalRecordService.historyOfMyPet(me.userId(), petId);
+    }
+
     // ---------- tra cứu trong phòng khám ----------
 
     /** Thú cưng của nhiều chủ một lượt — trang Khách hàng của admin dùng. */
@@ -92,5 +103,12 @@ public class PetController {
     @PreAuthorize("hasAnyRole('DOCTOR','STAFF','ADMIN')")
     public PetResponse getById(@PathVariable UUID petId) {
         return petService.getById(petId);
+    }
+
+    /** CN-24: toàn bộ lượt khám trước đây của một con vật — bác sĩ cần trước khi khám tiếp. */
+    @GetMapping("/{petId}/medical-records")
+    @PreAuthorize("hasAnyRole('DOCTOR','STAFF','ADMIN')")
+    public List<MedicalRecordResponse> history(@PathVariable UUID petId) {
+        return medicalRecordService.historyOfPet(petId);
     }
 }

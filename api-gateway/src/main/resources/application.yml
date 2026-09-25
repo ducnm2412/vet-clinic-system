@@ -23,7 +23,7 @@ spring:
         - id: pet-service
           uri: lb://pet-service
           predicates:
-            - Path=/pets/**
+            - Path=/pets/**,/medical-records/**
         - id: booking-service
           uri: lb://booking-service
           predicates:

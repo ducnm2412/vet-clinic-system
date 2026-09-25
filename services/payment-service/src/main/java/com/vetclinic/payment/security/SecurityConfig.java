@@ -28,7 +28,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/error").permitAll()
                         // Rule role cụ thể đặt bằng @PreAuthorize ngay trên controller (giống
-                        // MedicalRecordController bên booking-service) — ở đây chỉ cần yêu cầu
+                        // MedicalRecordController bên pet-service) — ở đây chỉ cần yêu cầu
                         // đã xác thực cho mọi route.
                         .anyRequest().authenticated())
                 .exceptionHandling(ex -> ex.authenticationEntryPoint((request, response, authException) ->

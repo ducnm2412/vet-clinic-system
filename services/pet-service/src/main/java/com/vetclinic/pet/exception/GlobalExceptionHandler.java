@@ -19,6 +19,16 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.NOT_FOUND, ex.getMessage());
     }
 
+    @ExceptionHandler({PrescriptionNotPaidException.class, PetHasMedicalRecordsException.class})
+    public ResponseEntity<ErrorResponse> handleConflict(RuntimeException ex) {
+        return build(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    @ExceptionHandler(BookingUnavailableException.class)
+    public ResponseEntity<ErrorResponse> handleBookingDown(BookingUnavailableException ex) {
+        return build(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage());
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException ex) {
         Map<String, String> fieldErrors = new LinkedHashMap<>();

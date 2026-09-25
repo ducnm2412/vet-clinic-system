@@ -18,5 +18,4 @@ public interface PetRepository extends JpaRepository<Pet, UUID> {
 
     List<Pet> findByOwnerUserIdInOrderByCreatedAtAsc(Collection<UUID> ownerUserIds);
 
-    void deleteByOwnerUserId(UUID ownerUserId);
 }

@@ -1,4 +1,4 @@
-package com.vetclinic.booking.dto;
+package com.vetclinic.pet.dto;
 
 import java.util.UUID;
 

@@ -89,6 +89,10 @@ export interface PrescriptionItemRequest {
 export interface MedicalRecord {
   id: string;
   appointmentId: string;
+  /** pet-service chép sẵn ba trường này lúc lập bệnh án — xem services/pet-service/README.md. */
+  petId: string;
+  customerUserId: string;
+  doctorUserId: string;
   diagnosis: string;
   treatment: string | null;
   notes: string | null;

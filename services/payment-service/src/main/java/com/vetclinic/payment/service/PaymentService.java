@@ -57,7 +57,7 @@ public class PaymentService {
     }
 
     // Staff xác nhận đã thu tiền mặt tại quầy — idempotent nếu gọi lại khi đã COMPLETED (giống
-    // receivePrescription bên booking-service), nhưng chặn nếu chưa có amount (PENDING_AMOUNT).
+    // receive bên pet-service), nhưng chặn nếu chưa có amount (PENDING_AMOUNT).
     @Transactional
     public PaymentResponse confirmCash(UUID id) {
         Payment payment = getOrThrow(id);

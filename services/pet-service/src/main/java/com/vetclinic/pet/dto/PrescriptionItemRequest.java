@@ -1,4 +1,4 @@
-package com.vetclinic.booking.dto;
+package com.vetclinic.pet.dto;
 
 import jakarta.validation.constraints.NotBlank;
 

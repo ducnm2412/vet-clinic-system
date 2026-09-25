@@ -7,8 +7,6 @@ import type {
   AppointmentSlot,
   AppointmentStatus,
   AvailableTime,
-  MedicalRecord,
-  MedicalRecordRequest,
   SuggestedSlot,
 } from "@/types";
 
@@ -50,25 +48,6 @@ export const bookingApi = {
   /** Sinh khung giờ cho một bác sĩ trong một ngày. Scheduler cũng chạy việc này định kỳ. */
   generateSlots: (doctorUserId: string, date: string) =>
     http.post<AppointmentSlot[]>("/booking/slots/generate", { doctorUserId, date }),
-};
-
-export const medicalRecordApi = {
-  /** Vừa tạo vừa sửa — backend dùng PUT cho cả hai. */
-  save: (appointmentId: string, body: MedicalRecordRequest) =>
-    http.put<MedicalRecord>(`/booking/appointments/${appointmentId}/medical-record`, body),
-
-  byAppointment: (appointmentId: string) =>
-    http.get<MedicalRecord>(`/booking/appointments/${appointmentId}/medical-record`),
-
-  /** Đánh dấu khách đã nhận thuốc — chỉ làm được sau khi phiếu thu đã thanh toán. */
-  markReceived: (appointmentId: string) =>
-    http.put<MedicalRecord>(`/booking/appointments/${appointmentId}/medical-record/receive`),
-
-  /** Hàng đợi PAID dùng chung mọi bác sĩ — chỉ STAFF/ADMIN gọi được. */
-  pending: () => http.get<MedicalRecord[]>("/booking/medical-records/pending"),
-
-  /** "Bệnh án còn treo" của riêng bác sĩ đang đăng nhập (PENDING hoặc PAID) — chỉ DOCTOR gọi được. */
-  mine: () => http.get<MedicalRecord[]>("/booking/medical-records/mine/outstanding"),
 };
 
 /**

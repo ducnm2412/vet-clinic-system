@@ -190,7 +190,7 @@ Chưa có `POST /auth/change-password` lẫn luồng reset qua email.
 
 ## profile-service
 
-### ✅ VD-10. Ranh giới `Pet` chồng lấn với `pet-service` — đã sửa 25/09/2026 (chặng 1)
+### ✅ VD-10. Ranh giới `Pet` chồng lấn với `pet-service` — đã sửa 25/09/2026
 
 Entity `Pet` nằm trong `profile-service` trong khi roadmap có `pet-service` riêng. Đã chọn tách
 thật thay vì thu hẹp `pet-service`: thú cưng là thực thể trung tâm của phòng khám thú y — lịch hẹn,
@@ -211,8 +211,26 @@ bệnh án, đơn thuốc đều trỏ vào nó — nên để nó lẫn trong h
 - Bảng Khách hàng của admin giờ gọi hai service: điện thoại/địa chỉ từ `profile-service`, thú cưng
   từ `GET /pets/by-owners`. `CustomerSummaryResponse` không còn `petNames`.
 
-**Chặng 2 (còn lại):** chuyển bệnh án và đơn thuốc từ `booking-service` sang `pet-service`, và đấu
-lại luồng `prescription.created` → `payment-service`.
+**Chặng 2 (xong):**
+
+- Bệnh án và đơn thuốc sang `pet-service`. Không còn khoá ngoại tới `appointments`: `appointment_id`
+  là UUID thường, còn `pet_id` thì có khoá ngoại thật vì thú cưng ở ngay trong service này.
+- `pet_id`, chủ nuôi và bác sĩ được chép vào bệnh án lúc lập, lấy từ `booking-service` chứ không từ
+  client — tin body gửi lên thì một bác sĩ có thể gắn bệnh án vào con vật của người khác. Đọc bệnh
+  án về sau không cần `booking-service`, nên hồ sơ lâm sàng tra được cả khi service kia tắt.
+- `prescription.created` giờ phát lên exchange `pet.events`; `payment-service` chỉ đổi chỗ nghe, nội
+  dung message không đổi. `payment.completed` cũng chuyển chỗ nghe từ `booking-service` sang
+  `pet-service` (queue `pet.payment-completed`).
+- Thú cưng đã có bệnh án thì không xoá được hồ sơ (409), và xoá tài khoản khách cũng không kéo theo
+  con đó. Trước đây bệnh án nằm khác database nên không có gì chặn: xoá con vật là để lại bệnh án
+  mồ côi không ai tra ra được nữa.
+- Di trú: `scripts/migrate-medical-records-to-pet-service.sh`, join `appointments` và
+  `appointment_slots` để lấy ba trường trên, giữ nguyên `id` bệnh án vì
+  `payment_db.payments.medical_record_id` đang trỏ tới. Bệnh án của con vật không còn hồ sơ thì bị
+  bỏ lại và báo số lượng, không làm đứt cả lượt di trú.
+
+Việc còn lại của module này là CN-26 (nhắc tái khám, tiêm phòng) — chưa làm, không thuộc phần tách
+service.
 
 ---
 
@@ -239,15 +257,20 @@ Frontend ghép `doctorUserId` với danh sách bác sĩ công khai:
 trong bảng `users` của auth-service — xem VD-20. Khi backend trả tên thì chỉ sửa một hàm
 `doctorLabel` trong `frontend/web/src/lib/useDoctors.ts`.
 
-### 🟡 VD-17. Bệnh án chỉ tra được theo lịch hẹn, không theo thú cưng
+### ✅ VD-17. Bệnh án chỉ tra được theo lịch hẹn, không theo thú cưng — đã sửa 25/09/2026
 
-Bệnh án truy cập qua `GET /booking/appointments/{id}/medical-record`. Không có endpoint nào
-lấy lịch sử khám của **một thú cưng** qua nhiều lần hẹn.
+Bệnh án chỉ truy cập được qua từng lịch hẹn, không có đường nào lấy lịch sử khám của **một thú
+cưng** qua nhiều lần hẹn — đúng chức năng CN-24 và là thứ bác sĩ cần nhất khi khám: con vật này
+trước đây bị gì, đã dùng thuốc nào.
 
-Đây đúng là chức năng CN-24 "tra cứu lịch sử khám bệnh" và là thứ bác sĩ cần nhất khi khám:
-con vật này trước đây bị gì, đã dùng thuốc nào.
+Việc tách `pet-service` (VD-10 chặng 2) giải quyết luôn: bệnh án nằm cùng service với thú cưng và có
+sẵn `pet_id`, nên chỉ là một câu lọc thường, không phải join ba bảng.
 
-**Hướng sửa:** thêm `GET /booking/pets/{petId}/medical-records`.
+- `GET /pets/{petId}/medical-records` cho bác sĩ, nhân viên, admin.
+- `GET /pets/me/{petId}/medical-records` cho khách — của chính con mình nuôi.
+
+Trang hồ sơ thú cưng của khách giờ hiện chẩn đoán ngay dưới từng lần khám, không phải mở từng lịch
+hẹn mới thấy.
 
 ---
 
@@ -319,7 +342,6 @@ Rà khi dựng frontend Next.js. Các màn hình dưới đây không có endpoi
 
 | Màn hình | Thiếu gì |
 |---|---|
-| Lịch sử khám của thú cưng | Xem VD-17 |
 | Thông báo trong ứng dụng | `notification-service` không có REST endpoint |
 
 Frontend đang để placeholder có đánh dấu `TODO` và tầng mock riêng (`lib/api/mock/`), không
@@ -415,11 +437,11 @@ nổi bật ở màn hình khám của bác sĩ, không chỉ nằm trong hồ s
 
 ### 🟢 VD-23. Bệnh án chưa có trả 404, trình duyệt vẫn ghi lỗi ra console
 
-Không phải lỗi chức năng. `GET /booking/appointments/{id}/medical-record` trả 404 khi bác
+Không phải lỗi chức năng. `GET /medical-records/by-appointment/{id}` trả 404 khi bác
 sĩ chưa lập bệnh án — frontend bắt và hiểu đúng là "chưa có", nhưng trình duyệt vẫn ghi một
 dòng 404 đỏ vào console. Ai mở DevTools lên xem sẽ tưởng có lỗi.
 
-**Hướng sửa (khi rảnh):** trả 200 kèm thân rỗng, hoặc thêm `GET .../medical-record/exists`.
+**Hướng sửa (khi rảnh):** trả 200 kèm thân rỗng, hoặc thêm `GET .../exists`.
 Không gấp.
 
 ### ✅ VD-24. Xem được hàng đã ẩn nếu biết UUID — đã sửa 24/09/2026

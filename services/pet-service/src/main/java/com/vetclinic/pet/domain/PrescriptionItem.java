@@ -1,4 +1,4 @@
-package com.vetclinic.booking.domain;
+package com.vetclinic.pet.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

@@ -3,7 +3,9 @@ package com.vetclinic.pet.service;
 import com.vetclinic.pet.domain.Pet;
 import com.vetclinic.pet.dto.PetRequest;
 import com.vetclinic.pet.dto.PetResponse;
+import com.vetclinic.pet.exception.PetHasMedicalRecordsException;
 import com.vetclinic.pet.exception.ResourceNotFoundException;
+import com.vetclinic.pet.repository.MedicalRecordRepository;
 import com.vetclinic.pet.repository.PetRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,6 +31,7 @@ import java.util.UUID;
 public class PetService {
 
     private final PetRepository petRepository;
+    private final MedicalRecordRepository medicalRecordRepository;
 
     // ---------- của chính khách ----------
 
@@ -70,9 +73,19 @@ public class PetService {
         return toResponse(petRepository.saveAndFlush(pet));
     }
 
+    /**
+     * Đã có bệnh án thì không xoá được: bệnh án là hồ sơ lâm sàng của phòng khám, xoá con vật đi sẽ
+     * để lại bệnh án không ai tra ra được nữa. Khoá ngoại ON DELETE RESTRICT là lưới an toàn cuối,
+     * ở đây chặn trước để câu trả lời là 409 kèm lời giải thích thay vì lỗi database.
+     */
     @Transactional
     public void delete(UUID ownerUserId, UUID petId) {
-        petRepository.delete(ownedOrThrow(ownerUserId, petId));
+        Pet pet = ownedOrThrow(ownerUserId, petId);
+        if (medicalRecordRepository.existsByPetId(petId)) {
+            throw new PetHasMedicalRecordsException(pet.getName()
+                    + " đã có bệnh án tại phòng khám nên không xoá được hồ sơ. Sửa lại thông tin nếu cần.");
+        }
+        petRepository.delete(pet);
     }
 
     // ---------- tra cứu cho người trong phòng khám ----------
@@ -99,11 +112,22 @@ public class PetService {
                 .map(PetService::toResponse).toList();
     }
 
-    /** Tài khoản khách bị xoá thì hồ sơ thú cưng đi theo — trước đây do khoá ngoại của profile_db lo. */
+    /**
+     * Tài khoản khách bị xoá thì hồ sơ thú cưng đi theo — trước đây do khoá ngoại của profile_db lo.
+     *
+     * Con vật đã có bệnh án thì giữ lại: xoá tài khoản là việc hành chính, không được kéo theo hồ sơ
+     * lâm sàng của phòng khám. Những con đó thành hồ sơ không có chủ, vẫn tra được theo bệnh án.
+     */
     @Transactional
     public void deleteAllOf(UUID ownerUserId) {
-        petRepository.deleteByOwnerUserId(ownerUserId);
-        log.info("Đã xoá hồ sơ thú cưng của tài khoản {} vừa bị xoá", ownerUserId);
+        List<Pet> pets = petRepository.findByOwnerUserIdOrderByCreatedAtAsc(ownerUserId);
+        List<Pet> deletable = pets.stream().filter(pet -> !medicalRecordRepository.existsByPetId(pet.getId())).toList();
+        petRepository.deleteAll(deletable);
+        int kept = pets.size() - deletable.size();
+        if (kept > 0) {
+            log.info("Giữ lại {} hồ sơ thú cưng của tài khoản {} vì đã có bệnh án", kept, ownerUserId);
+        }
+        log.info("Đã xoá {} hồ sơ thú cưng của tài khoản {} vừa bị xoá", deletable.size(), ownerUserId);
     }
 
     private Pet ownedOrThrow(UUID ownerUserId, UUID petId) {

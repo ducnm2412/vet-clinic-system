@@ -154,7 +154,7 @@ function IconItem({
 
 /**
  * Bệnh án của lần khám này. Khách hàng đọc được bệnh án của chính mình
- * (GET /booking/appointments/{id}/medical-record cho phép CUSTOMER), còn 404 nghĩa là
+ * (GET /medical-records/by-appointment/{id} của pet-service cho phép CUSTOMER), còn 404 nghĩa là
  * bác sĩ chưa lập — đó là trạng thái bình thường, không phải lỗi.
  */
 function MedicalRecordSection({ appointment }: { appointment: Appointment }) {

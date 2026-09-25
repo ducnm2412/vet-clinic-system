@@ -17,7 +17,7 @@ public class PaymentEventPublisher {
     private final RabbitTemplate rabbitTemplate;
 
     // AFTER_COMMIT: chỉ publish khi transaction confirmCash() đã commit thành công (giống
-    // UserEventPublisher/PrescriptionEventPublisher) — tránh báo booking-service là đã thanh
+    // UserEventPublisher/PrescriptionEventPublisher) — tránh báo pet-service là đã thanh
     // toán trong khi DB thực ra rollback.
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onPaymentCompleted(PaymentCompletedEvent event) {

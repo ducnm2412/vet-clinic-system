@@ -66,12 +66,12 @@ Chú thích trạng thái: ✅ Đã hiện thực · ⚠️ Hiện thực một 
 |---|---|---|---|---|
 | CN-11 | Quản lý hồ sơ thú cưng | AC-01 | Thêm / sửa / xoá / liệt kê thú cưng (tên, loài, giống, giới tính, cân nặng…); chủ nuôi lấy từ token | ✅ |
 | CN-11b | Tra cứu thú cưng của khách | AC-02, AC-03, AC-04 | Bác sĩ và nhân viên xem mọi thú cưng, kể cả theo nhiều chủ một lượt | ✅ |
-| CN-23 | Lập hồ sơ bệnh án | AC-02 | Ghi triệu chứng, chẩn đoán, kết quả điều trị theo mỗi lượt khám | ⏳ |
-| CN-24 | Tra cứu lịch sử khám bệnh | AC-01, AC-02 | Xem toàn bộ lượt khám trước đây của một thú cưng | ⏳ |
-| CN-25 | Kê đơn thuốc | AC-02 | Lập đơn thuốc gắn với bệnh án, liều dùng, số lượng | ⏳ |
+| CN-23 | Lập hồ sơ bệnh án | AC-02 | Ghi chẩn đoán, điều trị, ghi chú theo mỗi lượt khám; một lịch hẹn một bệnh án | ✅ |
+| CN-24 | Tra cứu lịch sử khám bệnh | AC-01, AC-02 | Xem toàn bộ lượt khám trước đây của một thú cưng, mới nhất trước | ✅ |
+| CN-25 | Kê đơn thuốc | AC-02 | Lập đơn thuốc gắn với bệnh án: tên thuốc, liều, số lần, số ngày | ✅ |
 | CN-26 | Nhắc lịch tái khám / tiêm phòng | Hệ thống | Sinh sự kiện nhắc lịch gửi sang Notification Service | ⏳ |
 
-> **Ghi chú thiết kế (cập nhật 25/09/2026):** entity `Pet` trước đây nằm trong `profile-service`. Đã tách thật sang `pet-service` (VD-10, chặng 1) thay vì thu hẹp `pet-service` thành bệnh án — thú cưng là thực thể trung tâm của phòng khám thú y, lịch hẹn và bệnh án đều trỏ vào nó. Bệnh án và đơn thuốc (CN-23 → CN-26) hiện vẫn ở `booking-service`, sẽ chuyển sang đây ở chặng 2.
+> **Ghi chú thiết kế (cập nhật 25/09/2026):** entity `Pet` trước đây nằm trong `profile-service` và bệnh án nằm trong `booking-service`. Đã tách cả hai sang `pet-service` (VD-10) thay vì thu hẹp `pet-service` thành bệnh án — thú cưng là thực thể trung tâm của phòng khám thú y, lịch hẹn và bệnh án đều trỏ vào nó. Bệnh án giữ sẵn `pet_id`, chủ nuôi và bác sĩ nên tra được cả khi `booking-service` tắt. CN-26 (nhắc tái khám, tiêm phòng) vẫn chưa làm.
 
 ### 2.5. Module Sản phẩm & Tồn kho (`product-service` — `product_db`)
 

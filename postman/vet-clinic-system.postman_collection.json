@@ -735,7 +735,7 @@
               "mode": "raw",
               "raw": "{\n  \"diagnosis\": \"Viem da di ung\",\n  \"treatment\": \"Ke thuoc khang viem, ve sinh vung da bi anh huong\",\n  \"notes\": \"Tai kham sau 1 tuan neu khong do\",\n  \"prescriptionItems\": [\n    {\n      \"medicationName\": \"Cetirizine\",\n      \"dosage\": \"5mg\",\n      \"frequency\": \"1 lan/ngay\",\n      \"durationDays\": 7,\n      \"notes\": \"Uong sau an\"\n    }\n  ]\n}"
             },
-            "url": "{{baseUrl}}/booking/appointments/{{appointmentId}}/medical-record",
+            "url": "{{baseUrl}}/medical-records/by-appointment/{{appointmentId}}",
             "description": "Neu co prescriptionItems, mot Payment tuong ung se duoc tao (qua event) ben payment-service voi trang thai PENDING, staff se set amount va xac nhan thanh toan tien mat o cac request sau."
           }
         },
@@ -744,7 +744,7 @@
           "request": {
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{customerAccessToken}}" }],
-            "url": "{{baseUrl}}/booking/appointments/{{appointmentId}}/medical-record"
+            "url": "{{baseUrl}}/medical-records/by-appointment/{{appointmentId}}"
           }
         },
         {
@@ -802,7 +802,7 @@
           "request": {
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{staffAccessToken}}" }],
-            "url": "{{baseUrl}}/booking/medical-records/pending",
+            "url": "{{baseUrl}}/medical-records/pending",
             "description": "Danh sach don thuoc da PAID, cho staff tiep nhan. Chay sau buoc 42 (confirm-cash) thi don o buoc 38 moi xuat hien o day."
           }
         },
@@ -811,7 +811,7 @@
           "request": {
             "method": "PUT",
             "header": [{ "key": "Authorization", "value": "Bearer {{staffAccessToken}}" }],
-            "url": "{{baseUrl}}/booking/appointments/{{appointmentId}}/medical-record/receive",
+            "url": "{{baseUrl}}/medical-records/by-appointment/{{appointmentId}}/receive",
             "description": "Chuyen PAID -> RECEIVED. Neu con PENDING (chua thanh toan) se tra 409."
           }
         }
