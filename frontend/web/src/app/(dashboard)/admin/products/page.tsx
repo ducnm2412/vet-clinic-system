@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Boxes, Eye, EyeOff, Pencil, Plus } from "lucide-react";
+import { Boxes, Eye, EyeOff, Pencil, Plus, Tags } from "lucide-react";
 import { ApiError, categoryApi, productApi } from "@/lib/api";
 import { STOCK_STATUS } from "@/lib/utils/status";
 import { formatPrice } from "@/lib/utils/format";
 import { stockStatusOf, type Product } from "@/types";
 import { PageHeader } from "@/components/layout/DashboardShell";
+import { CategoryDialog } from "@/components/product/CategoryDialog";
 import { ProductFormDialog } from "@/components/product/ProductFormDialog";
 import { StockDialog } from "@/components/product/StockDialog";
 import {
@@ -38,6 +39,7 @@ export default function AdminProductsPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [stockFor, setStockFor] = useState<Product | null>(null);
+  const [categoriesOpen, setCategoriesOpen] = useState(false);
 
   const categories = useQuery({ queryKey: ["categories"], queryFn: categoryApi.list });
 
@@ -137,10 +139,18 @@ export default function AdminProductsPage() {
         title="Sản phẩm"
         description="Thức ăn, thuốc và phụ kiện đang bán tại phòng khám."
         actions={
-          <Button onClick={openCreate}>
-            <Plus aria-hidden className="size-4" />
-            Thêm sản phẩm
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            {/* CN-27: danh mục là danh sách ngắn, ít khi sửa — để cạnh chỗ dùng nó, không cần
+                một mục riêng trong thanh điều hướng. */}
+            <Button variant="secondary" onClick={() => setCategoriesOpen(true)}>
+              <Tags aria-hidden className="size-4" />
+              Danh mục
+            </Button>
+            <Button onClick={openCreate}>
+              <Plus aria-hidden className="size-4" />
+              Thêm sản phẩm
+            </Button>
+          </div>
         }
       />
 
@@ -240,6 +250,8 @@ export default function AdminProductsPage() {
         editing={editing}
       />
       <StockDialog product={stockFor} onClose={() => setStockFor(null)} />
+
+      <CategoryDialog open={categoriesOpen} onClose={() => setCategoriesOpen(false)} />
     </>
   );
 }

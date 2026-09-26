@@ -62,3 +62,16 @@ export function formatAge(dateOfBirth: string | null | undefined): string {
   if (months < 24) return `${months} tháng`;
   return `${Math.floor(months / 12)} tuổi`;
 }
+
+/**
+ * Ghép một địa chỉ thành một dòng, bỏ phần để trống — địa chỉ chỉ có số nhà vẫn đọc được.
+ * Dùng ở sổ địa chỉ và ở bước thanh toán (CN-10).
+ */
+export function formatAddress(a: {
+  line1: string;
+  line2?: string | null;
+  ward?: string | null;
+  city?: string | null;
+}): string {
+  return [a.line1, a.line2, a.ward, a.city].filter((p) => p && p.trim()).join(", ");
+}
