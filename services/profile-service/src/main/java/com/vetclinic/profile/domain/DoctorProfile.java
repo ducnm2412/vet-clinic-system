@@ -54,6 +54,10 @@ public class DoctorProfile {
     @Column(name = "years_of_experience")
     private Integer yearsOfExperience;
 
+    @Column(name = "photo_version", nullable = false)
+    @Builder.Default
+    private int photoVersion = 0;
+
     @OneToMany(mappedBy = "doctorProfile", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<DoctorLicense> licenses = new ArrayList<>();

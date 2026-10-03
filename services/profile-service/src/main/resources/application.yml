@@ -14,6 +14,11 @@ spring:
     open-in-view: false
   flyway:
     enabled: true
+  servlet:
+    multipart:
+      # Ảnh đại diện tối đa 5MB (PhotoStorageService.MAX_BYTES); request thêm chút dư cho phần header multipart.
+      max-file-size: 5MB
+      max-request-size: 6MB
   rabbitmq:
     host: ${RABBITMQ_HOST:localhost}
     port: ${RABBITMQ_PORT:5672}
@@ -29,6 +34,11 @@ eureka:
       defaultZone: ${EUREKA_URI:http://localhost:8761/eureka/}
   instance:
     prefer-ip-address: true
+
+app:
+  upload:
+    # Thư mục gốc lưu ảnh đại diện; trong Docker là volume profile-uploads-data.
+    dir: ${UPLOAD_DIR:./uploads}
 
 jwt:
   # Dùng chung secret với auth-service — tự verify chữ ký token, không gọi ngược auth-service mỗi request.

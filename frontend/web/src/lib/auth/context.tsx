@@ -6,7 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useSyncExternalStore,
+  useState,
   type ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
@@ -14,10 +14,9 @@ import {
   SESSION_EXPIRED_EVENT,
   SESSION_REFRESHED_EVENT,
   authApi,
-  getRefreshToken,
   getToken,
-  isExpired,
   readToken,
+  refreshSession,
   setToken,
 } from "@/lib/api";
 import type { Role } from "@/types";
@@ -26,9 +25,11 @@ interface AuthState {
   email: string | null;
   userId: string | null;
   roles: Role[];
-  /** false trong lần render đầu vì token nằm ở localStorage, chỉ client mới đọc được. */
+  /** false cho tới khi lần gọi /auth/refresh lúc khởi động (bootstrap) trả lời xong. */
   ready: boolean;
   signIn: (email: string, password: string) => Promise<Role[]>;
+  signInWithGoogle: (idToken: string) => Promise<Role[]>;
+  signInWithFacebook: (accessToken: string) => Promise<Role[]>;
   signOut: () => void;
   hasRole: (...roles: Role[]) => boolean;
 }
@@ -36,89 +37,74 @@ interface AuthState {
 const AuthContext = createContext<AuthState | null>(null);
 
 /**
- * Token nằm trong localStorage — một kho dữ liệu bên ngoài React. Dùng
- * `useSyncExternalStore` thay vì đọc trong effect rồi setState: cách này không gây thêm
- * một vòng render, và mọi tab/thành phần cùng đọc một nguồn.
+ * `token` và `ready` gộp chung MỘT state, không phải hai state riêng.
+ *
+ * Trước đây (thời còn localStorage) hai giá trị này lấy qua hai `useSyncExternalStore` riêng,
+ * và từng có một lỗi: `ready` thành `true` sớm hơn `token` một nhịp render, khiến RouteGuard
+ * thấy "sẵn sàng mà chưa đăng nhập" và đá người dùng về /login dù họ đang đăng nhập tử tế. Gộp
+ * vào một object và set bằng một lệnh `setSession` duy nhất thì hai giá trị LUÔN đổi cùng một
+ * lần render — không còn cách nào để lệch nhịp được nữa, kể cả nếu sau này React đổi cách gộp
+ * (batch) các lần setState.
  */
-const listeners = new Set<() => void>();
-
-function notify() {
-  for (const l of listeners) l();
-}
-
-function subscribe(onChange: () => void) {
-  listeners.add(onChange);
-  // Đăng xuất ở tab khác cũng phải phản ánh sang tab này.
-  window.addEventListener("storage", onChange);
-  // Tầng API làm mới token ngầm — đọc lại để claims (hạn dùng) không bị cũ.
-  window.addEventListener(SESSION_REFRESHED_EVENT, onChange);
-  return () => {
-    listeners.delete(onChange);
-    window.removeEventListener("storage", onChange);
-    window.removeEventListener(SESSION_REFRESHED_EVENT, onChange);
-  };
-}
-
-function getSnapshot(): string | null {
-  const stored = getToken();
-  // Access token hết hạn mà KHÔNG còn refresh token thì phiên đã chết thật. Còn refresh token
-  // thì giữ nguyên: request đầu tiên gặp 401 sẽ tự làm mới (VD-05), người dùng không bị đá ra
-  // chỉ vì mở lại tab sau 15 phút.
-  if (stored && isExpired(readToken(stored)) && !getRefreshToken()) {
-    setToken(null);
-    return null;
-  }
-  return stored;
-}
-
-/** Máy chủ không có localStorage; luôn coi là chưa đăng nhập để HTML hai bên khớp nhau. */
-function getServerSnapshot(): string | null {
-  return null;
-}
-
-/*
-  `ready` phải đi cùng nhịp với `token`, và cũng phải lấy qua useSyncExternalStore.
-
-  Trước đây chỗ này là `typeof window !== "undefined"`, tức là ngay lần commit đầu tiên
-  trên trình duyệt nó đã true — nhưng lần commit đó React vẫn đang dùng ảnh chụp phía máy
-  chủ, nên `token` còn null. Effect của RouteGuard chạy đúng vào lúc đó, thấy "sẵn sàng mà
-  chưa đăng nhập", và đá người dùng về trang đăng nhập dù họ đang đăng nhập tử tế. Lỗi chỉ
-  lộ ra khi mở thẳng một địa chỉ cần quyền, không lộ khi bấm chuyển trang trong ứng dụng.
-
-  Lấy chung một nguồn thì hai giá trị đổi cùng một lần render: commit đầu là (false, null)
-  nên RouteGuard đứng yên, commit sau là (true, token thật) nên nó xử đúng.
-*/
-function getReady(): boolean {
-  return true;
-}
-
-function getServerReady(): boolean {
-  return false;
+interface Session {
+  token: string | null;
+  ready: boolean;
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
-  const token = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
-  const ready = useSyncExternalStore(subscribe, getReady, getServerReady);
+  const [session, setSession] = useState<Session>({ token: null, ready: false });
 
-  // Tầng API đã thử làm mới bằng refresh token rồi mà vẫn không được thì mới tới đây.
-  // Đưa người dùng về trang đăng nhập, giữ lại đường dẫn đang xem.
+  // Bootstrap: access token nằm trong bộ nhớ JS nên mất sau khi tải lại trang — gọi /auth/refresh
+  // một lần lúc khởi động để âm thầm khôi phục phiên từ refresh token (cookie httpOnly). Thất bại
+  // (không có cookie, hoặc cookie đã hết hạn/bị thu hồi) thì coi như chưa đăng nhập, không phải lỗi.
   useEffect(() => {
+    let cancelled = false;
+    refreshSession().finally(() => {
+      if (!cancelled) setSession({ token: getToken(), ready: true });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Tầng API làm mới token ngầm xong (VD-05) thì đọc lại; tầng API thử làm mới mà vẫn không
+  // được thì mới tới expired — đưa người dùng về trang đăng nhập, giữ lại đường dẫn đang xem.
+  useEffect(() => {
+    function onRefreshed() {
+      setSession((prev) => ({ ...prev, token: getToken() }));
+    }
     function onExpired() {
-      notify();
+      setSession((prev) => ({ ...prev, token: null }));
       const here = window.location.pathname + window.location.search;
       router.replace(`/login?next=${encodeURIComponent(here)}&expired=1`);
     }
+    window.addEventListener(SESSION_REFRESHED_EVENT, onRefreshed);
     window.addEventListener(SESSION_EXPIRED_EVENT, onExpired);
-    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, onExpired);
+    return () => {
+      window.removeEventListener(SESSION_REFRESHED_EVENT, onRefreshed);
+      window.removeEventListener(SESSION_EXPIRED_EVENT, onExpired);
+    };
   }, [router]);
 
-  const claims = useMemo(() => readToken(token), [token]);
+  const claims = useMemo(() => readToken(session.token), [session.token]);
   const roles = useMemo(() => claims?.roles ?? [], [claims]);
 
   const signIn = useCallback(async (email: string, password: string) => {
     const res = await authApi.login(email, password);
-    notify();
+    setSession({ token: res.accessToken, ready: true });
+    return readToken(res.accessToken)?.roles ?? [];
+  }, []);
+
+  const signInWithGoogle = useCallback(async (idToken: string) => {
+    const res = await authApi.google(idToken);
+    setSession({ token: res.accessToken, ready: true });
+    return readToken(res.accessToken)?.roles ?? [];
+  }, []);
+
+  const signInWithFacebook = useCallback(async (accessToken: string) => {
+    const res = await authApi.facebook(accessToken);
+    setSession({ token: res.accessToken, ready: true });
     return readToken(res.accessToken)?.roles ?? [];
   }, []);
 
@@ -126,7 +112,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // authApi.logout xoá phiên ở máy ngay lập tức rồi mới báo server thu hồi refresh token,
     // nên giao diện đổi trạng thái liền, không chờ mạng.
     void authApi.logout();
-    notify();
+    setToken(null);
+    setSession((prev) => ({ ...prev, token: null }));
   }, []);
 
   const hasRole = useCallback(
@@ -139,12 +126,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email: claims?.sub ?? null,
       userId: claims?.userId ?? null,
       roles,
-      ready,
+      ready: session.ready,
       signIn,
+      signInWithGoogle,
+      signInWithFacebook,
       signOut,
       hasRole,
     }),
-    [claims, roles, ready, signIn, signOut, hasRole],
+    [claims, roles, session.ready, signIn, signInWithGoogle, signInWithFacebook, signOut, hasRole],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -3,14 +3,17 @@ package com.vetclinic.auth.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vetclinic.auth.domain.User;
 import com.vetclinic.auth.repository.UserRepository;
+import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -123,8 +126,11 @@ class AuthControllerTest {
 
     // ---------- VD-05: làm mới phiên ----------
 
-    /** Tạo tài khoản đã kích hoạt rồi đăng nhập, trả về nguyên thân phản hồi. */
-    private com.fasterxml.jackson.databind.JsonNode loginFresh(String email) throws Exception {
+    /**
+     * Tạo tài khoản đã kích hoạt rồi đăng nhập, trả về nguyên response — access token nằm trong
+     * thân JSON, refresh token nằm trong Set-Cookie httpOnly (không còn trong thân JSON nữa).
+     */
+    private MockHttpServletResponse loginFresh(String email) throws Exception {
         mockMvc.perform(post("/auth/register").contentType(MediaType.APPLICATION_JSON).content("""
                 {"firstName":"RT","lastName":"User","email":"%s","password":"password123","confirmPassword":"password123"}
                 """.formatted(email))).andExpect(status().isCreated());
@@ -132,31 +138,35 @@ class AuthControllerTest {
         mockMvc.perform(get("/auth/verify-email").param("token", user.getVerificationToken()))
                 .andExpect(status().isOk());
 
-        String body = mockMvc.perform(post("/auth/login").contentType(MediaType.APPLICATION_JSON)
+        return mockMvc.perform(post("/auth/login").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"%s\",\"password\":\"password123\"}".formatted(email)))
                 .andExpect(status().isOk())
-                .andReturn().getResponse().getContentAsString();
-        return objectMapper.readTree(body);
+                .andReturn().getResponse();
     }
 
-    private static String refreshBody(String token) {
-        return "{\"refreshToken\":\"%s\"}".formatted(token);
+    private static String refreshTokenCookie(MockHttpServletResponse response) {
+        Cookie cookie = response.getCookie("refreshToken");
+        assertThat(cookie).isNotNull();
+        return cookie.getValue();
     }
 
     @Test
     void refresh_withoutAccessToken_issuesPairThatWorksOnMe() throws Exception {
         // Toàn bộ lý do tồn tại của endpoint này: access token đã chết thì vẫn làm mới được,
         // nên nó KHÔNG được đòi Authorization header.
-        String refreshToken = loginFresh("it-refresh@example.com").get("refreshToken").asText();
+        String refreshToken = refreshTokenCookie(loginFresh("it-refresh@example.com"));
 
-        String body = mockMvc.perform(post("/auth/refresh").contentType(MediaType.APPLICATION_JSON)
-                        .content(refreshBody(refreshToken)))
+        MockHttpServletResponse response = mockMvc.perform(post("/auth/refresh")
+                        .cookie(new Cookie("refreshToken", refreshToken)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accessToken").isNotEmpty())
-                .andExpect(jsonPath("$.refreshToken").isNotEmpty())
-                .andReturn().getResponse().getContentAsString();
+                .andExpect(jsonPath("$.refreshToken").doesNotExist())
+                .andReturn().getResponse();
 
-        String newAccess = objectMapper.readTree(body).get("accessToken").asText();
+        // Xoay vòng: refresh token mới phải khác token cũ, và được cấp lại qua cookie.
+        assertThat(refreshTokenCookie(response)).isNotEqualTo(refreshToken);
+
+        String newAccess = objectMapper.readTree(response.getContentAsString()).get("accessToken").asText();
         mockMvc.perform(get("/auth/me").header("Authorization", "Bearer " + newAccess))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.email").value("it-refresh@example.com"));
@@ -165,28 +175,66 @@ class AuthControllerTest {
     @Test
     void refresh_invalidToken_returns401() throws Exception {
         // 401 chứ không phải 400: frontend nhìn mã này để biết phải mời người dùng đăng nhập lại.
-        mockMvc.perform(post("/auth/refresh").contentType(MediaType.APPLICATION_JSON)
-                        .content(refreshBody("khong-ton-tai")))
+        mockMvc.perform(post("/auth/refresh").cookie(new Cookie("refreshToken", "khong-ton-tai")))
                 .andExpect(status().isUnauthorized());
     }
 
     @Test
-    void refresh_missingToken_returns400WithFieldError() throws Exception {
-        mockMvc.perform(post("/auth/refresh").contentType(MediaType.APPLICATION_JSON).content("{}"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.fieldErrors.refreshToken").exists());
+    void refresh_missingCookie_returns401() throws Exception {
+        mockMvc.perform(post("/auth/refresh"))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
     void logout_thenRefresh_returns401() throws Exception {
-        String refreshToken = loginFresh("it-logout@example.com").get("refreshToken").asText();
+        String refreshToken = refreshTokenCookie(loginFresh("it-logout@example.com"));
 
-        mockMvc.perform(post("/auth/logout").contentType(MediaType.APPLICATION_JSON)
-                        .content(refreshBody(refreshToken)))
+        mockMvc.perform(post("/auth/logout").cookie(new Cookie("refreshToken", refreshToken)))
                 .andExpect(status().isNoContent());
 
-        mockMvc.perform(post("/auth/refresh").contentType(MediaType.APPLICATION_JSON)
-                        .content(refreshBody(refreshToken)))
+        mockMvc.perform(post("/auth/refresh").cookie(new Cookie("refreshToken", refreshToken)))
                 .andExpect(status().isUnauthorized());
+    }
+
+    // ---------- Quên mật khẩu ----------
+
+    @Test
+    void forgotPassword_unknownEmail_returns200WithSameMessageAsKnownEmail() throws Exception {
+        loginFresh("it-forgot@example.com");
+
+        String known = mockMvc.perform(post("/auth/forgot-password").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"it-forgot@example.com\"}"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        String unknown = mockMvc.perform(post("/auth/forgot-password").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"nobody-forgot@example.com\"}"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(unknown).isEqualTo(known);
+    }
+
+    @Test
+    void forgotPassword_invalidEmailFormat_returns400() throws Exception {
+        mockMvc.perform(post("/auth/forgot-password").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"not-an-email\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void resetPassword_unknownToken_returns400() throws Exception {
+        mockMvc.perform(post("/auth/reset-password").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"token\":\"does-not-exist\",\"newPassword\":\"newpassword1\","
+                                + "\"confirmPassword\":\"newpassword1\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void resetPassword_mismatchedPasswords_returns400WithFieldError() throws Exception {
+        mockMvc.perform(post("/auth/reset-password").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"token\":\"x\",\"newPassword\":\"newpassword1\","
+                                + "\"confirmPassword\":\"different1\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrors.confirmPasswordMatching").exists());
     }
 }

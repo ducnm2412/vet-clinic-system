@@ -10,6 +10,7 @@ public record StaffProfileResponse(
         String position,
         String phone,
         LocalDate hireDate,
+        String photoUrl,
         Instant createdAt,
         Instant updatedAt
 ) {

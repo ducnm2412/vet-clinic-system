@@ -59,6 +59,10 @@ public class Pet {
     @Column(name = "weight_kg", precision = 5, scale = 2)
     private BigDecimal weightKg;
 
+    @Column(name = "photo_version", nullable = false)
+    @Builder.Default
+    private int photoVersion = 0;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;

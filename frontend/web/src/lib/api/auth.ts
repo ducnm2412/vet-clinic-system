@@ -1,6 +1,6 @@
-import { getRefreshToken, http, qs, setSession, setToken } from "./client";
+import { http, qs, setToken } from "./client";
 import type {
-  AuthResponse,
+  AccessTokenResponse,
   PageResponse,
   UserFilters,
   CreateStaffAccountRequest,
@@ -11,24 +11,39 @@ import type {
 } from "@/types";
 
 export const authApi = {
-  async login(email: string, password: string): Promise<AuthResponse> {
-    const res = await http.post<AuthResponse>("/auth/login", { email, password }, true);
-    setSession(res.accessToken, res.refreshToken);
+  async login(email: string, password: string): Promise<AccessTokenResponse> {
+    const res = await http.post<AccessTokenResponse>("/auth/login", { email, password }, true);
+    setToken(res.accessToken);
+    return res;
+  },
+
+  /** idToken lấy thẳng từ Google phía trình duyệt (Google Identity Services) — backend tự tạo
+   * tài khoản nếu email chưa có, không cần bước xác minh email vì Google đã xác minh rồi. */
+  async google(idToken: string): Promise<AccessTokenResponse> {
+    const res = await http.post<AccessTokenResponse>("/auth/google", { idToken }, true);
+    setToken(res.accessToken);
+    return res;
+  },
+
+  /** accessToken lấy thẳng từ Facebook JS SDK phía trình duyệt — backend tự gọi Graph API để
+   * xác minh rồi tự tạo tài khoản nếu email chưa có, giống hệt luồng Google. */
+  async facebook(accessToken: string): Promise<AccessTokenResponse> {
+    const res = await http.post<AccessTokenResponse>("/auth/facebook", { accessToken }, true);
+    setToken(res.accessToken);
     return res;
   },
 
   /**
-   * Thu hồi refresh token ở server rồi xoá phiên ở máy. Xoá ở máy luôn chạy, kể cả khi mất
-   * mạng — người bấm đăng xuất phải thoát ra được, không phải chờ server trả lời.
+   * Thu hồi refresh token ở server (cookie httpOnly gửi kèm tự động) rồi xoá phiên ở máy. Xoá
+   * access token ở máy luôn chạy trước, kể cả khi mất mạng — người bấm đăng xuất phải thoát ra
+   * được ngay, không phải chờ server trả lời.
    */
   async logout(): Promise<void> {
-    const refreshToken = getRefreshToken();
     setToken(null);
-    if (!refreshToken) return;
     try {
-      await http.post<void>("/auth/logout", { refreshToken }, true);
+      await http.post<void>("/auth/logout", undefined, true);
     } catch {
-      // Server không nhận được thì token vẫn tự hết hạn sau 7 ngày; ở máy đã xoá rồi.
+      // Server không nhận được thì refresh token vẫn tự hết hạn sau 7 ngày; ở máy đã xoá rồi.
     }
   },
 
@@ -37,6 +52,13 @@ export const authApi = {
 
   verifyEmail: (token: string) =>
     http.get<{ message: string }>(`/auth/verify-email?token=${encodeURIComponent(token)}`, true),
+
+  /** Luôn trả cùng một thông báo dù email có tài khoản hay không (backend chống dò email). */
+  forgotPassword: (email: string) =>
+    http.post<{ message: string }>("/auth/forgot-password", { email }, true),
+
+  resetPassword: (body: { token: string; newPassword: string; confirmPassword: string }) =>
+    http.post<{ message: string }>("/auth/reset-password", body, true),
 
   me: () => http.get<CurrentUser>("/auth/me"),
 
@@ -75,11 +97,6 @@ export function readToken(token: string | null): TokenClaims | null {
   } catch {
     return null;
   }
-}
-
-export function isExpired(claims: TokenClaims | null): boolean {
-  if (!claims?.exp) return false;
-  return claims.exp * 1000 <= Date.now();
 }
 
 export const ROLE_LABEL: Record<Role, string> = {

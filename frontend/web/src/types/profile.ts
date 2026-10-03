@@ -9,6 +9,8 @@ export interface Pet {
   gender: PetGender;
   dateOfBirth: string | null;
   weightKg: number | null;
+  /** Đường dẫn ảnh (kèm ?v= để bỏ cache khi đổi ảnh); null nếu chưa có. Phải đăng nhập mới xem được. */
+  photoUrl: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -27,6 +29,7 @@ export interface CustomerProfile {
   userId: string;
   phone: string | null;
   dateOfBirth: string | null;
+  photoUrl: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -66,6 +69,8 @@ export interface DoctorProfile {
   phone: string | null;
   bio: string | null;
   yearsOfExperience: number | null;
+  /** Ảnh bác sĩ mở công khai — dùng thẳng với thẻ img qua `apiUrl`. */
+  photoUrl: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -79,6 +84,7 @@ export interface DoctorPublic {
   specialty: string | null;
   bio: string | null;
   yearsOfExperience: number | null;
+  photoUrl: string | null;
 }
 
 export interface DoctorLicense {
@@ -113,6 +119,8 @@ export interface StaffProfile {
   position: string | null;
   phone: string | null;
   hireDate: string | null;
+  /** Ảnh nhân viên mở công khai — dùng thẳng với thẻ img qua `apiUrl`. */
+  photoUrl: string | null;
   createdAt: string;
   updatedAt: string;
 }

@@ -11,6 +11,7 @@ public record DoctorPublicResponse(
         String fullName,
         String specialty,
         String bio,
-        Integer yearsOfExperience
+        Integer yearsOfExperience,
+        String photoUrl
 ) {
 }

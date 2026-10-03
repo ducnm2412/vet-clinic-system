@@ -14,6 +14,12 @@ import type {
   StaffProfile,
 } from "@/types";
 
+function formOf(file: File): FormData {
+  const form = new FormData();
+  form.append("file", file);
+  return form;
+}
+
 /** Hồ sơ của chính khách hàng. Backend giới hạn toàn bộ nhánh này cho role CUSTOMER. */
 export const customerApi = {
   me: () => http.get<CustomerProfile>("/profile/customer/me"),
@@ -33,6 +39,8 @@ export const customerApi = {
   updatePet: (id: string, body: PetRequest) =>
     http.put<Pet>(`/profile/customer/me/pets/${id}`, body),
   deletePet: (id: string) => http.del<void>(`/profile/customer/me/pets/${id}`),
+  uploadPetPhoto: (id: string, file: File) =>
+    http.postForm<Pet>(`/profile/customer/me/pets/${id}/photo`, formOf(file)),
 };
 
 /** Hồ sơ của chính bác sĩ. Backend giới hạn cho role DOCTOR. */
@@ -47,6 +55,7 @@ export const doctorApi = {
   updateLicense: (id: string, body: DoctorLicenseRequest) =>
     http.put<DoctorLicense>(`/profile/doctor/me/licenses/${id}`, body),
   deleteLicense: (id: string) => http.del<void>(`/profile/doctor/me/licenses/${id}`),
+  uploadMyPhoto: (file: File) => http.postForm<DoctorProfile>("/profile/doctor/me/photo", formOf(file)),
 
   /** Công khai — trang đặt lịch hiển thị được kể cả khi chưa đăng nhập. */
   listPublic: () => http.get<DoctorPublic[]>("/profile/doctors", true),
@@ -57,6 +66,7 @@ export const staffApi = {
   me: () => http.get<StaffProfile>("/profile/staff/me"),
   updateMe: (body: Partial<StaffProfile>) =>
     http.put<StaffProfile>("/profile/staff/me", body),
+  uploadMyPhoto: (file: File) => http.postForm<StaffProfile>("/profile/staff/me/photo", formOf(file)),
   /** Chỉ ADMIN. Đây là danh sách nhân sự duy nhất backend cung cấp. */
   list: () => http.get<StaffProfile[]>("/profile/staff"),
 };

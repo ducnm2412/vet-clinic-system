@@ -65,4 +65,37 @@ class EmailServiceTest {
         String body = (String) mimeMessage.getContent();
         assertThat(body).contains("https://vetclinic.example.com/verify-email?token=tok-xyz");
     }
+
+    @Test
+    void sendPasswordResetEmail_buildsSubjectLinkAndExpiry() throws Exception {
+        MimeMessage mimeMessage = new MimeMessage((jakarta.mail.Session) null);
+        when(mailSender.createMimeMessage()).thenReturn(mimeMessage);
+
+        emailService.sendPasswordResetEmail("jane@example.com", "Jane", "reset-abc",
+                Instant.parse("2026-09-09T00:34:00Z")); // 07:34 ngày 09/09/2026 giờ VN
+
+        verify(mailSender).send(mimeMessage);
+        mimeMessage.saveChanges();
+        assertThat(mimeMessage.getSubject()).isEqualTo("Đặt lại mật khẩu VetClinic");
+        assertThat(mimeMessage.getAllRecipients()[0].toString()).isEqualTo("jane@example.com");
+
+        String body = (String) mimeMessage.getContent();
+        assertThat(body).contains("http://localhost:3000/reset-password?token=reset-abc");
+        assertThat(body).contains("1 giờ");
+        assertThat(body).contains("07:34 ngày 09/09/2026");
+        assertThat(body).contains("bỏ qua email");
+    }
+
+    @Test
+    void sendPasswordResetEmail_escapesFirstName() throws Exception {
+        MimeMessage mimeMessage = new MimeMessage((jakarta.mail.Session) null);
+        when(mailSender.createMimeMessage()).thenReturn(mimeMessage);
+
+        emailService.sendPasswordResetEmail("jane@example.com", "<script>x</script>", "tok",
+                Instant.now().plus(1, ChronoUnit.HOURS));
+
+        String body = (String) mimeMessage.getContent();
+        assertThat(body).doesNotContain("<script>");
+        assertThat(body).contains("&lt;script&gt;");
+    }
 }

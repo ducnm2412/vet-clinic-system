@@ -9,6 +9,7 @@ public record CustomerProfileResponse(
         UUID userId,
         String phone,
         LocalDate dateOfBirth,
+        String photoUrl,
         Instant createdAt,
         Instant updatedAt
 ) {

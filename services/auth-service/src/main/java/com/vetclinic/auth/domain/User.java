@@ -47,8 +47,18 @@ public class User {
     @Column(nullable = false, unique = true)
     private String email;
 
-    @Column(name = "password_hash", nullable = false)
+    // Null cho tai khoan tao qua Google - ho khong dat mat khau.
+    @Column(name = "password_hash")
     private String passwordHash;
+
+    // Dinh danh on dinh Google cap - null cho tai khoan dang ky bang mat khau chua tung
+    // dang nhap Google lan nao.
+    @Column(name = "google_sub", unique = true)
+    private String googleSub;
+
+    // Cung vai tro voi googleSub, nhung cua Facebook.
+    @Column(name = "facebook_id", unique = true)
+    private String facebookId;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)

@@ -17,6 +17,7 @@ public class UserEventPublisher {
     private static final String ROUTING_KEY_STAFF_CREATED = "user.staff-created";
     private static final String ROUTING_KEY_USER_LOCKED = "user.locked";
     private static final String ROUTING_KEY_USER_UNLOCKED = "user.unlocked";
+    private static final String ROUTING_KEY_PASSWORD_RESET_REQUESTED = "user.password-reset-requested";
 
     private final RabbitTemplate rabbitTemplate;
 
@@ -47,5 +48,12 @@ public class UserEventPublisher {
     public void onUserRegistered(UserRegisteredEvent event) {
         rabbitTemplate.convertAndSend(RabbitMQConfig.USER_EVENTS_EXCHANGE, ROUTING_KEY_USER_REGISTERED, event);
         log.info("Published user.registered event for userId={}", event.userId());
+    }
+
+    // AFTER_COMMIT: token chưa commit thì email chứa link chưa có token nào để dùng.
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onPasswordResetRequested(PasswordResetRequestedEvent event) {
+        rabbitTemplate.convertAndSend(RabbitMQConfig.USER_EVENTS_EXCHANGE, ROUTING_KEY_PASSWORD_RESET_REQUESTED, event);
+        log.info("Published user.password-reset-requested event for userId={}", event.userId());
     }
 }

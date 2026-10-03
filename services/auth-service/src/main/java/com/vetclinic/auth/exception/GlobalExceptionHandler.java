@@ -35,6 +35,27 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.UNAUTHORIZED, ex.getMessage());
     }
 
+    @ExceptionHandler(InvalidResetTokenException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidResetToken(InvalidResetTokenException ex) {
+        return build(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    @ExceptionHandler(InvalidGoogleTokenException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidGoogleToken(InvalidGoogleTokenException ex) {
+        return build(HttpStatus.UNAUTHORIZED, ex.getMessage());
+    }
+
+    @ExceptionHandler(InvalidFacebookTokenException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidFacebookToken(InvalidFacebookTokenException ex) {
+        return build(HttpStatus.UNAUTHORIZED, ex.getMessage());
+    }
+
+    // 400 chu khong phai 401: token van hop le, chi la nguoi dung tu choi cap quyen email.
+    @ExceptionHandler(FacebookEmailRequiredException.class)
+    public ResponseEntity<ErrorResponse> handleFacebookEmailRequired(FacebookEmailRequiredException ex) {
+        return build(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
     @ExceptionHandler(AccountLockedException.class)
     public ResponseEntity<ErrorResponse> handleAccountLocked(AccountLockedException ex) {
         return build(HttpStatus.FORBIDDEN, ex.getMessage());

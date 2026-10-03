@@ -10,6 +10,7 @@ public record DoctorProfileResponse(
         String phone,
         String bio,
         Integer yearsOfExperience,
+        String photoUrl,
         Instant createdAt,
         Instant updatedAt
 ) {

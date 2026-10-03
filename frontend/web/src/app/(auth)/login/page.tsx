@@ -11,6 +11,7 @@ import { useAuth } from "@/lib/auth";
 import { homeFor, isNextAllowedForRoles } from "@/config/nav";
 import { SiteButton } from "@/components/site/primitives";
 import { SiteInput } from "@/components/site/fields";
+import { SocialSignInButtons } from "@/components/site/SocialSignInButtons";
 
 const schema = z.object({
   email: z.string().min(1, "Nhập email").email("Email không đúng định dạng"),
@@ -92,6 +93,11 @@ function LoginForm() {
           error={errors.password?.message}
           {...register("password")}
         />
+        <div className="-mt-2 text-right">
+          <Link href="/forgot-password" className="text-[15px] text-teal-deep underline underline-offset-4">
+            Quên mật khẩu?
+          </Link>
+        </div>
 
         {formError && (
           <p role="alert" className="rounded-[var(--radius-card)] bg-peach px-4 py-3 text-[15px] text-coral-deep">
@@ -103,6 +109,8 @@ function LoginForm() {
           Đăng nhập
         </SiteButton>
       </form>
+
+      <SocialSignInButtons />
     </>
   );
 }

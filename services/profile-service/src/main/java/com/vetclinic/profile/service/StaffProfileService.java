@@ -1,12 +1,14 @@
 package com.vetclinic.profile.service;
 
 import com.vetclinic.profile.domain.StaffProfile;
+import com.vetclinic.profile.dto.PhotoUrls;
 import com.vetclinic.profile.dto.StaffProfileRequest;
 import com.vetclinic.profile.dto.StaffProfileResponse;
 import com.vetclinic.profile.repository.StaffProfileRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.UUID;
@@ -16,6 +18,16 @@ import java.util.UUID;
 public class StaffProfileService {
 
     private final StaffProfileRepository staffProfileRepository;
+    private final PhotoStorageService photoStorageService;
+
+    @Transactional
+    public StaffProfileResponse uploadMyPhoto(UUID userId, MultipartFile file) {
+        StaffProfile profile = getOrCreateProfile(userId);
+        photoStorageService.store(PhotoUrls.STAFF, profile.getId(), file);
+        profile.setPhotoVersion(profile.getPhotoVersion() + 1);
+        staffProfileRepository.saveAndFlush(profile);
+        return toResponse(profile);
+    }
 
     @Transactional
     public StaffProfileResponse getMyProfile(UUID userId) {
@@ -54,6 +66,8 @@ public class StaffProfileService {
 
     private StaffProfileResponse toResponse(StaffProfile profile) {
         return new StaffProfileResponse(profile.getId(), profile.getUserId(), profile.getPosition(),
-                profile.getPhone(), profile.getHireDate(), profile.getCreatedAt(), profile.getUpdatedAt());
+                profile.getPhone(), profile.getHireDate(),
+                PhotoUrls.of(PhotoUrls.STAFF, profile.getId(), profile.getPhotoVersion()),
+                profile.getCreatedAt(), profile.getUpdatedAt());
     }
 }

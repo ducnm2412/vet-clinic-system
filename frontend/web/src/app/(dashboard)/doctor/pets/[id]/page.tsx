@@ -8,6 +8,7 @@ import { PRESCRIPTION_STATUS, speciesStripe } from "@/lib/utils/status";
 import { formatAge, formatDate, formatDateTime } from "@/lib/utils/format";
 import { cn } from "@/lib/utils/cn";
 import type { MedicalRecord } from "@/types";
+import { PetThumb } from "@/components/pet/PetThumb";
 import { Button, EmptyState, ErrorState, Spinner, StatusTag } from "@/components/ui";
 
 /**
@@ -41,13 +42,18 @@ export default function DoctorPetRecordsPage() {
             <div className="flex">
               <span aria-hidden className={cn("w-1.5 shrink-0", speciesStripe(pet.data.species))} />
               <div className="min-w-0 flex-1 p-4">
-                <h1 className="font-[family-name:var(--font-display)] text-[20px] text-ink">
-                  {pet.data.name}
-                </h1>
-                <p className="mt-0.5 text-sm text-bark">
-                  {pet.data.species}
-                  {pet.data.breed ? ` ${pet.data.breed}` : ""} · {formatAge(pet.data.dateOfBirth)}
-                </p>
+                <div className="flex items-center gap-3">
+                  <PetThumb pet={pet.data} className="size-14" />
+                  <div className="min-w-0">
+                    <h1 className="font-[family-name:var(--font-display)] text-[20px] text-ink">
+                      {pet.data.name}
+                    </h1>
+                    <p className="mt-0.5 text-sm text-bark">
+                      {pet.data.species}
+                      {pet.data.breed ? ` ${pet.data.breed}` : ""} · {formatAge(pet.data.dateOfBirth)}
+                    </p>
+                  </div>
+                </div>
                 <dl className="mt-3 space-y-1 text-sm">
                   <div className="flex justify-between">
                     <dt className="text-bark">Giới tính</dt>

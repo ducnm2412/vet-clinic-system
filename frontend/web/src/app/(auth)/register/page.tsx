@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { ApiError, authApi } from "@/lib/api";
 import { SiteButton } from "@/components/site/primitives";
 import { SiteInput } from "@/components/site/fields";
+import { SocialSignInButtons } from "@/components/site/SocialSignInButtons";
 
 const schema = z
   .object({
@@ -24,7 +25,7 @@ const schema = z
 
 type FormValues = z.infer<typeof schema>;
 
-export default function RegisterPage() {
+function RegisterForm() {
   const [formError, setFormError] = useState<string | null>(null);
   const [registeredEmail, setRegisteredEmail] = useState<string | null>(null);
 
@@ -135,6 +136,16 @@ export default function RegisterPage() {
           Tạo tài khoản
         </SiteButton>
       </form>
+
+      <SocialSignInButtons />
     </>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={null}>
+      <RegisterForm />
+    </Suspense>
   );
 }

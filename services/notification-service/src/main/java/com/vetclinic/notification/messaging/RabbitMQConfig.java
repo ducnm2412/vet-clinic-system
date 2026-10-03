@@ -24,6 +24,8 @@ public class RabbitMQConfig {
     public static final String USER_EVENTS_EXCHANGE = "user.events";
     public static final String USER_REGISTERED_QUEUE = "notification.user-registered";
     private static final String ROUTING_KEY_USER_REGISTERED = "user.registered";
+    public static final String PASSWORD_RESET_REQUESTED_QUEUE = "notification.password-reset-requested";
+    private static final String ROUTING_KEY_PASSWORD_RESET_REQUESTED = "user.password-reset-requested";
 
     // booking-service là chủ khai báo gốc — thuộc tính (durable=true, autoDelete=false) phải khớp.
     public static final String BOOKING_EVENTS_EXCHANGE = "booking.events";
@@ -43,6 +45,18 @@ public class RabbitMQConfig {
     @Bean
     public Binding userRegisteredBinding(Queue userRegisteredQueue, TopicExchange userEventsExchange) {
         return BindingBuilder.bind(userRegisteredQueue).to(userEventsExchange).with(ROUTING_KEY_USER_REGISTERED);
+    }
+
+    @Bean
+    public Queue passwordResetRequestedQueue() {
+        return new Queue(PASSWORD_RESET_REQUESTED_QUEUE, true);
+    }
+
+    @Bean
+    public Binding passwordResetRequestedBinding(Queue passwordResetRequestedQueue,
+                                                 TopicExchange userEventsExchange) {
+        return BindingBuilder.bind(passwordResetRequestedQueue).to(userEventsExchange)
+                .with(ROUTING_KEY_PASSWORD_RESET_REQUESTED);
     }
 
     @Bean

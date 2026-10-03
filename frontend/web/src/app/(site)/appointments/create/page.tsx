@@ -301,7 +301,7 @@ function StepPets({
                   : "border-mist hover:border-teal hover:bg-mint/60",
               )}
             >
-              <PetAvatar species={pet.species} small className="h-16 w-13" />
+              <PetAvatar species={pet.species} photoUrl={pet.photoUrl} name={pet.name} small className="h-16 w-13" />
               <span className="min-w-0">
                 <span className="block font-[family-name:var(--font-brand)] text-[19px] font-semibold">
                   {pet.name}
@@ -600,7 +600,7 @@ function BookingSummary({
         <dl className="mt-5 space-y-4 text-[15px]">
           {pet && (
             <div className="flex items-center gap-4">
-              <PetAvatar species={pet.species} small className="h-14 w-11" />
+              <PetAvatar species={pet.species} photoUrl={pet.photoUrl} name={pet.name} small className="h-14 w-11" />
               <div>
                 <dt className="text-stone">Khám cho</dt>
                 <dd className="font-medium">{pet.name}</dd>

@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { Stethoscope } from "lucide-react";
-import { doctorApi } from "@/lib/api";
+import { apiUrl, doctorApi } from "@/lib/api";
 import type { DoctorPublic } from "@/types";
 import { ButtonLink, Section, SectionHead } from "./primitives";
 
@@ -11,8 +11,8 @@ import { ButtonLink, Section, SectionHead } from "./primitives";
  *
  * Tiêu đề thẻ là họ tên (VD-20); hồ sơ cũ chưa có tên thì dùng chuyên môn.
  *
- * TODO(backend): chưa có ảnh chân dung. Không lấy ảnh người lạ gán tên bác sĩ của phòng khám —
- * đó là dựng chuyện. Cần bổ sung: photoUrl trong DoctorPublicResponse.
+ * Ảnh chân dung do chính bác sĩ tải lên (photoUrl, công khai). Chưa có thì giữ mái vòm kèm ống
+ * nghe — không lấy ảnh người lạ gán tên bác sĩ của phòng khám, đó là dựng chuyện.
  */
 export function DoctorTeam() {
   const doctors = useQuery({ queryKey: ["doctors", "public"], queryFn: doctorApi.listPublic });
@@ -50,16 +50,25 @@ function DoctorCard({ doctor }: { doctor: DoctorPublic }) {
 
   return (
     <li className="flex gap-5">
-      {/*
-        Không có ảnh chân dung nên đây là mái vòm mòng két kèm ống nghe — cùng mô-típ với
-        mọi khung ảnh khác của trang, nên trông vẫn là một phần của thiết kế.
-      */}
-      <span
-        aria-hidden
-        className="arch-sm grid h-24 w-18 shrink-0 place-items-center bg-pine text-white/80"
-      >
-        <Stethoscope className="size-7" />
-      </span>
+      {doctor.photoUrl ? (
+        <span className="arch-sm block h-24 w-18 shrink-0 overflow-hidden bg-mint">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={apiUrl(doctor.photoUrl)}
+            alt={doctor.fullName?.trim() ? `Ảnh bác sĩ ${doctor.fullName.trim()}` : "Ảnh bác sĩ"}
+            loading="lazy"
+            className="size-full object-cover"
+          />
+        </span>
+      ) : (
+        // Chưa có ảnh: mái vòm mòng két kèm ống nghe, cùng mô-típ với mọi khung ảnh khác của trang.
+        <span
+          aria-hidden
+          className="arch-sm grid h-24 w-18 shrink-0 place-items-center bg-pine text-white/80"
+        >
+          <Stethoscope className="size-7" />
+        </span>
+      )}
 
       <div className="min-w-0">
         <h3 className="t-h3">

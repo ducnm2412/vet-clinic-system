@@ -32,8 +32,9 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         // refresh/logout mở công khai: access token lúc đó có thể đã hết hạn, danh
-                        // tính được chứng minh bằng refresh token trong thân request.
-                        .requestMatchers("/auth/register", "/auth/login", "/auth/verify-email",
+                        // tính được chứng minh bằng refresh token trong cookie httpOnly.
+                        .requestMatchers("/auth/register", "/auth/login", "/auth/google", "/auth/facebook",
+                                "/auth/verify-email", "/auth/forgot-password", "/auth/reset-password",
                                 "/auth/refresh", "/auth/logout", "/error").permitAll()
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated())

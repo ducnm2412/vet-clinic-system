@@ -15,6 +15,7 @@ public record PetResponse(
         PetGender gender,
         LocalDate dateOfBirth,
         BigDecimal weightKg,
+        String photoUrl,
         Instant createdAt,
         Instant updatedAt
 ) {

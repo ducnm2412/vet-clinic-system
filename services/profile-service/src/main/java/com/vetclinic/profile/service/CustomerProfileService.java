@@ -9,6 +9,7 @@ import com.vetclinic.profile.dto.CustomerProfileRequest;
 import com.vetclinic.profile.dto.CustomerProfileResponse;
 import com.vetclinic.profile.dto.PetRequest;
 import com.vetclinic.profile.dto.PetResponse;
+import com.vetclinic.profile.dto.PhotoUrls;
 import com.vetclinic.profile.exception.ResourceNotFoundException;
 import com.vetclinic.profile.repository.AddressRepository;
 import com.vetclinic.profile.repository.CustomerProfileRepository;
@@ -16,6 +17,7 @@ import com.vetclinic.profile.repository.PetRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.UUID;
@@ -27,6 +29,28 @@ public class CustomerProfileService {
     private final CustomerProfileRepository customerProfileRepository;
     private final AddressRepository addressRepository;
     private final PetRepository petRepository;
+    private final PhotoStorageService photoStorageService;
+
+    @Transactional
+    public CustomerProfileResponse uploadMyPhoto(UUID userId, MultipartFile file) {
+        CustomerProfile profile = getOrCreateProfile(userId);
+        photoStorageService.store(PhotoUrls.CUSTOMERS, profile.getId(), file);
+        profile.setPhotoVersion(profile.getPhotoVersion() + 1);
+        customerProfileRepository.saveAndFlush(profile);
+        return toProfileResponse(profile);
+    }
+
+    // Chỉ chủ nuôi mới đổi được ảnh thú cưng của mình — tra theo cả petId lẫn hồ sơ khách như updatePet.
+    @Transactional
+    public PetResponse uploadPetPhoto(UUID userId, UUID petId, MultipartFile file) {
+        CustomerProfile profile = getOrCreateProfile(userId);
+        Pet pet = petRepository.findByIdAndCustomerProfileId(petId, profile.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Pet not found: " + petId));
+        photoStorageService.store(PhotoUrls.PETS, pet.getId(), file);
+        pet.setPhotoVersion(pet.getPhotoVersion() + 1);
+        petRepository.saveAndFlush(pet);
+        return toPetResponse(pet);
+    }
 
     @Transactional
     public CustomerProfileResponse getMyProfile(UUID userId) {
@@ -199,7 +223,8 @@ public class CustomerProfileService {
 
     private CustomerProfileResponse toProfileResponse(CustomerProfile profile) {
         return new CustomerProfileResponse(profile.getId(), profile.getUserId(), profile.getPhone(),
-                profile.getDateOfBirth(), profile.getCreatedAt(), profile.getUpdatedAt());
+                profile.getDateOfBirth(), PhotoUrls.of(PhotoUrls.CUSTOMERS, profile.getId(), profile.getPhotoVersion()),
+                profile.getCreatedAt(), profile.getUpdatedAt());
     }
 
     private AddressResponse toAddressResponse(Address address) {
@@ -209,6 +234,7 @@ public class CustomerProfileService {
 
     private PetResponse toPetResponse(Pet pet) {
         return new PetResponse(pet.getId(), pet.getName(), pet.getSpecies(), pet.getBreed(), pet.getGender(),
-                pet.getDateOfBirth(), pet.getWeightKg(), pet.getCreatedAt(), pet.getUpdatedAt());
+                pet.getDateOfBirth(), pet.getWeightKg(), PhotoUrls.of(PhotoUrls.PETS, pet.getId(), pet.getPhotoVersion()),
+                pet.getCreatedAt(), pet.getUpdatedAt());
     }
 }

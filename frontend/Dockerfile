@@ -15,6 +15,12 @@ COPY web/ ./
 # TRONG container, va moi request /api/* se ECONNREFUSED.
 ARG API_GATEWAY_URL=http://api-gateway:8080
 ENV API_GATEWAY_URL=$API_GATEWAY_URL
+# Cung ly do: NEXT_PUBLIC_* duoc Next dong thang vao bundle JS luc build, khong doc lai duoc
+# luc server khoi dong - phai truyen o day, khong phai o phan "environment:" cua container.
+ARG NEXT_PUBLIC_GOOGLE_CLIENT_ID=""
+ENV NEXT_PUBLIC_GOOGLE_CLIENT_ID=$NEXT_PUBLIC_GOOGLE_CLIENT_ID
+ARG NEXT_PUBLIC_FACEBOOK_APP_ID=""
+ENV NEXT_PUBLIC_FACEBOOK_APP_ID=$NEXT_PUBLIC_FACEBOOK_APP_ID
 RUN npm run build
 
 FROM node:22-alpine

@@ -1,13 +1,14 @@
+"use client";
+
 import { Bird, Cat, Dog, Fish, PawPrint, Rabbit, Rat, Turtle, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
+import { AuthedImage } from "@/components/AuthedImage";
 
 /**
- * Ảnh đại diện thú cưng.
+ * Ảnh đại diện thú cưng: ảnh chủ nuôi tải lên nếu có (`photoUrl`), không thì mái vòm màu theo loài
+ * kèm hình con vật tương ứng — đủ để phân biệt các bé với nhau mà không phải bịa ra ảnh không tồn tại.
  *
- * TODO(backend, VD-22): `PetResponse` không có ảnh, cũng không có dị ứng hay ghi chú.
- * Nên mỗi bé nhận một mái vòm màu theo loài kèm hình con vật tương ứng — đủ để phân biệt
- * các bé với nhau trong danh sách mà không phải bịa ra ảnh không tồn tại.
- * Cần bổ sung: photoUrl, allergies, notes trong PetRequest/PetResponse.
+ * TODO(backend, VD-22): `PetResponse` vẫn chưa có dị ứng hay ghi chú.
  */
 const BY_SPECIES: Record<string, { icon: LucideIcon; skin: string }> = {
   chó: { icon: Dog, skin: "bg-[#0e9b8e]/12 text-[#0a7b70]" },
@@ -26,25 +27,41 @@ function look(species: string | null | undefined) {
 
 export function PetAvatar({
   species,
+  photoUrl,
+  name,
   className,
   small,
 }: {
   species: string | null | undefined;
+  photoUrl?: string | null;
+  name?: string;
   className?: string;
   small?: boolean;
 }) {
   const { icon: Icon, skin } = look(species);
+  const shape = small ? "arch-sm" : "arch";
+  const icon = <Icon className={small ? "size-7" : "size-12"} strokeWidth={1.5} />;
+
+  if (!photoUrl) {
+    return (
+      <span aria-hidden className={cn(shape, "grid shrink-0 place-items-center", skin, className)}>
+        {icon}
+      </span>
+    );
+  }
+
   return (
-    <span
-      aria-hidden
-      className={cn(
-        small ? "arch-sm" : "arch",
-        "grid shrink-0 place-items-center",
-        skin,
-        className,
-      )}
-    >
-      <Icon className={small ? "size-7" : "size-12"} strokeWidth={1.5} />
+    <span className={cn(shape, "block shrink-0 overflow-hidden", skin, className)}>
+      <AuthedImage
+        path={photoUrl}
+        alt={name ? `Ảnh của ${name}` : ""}
+        className="size-full object-cover"
+        fallback={
+          <span aria-hidden className="grid size-full place-items-center">
+            {icon}
+          </span>
+        }
+      />
     </span>
   );
 }

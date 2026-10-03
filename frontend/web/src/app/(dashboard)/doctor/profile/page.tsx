@@ -2,11 +2,12 @@
 
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Trash2 } from "lucide-react";
-import { ApiError, doctorApi } from "@/lib/api";
+import { Camera, Plus, Trash2 } from "lucide-react";
+import { ApiError, apiUrl, doctorApi } from "@/lib/api";
 import { formatDate } from "@/lib/utils/format";
 import type { DoctorProfile } from "@/types";
 import { PageHeader } from "@/components/layout/DashboardShell";
+import { PhotoUploadButton } from "@/components/PhotoUploadButton";
 import {
   Button,
   Dialog,
@@ -86,6 +87,28 @@ function ProfileBody({ profile }: { profile: DoctorProfile }) {
         <section className="rounded-[var(--radius-control)] border border-line bg-surface p-4">
           <h2 className="mb-3 font-medium text-ink">Thông tin chuyên môn</h2>
           <div className="space-y-4">
+            <div className="flex items-center gap-4">
+              <span className="grid size-20 shrink-0 place-items-center overflow-hidden rounded-full bg-mist text-bark">
+                {profile.photoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={apiUrl(profile.photoUrl)} alt="Ảnh của bạn" className="size-full object-cover" />
+                ) : (
+                  <Camera aria-hidden className="size-6" />
+                )}
+              </span>
+              <div>
+                <PhotoUploadButton
+                  variant="dashboard"
+                  label={profile.photoUrl ? "Đổi ảnh" : "Thêm ảnh"}
+                  upload={doctorApi.uploadMyPhoto}
+                  onUploaded={() => {
+                    qc.invalidateQueries({ queryKey: ["doctor", "me"] });
+                    qc.invalidateQueries({ queryKey: ["doctors"] });
+                  }}
+                />
+                <p className="mt-1.5 text-sm text-bark">Hiện công khai trên trang đặt lịch. JPG, PNG, WebP, tối đa 5MB.</p>
+              </div>
+            </div>
             <TextField
               label="Chuyên môn"
               placeholder="Nội khoa thú nhỏ"

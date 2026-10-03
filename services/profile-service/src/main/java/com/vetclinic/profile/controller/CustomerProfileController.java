@@ -11,6 +11,7 @@ import com.vetclinic.profile.service.CustomerProfileService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -18,8 +19,10 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.UUID;
@@ -39,6 +42,19 @@ public class CustomerProfileController {
     public CustomerProfileResponse updateMyProfile(@AuthenticationPrincipal AuthenticatedUser principal,
                                                      @Valid @RequestBody CustomerProfileRequest request) {
         return customerProfileService.updateMyProfile(principal.userId(), request);
+    }
+
+    @PostMapping(value = "/profile/customer/me/photo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public CustomerProfileResponse uploadMyPhoto(@AuthenticationPrincipal AuthenticatedUser principal,
+                                                   @RequestParam("file") MultipartFile file) {
+        return customerProfileService.uploadMyPhoto(principal.userId(), file);
+    }
+
+    @PostMapping(value = "/profile/customer/me/pets/{petId}/photo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public PetResponse uploadPetPhoto(@AuthenticationPrincipal AuthenticatedUser principal,
+                                       @PathVariable UUID petId,
+                                       @RequestParam("file") MultipartFile file) {
+        return customerProfileService.uploadPetPhoto(principal.userId(), petId, file);
     }
 
     @GetMapping("/profile/customer/me/addresses")

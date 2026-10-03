@@ -45,6 +45,10 @@ public class CustomerProfile {
     @Column(name = "date_of_birth")
     private LocalDate dateOfBirth;
 
+    @Column(name = "photo_version", nullable = false)
+    @Builder.Default
+    private int photoVersion = 0;
+
     @OneToMany(mappedBy = "customerProfile", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<Address> addresses = new ArrayList<>();

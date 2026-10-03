@@ -2,7 +2,7 @@ package com.vetclinic.auth.dto;
 
 import jakarta.validation.constraints.NotBlank;
 
-public record RefreshTokenRequest(
-        @NotBlank String refreshToken
+public record GoogleLoginRequest(
+        @NotBlank String idToken
 ) {
 }

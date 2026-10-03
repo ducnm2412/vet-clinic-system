@@ -48,8 +48,16 @@ services:
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
       JWT_ACCESS_EXPIRATION: ${JWT_ACCESS_EXPIRATION:-900000}
       JWT_REFRESH_EXPIRATION: ${JWT_REFRESH_EXPIRATION:-604800000}
+      # Secure flag cua cookie refresh token - false o dev (HTTP), true o production (HTTPS).
+      REFRESH_COOKIE_SECURE: ${REFRESH_COOKIE_SECURE:-false}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      # OAuth Client ID cua Google (khong phai secret) - de trong thi /auth/google luon tu choi.
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      # App ID/Secret cua Facebook - APP SECRET LA BI MAT THAT, chi doc o day (backend), khong
+      # bao gio duoc dua vao build arg cua frontend.
+      FACEBOOK_APP_ID: ${FACEBOOK_APP_ID:-}
+      FACEBOOK_APP_SECRET: ${FACEBOOK_APP_SECRET:-}
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_USERNAME: ${RABBITMQ_USER:-guest}
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
@@ -80,6 +88,10 @@ services:
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_USERNAME: ${RABBITMQ_USER:-guest}
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
+      # Thu muc luu anh dai dien (thu cung, bac si, nhan vien, khach hang) — nam tren volume ben duoi.
+      UPLOAD_DIR: /data/uploads
+    volumes:
+      - profile-uploads-data:/data/uploads
     depends_on:
       profile-db:
         condition: service_healthy
@@ -176,7 +188,16 @@ services:
       - "8025:8025"
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        # NEXT_PUBLIC_* duoc Next dong cung luc build, khong doc lai luc container khoi dong
+        # (xem ghi chu trong frontend/Dockerfile) - phai truyen qua build arg, khong phai
+        # "environment:" ben duoi.
+        NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+        # Chi App ID (cong khai, chay thang trong JS SDK phia trinh duyet) - KHONG duoc them
+        # FACEBOOK_APP_SECRET o day duoi bat ky hinh thuc nao.
+        NEXT_PUBLIC_FACEBOOK_APP_ID: ${FACEBOOK_APP_ID:-}
     container_name: frontend
     ports:
       - "3000:3000"
@@ -424,6 +445,7 @@ services:
 volumes:
   auth-db-data:
   profile-db-data:
+  profile-uploads-data:
   product-db-data:
   order-db-data:
   booking-db-data:

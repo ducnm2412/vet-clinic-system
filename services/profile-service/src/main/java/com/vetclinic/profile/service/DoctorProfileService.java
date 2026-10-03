@@ -7,12 +7,14 @@ import com.vetclinic.profile.dto.DoctorLicenseResponse;
 import com.vetclinic.profile.dto.DoctorProfileRequest;
 import com.vetclinic.profile.dto.DoctorProfileResponse;
 import com.vetclinic.profile.dto.DoctorPublicResponse;
+import com.vetclinic.profile.dto.PhotoUrls;
 import com.vetclinic.profile.exception.ResourceNotFoundException;
 import com.vetclinic.profile.repository.DoctorLicenseRepository;
 import com.vetclinic.profile.repository.DoctorProfileRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.UUID;
@@ -23,6 +25,16 @@ public class DoctorProfileService {
 
     private final DoctorProfileRepository doctorProfileRepository;
     private final DoctorLicenseRepository doctorLicenseRepository;
+    private final PhotoStorageService photoStorageService;
+
+    @Transactional
+    public DoctorProfileResponse uploadMyPhoto(UUID userId, MultipartFile file) {
+        DoctorProfile profile = getOrCreateProfile(userId);
+        photoStorageService.store(PhotoUrls.DOCTORS, profile.getId(), file);
+        profile.setPhotoVersion(profile.getPhotoVersion() + 1);
+        doctorProfileRepository.saveAndFlush(profile);
+        return toProfileResponse(profile);
+    }
 
     @Transactional
     public DoctorProfileResponse getMyProfile(UUID userId) {
@@ -98,7 +110,8 @@ public class DoctorProfileService {
     public List<DoctorPublicResponse> listPublicDoctors() {
         return doctorProfileRepository.findAll().stream()
                 .map(p -> new DoctorPublicResponse(p.getId(), p.getUserId(), p.getFullName(), p.getSpecialty(),
-                        p.getBio(), p.getYearsOfExperience()))
+                        p.getBio(), p.getYearsOfExperience(),
+                        PhotoUrls.of(PhotoUrls.DOCTORS, p.getId(), p.getPhotoVersion())))
                 .toList();
     }
 
@@ -122,6 +135,7 @@ public class DoctorProfileService {
     private DoctorProfileResponse toProfileResponse(DoctorProfile profile) {
         return new DoctorProfileResponse(profile.getId(), profile.getUserId(), profile.getSpecialty(),
                 profile.getPhone(), profile.getBio(), profile.getYearsOfExperience(),
+                PhotoUrls.of(PhotoUrls.DOCTORS, profile.getId(), profile.getPhotoVersion()),
                 profile.getCreatedAt(), profile.getUpdatedAt());
     }
 

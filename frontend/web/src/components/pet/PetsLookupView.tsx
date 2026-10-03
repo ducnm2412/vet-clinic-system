@@ -7,6 +7,7 @@ import { ApiError, petLookupApi } from "@/lib/api";
 import { speciesStripe } from "@/lib/utils/status";
 import { formatAge, formatDate } from "@/lib/utils/format";
 import { cn } from "@/lib/utils/cn";
+import { PetThumb } from "@/components/pet/PetThumb";
 import {
   EmptyState,
   ErrorState,
@@ -79,11 +80,16 @@ export function PetsLookupView({ basePath }: { basePath?: string }) {
               <>
                 <span aria-hidden className={cn("w-1.5 shrink-0", speciesStripe(pet.species))} />
                 <div className="min-w-0 flex-1 p-4">
-                  <h2 className="truncate font-medium text-ink">{pet.name}</h2>
-                  <p className="mt-0.5 text-sm text-bark">
-                    {pet.species}
-                    {pet.breed ? ` ${pet.breed}` : ""} · {formatAge(pet.dateOfBirth)}
-                  </p>
+                  <div className="flex items-center gap-3">
+                    <PetThumb pet={pet} className="size-11" />
+                    <div className="min-w-0">
+                      <h2 className="truncate font-medium text-ink">{pet.name}</h2>
+                      <p className="mt-0.5 text-sm text-bark">
+                        {pet.species}
+                        {pet.breed ? ` ${pet.breed}` : ""} · {formatAge(pet.dateOfBirth)}
+                      </p>
+                    </div>
+                  </div>
                   <dl className="mt-3 space-y-1 text-sm">
                     <div className="flex justify-between">
                       <dt className="text-bark">Giới tính</dt>

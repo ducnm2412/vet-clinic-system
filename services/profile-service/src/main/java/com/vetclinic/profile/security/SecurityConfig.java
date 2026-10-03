@@ -32,6 +32,12 @@ public class SecurityConfig {
                         // chưa đăng nhập. Đây là endpoint /profile/doctors riêng (số nhiều), KHÔNG phải
                         // /profile/doctor/me — "me" luôn cần xác thực vì phải biết "me" là ai.
                         .requestMatchers(HttpMethod.GET, "/profile/doctors").permitAll()
+                        // Ảnh bác sĩ và nhân viên mở công khai (thẻ <img> không gửi kèm được Bearer token).
+                        // Ảnh thú cưng và khách hàng chỉ cần đăng nhập, không phân biệt role — bác sĩ,
+                        // nhân viên, chủ nuôi đều có chỗ cần xem. Rule cụ thể phải đứng trước rule chung.
+                        .requestMatchers(HttpMethod.GET, "/profile/photos/doctors/*", "/profile/photos/staff/*")
+                        .permitAll()
+                        .requestMatchers(HttpMethod.GET, "/profile/photos/**").authenticated()
                         // Staff/Admin tra cứu 1 khách hàng cụ thể — path "by-id" tách biệt hẳn khỏi
                         // "me" nên không lo bị rule /profile/customer/** phía dưới nuốt mất.
                         .requestMatchers(HttpMethod.GET, "/profile/customer/by-id/**").hasAnyRole("STAFF", "ADMIN")

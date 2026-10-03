@@ -1,16 +1,26 @@
 package com.vetclinic.auth.controller;
 
+import com.vetclinic.auth.dto.AccessTokenResponse;
 import com.vetclinic.auth.dto.AuthResponse;
+import com.vetclinic.auth.dto.FacebookLoginRequest;
+import com.vetclinic.auth.dto.ForgotPasswordRequest;
+import com.vetclinic.auth.dto.GoogleLoginRequest;
 import com.vetclinic.auth.dto.LoginRequest;
 import com.vetclinic.auth.dto.MessageResponse;
-import com.vetclinic.auth.dto.RefreshTokenRequest;
 import com.vetclinic.auth.dto.RegisterRequest;
+import com.vetclinic.auth.dto.ResetPasswordRequest;
 import com.vetclinic.auth.dto.UserResponse;
+import com.vetclinic.auth.exception.InvalidRefreshTokenException;
+import com.vetclinic.auth.security.RefreshCookieFactory;
 import com.vetclinic.auth.service.AuthService;
+import com.vetclinic.auth.service.PasswordResetService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -25,6 +35,8 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final AuthService authService;
+    private final PasswordResetService passwordResetService;
+    private final RefreshCookieFactory refreshCookieFactory;
 
     @PostMapping("/register")
     @ResponseStatus(HttpStatus.CREATED)
@@ -38,27 +50,66 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public AuthResponse login(@Valid @RequestBody LoginRequest request) {
-        return authService.login(request);
+    public ResponseEntity<AccessTokenResponse> login(@Valid @RequestBody LoginRequest request) {
+        return withRefreshCookie(authService.login(request));
+    }
+
+    /** Dang nhap/dang ky bang Google - idToken lay thang tu Google phia trinh duyet. */
+    @PostMapping("/google")
+    public ResponseEntity<AccessTokenResponse> loginWithGoogle(@Valid @RequestBody GoogleLoginRequest request) {
+        return withRefreshCookie(authService.loginWithGoogle(request.idToken()));
+    }
+
+    /** Dang nhap/dang ky bang Facebook - accessToken lay thang tu Facebook JS SDK phia trinh duyet. */
+    @PostMapping("/facebook")
+    public ResponseEntity<AccessTokenResponse> loginWithFacebook(@Valid @RequestBody FacebookLoginRequest request) {
+        return withRefreshCookie(authService.loginWithFacebook(request.accessToken()));
     }
 
     /**
      * Không đòi access token — cả lý do tồn tại của endpoint này là access token đã hết hạn.
-     * Refresh token trong thân request chính là bằng chứng danh tính.
+     * Refresh token nằm trong cookie httpOnly (trình duyệt tự gửi kèm) chính là bằng chứng danh
+     * tính, không còn trong thân request nữa.
      */
     @PostMapping("/refresh")
-    public AuthResponse refresh(@Valid @RequestBody RefreshTokenRequest request) {
-        return authService.refresh(request.refreshToken());
+    public ResponseEntity<AccessTokenResponse> refresh(
+            @CookieValue(value = "refreshToken", required = false) String refreshToken) {
+        if (refreshToken == null) {
+            throw new InvalidRefreshTokenException();
+        }
+        return withRefreshCookie(authService.refresh(refreshToken));
     }
 
     @PostMapping("/logout")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void logout(@Valid @RequestBody RefreshTokenRequest request) {
-        authService.logout(request.refreshToken());
+    public ResponseEntity<Void> logout(
+            @CookieValue(value = "refreshToken", required = false) String refreshToken) {
+        if (refreshToken != null) {
+            authService.logout(refreshToken);
+        }
+        return ResponseEntity.noContent()
+                .header(HttpHeaders.SET_COOKIE, refreshCookieFactory.clear().toString())
+                .build();
+    }
+
+    /** Luôn 200 với cùng một thông báo, dù email có tồn tại hay không — không lộ tài khoản nào có thật. */
+    @PostMapping("/forgot-password")
+    public MessageResponse forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        return passwordResetService.requestReset(request.email());
+    }
+
+    @PostMapping("/reset-password")
+    public MessageResponse resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        return passwordResetService.reset(request.token(), request.newPassword());
     }
 
     @GetMapping("/me")
     public UserResponse me(Authentication authentication) {
         return authService.getCurrentUser(authentication.getName());
+    }
+
+    private ResponseEntity<AccessTokenResponse> withRefreshCookie(AuthResponse authResponse) {
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, refreshCookieFactory.build(authResponse.refreshToken()).toString())
+                .body(new AccessTokenResponse(authResponse.accessToken()));
     }
 }

@@ -3,10 +3,10 @@ export type Role = "CUSTOMER" | "DOCTOR" | "STAFF" | "ADMIN";
 /** auth-service: UserStatus. Khách tự đăng ký là INACTIVE cho tới khi bấm link xác minh email. */
 export type UserStatus = "ACTIVE" | "INACTIVE" | "LOCKED";
 
-/** auth-service: AuthResponse. `refreshToken` hiện chưa dùng được — xem VD-05. */
-export interface AuthResponse {
+/** auth-service: AccessTokenResponse. Refresh token không còn ở đây — nó nằm trong cookie
+ * httpOnly do backend set, JS không đọc được (xem VD-05). */
+export interface AccessTokenResponse {
   accessToken: string;
-  refreshToken: string;
 }
 
 /** auth-service: UserResponse, trả về từ GET /auth/me và từng dòng của GET /admin/users. */

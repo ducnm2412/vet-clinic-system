@@ -2,6 +2,7 @@ package com.vetclinic.profile.service;
 
 import com.vetclinic.profile.domain.Pet;
 import com.vetclinic.profile.dto.PetResponse;
+import com.vetclinic.profile.dto.PhotoUrls;
 import com.vetclinic.profile.exception.ResourceNotFoundException;
 import com.vetclinic.profile.repository.PetRepository;
 import lombok.RequiredArgsConstructor;
@@ -42,6 +43,8 @@ public class PetService {
 
     private PetResponse toPetResponse(Pet pet) {
         return new PetResponse(pet.getId(), pet.getName(), pet.getSpecies(), pet.getBreed(), pet.getGender(),
-                pet.getDateOfBirth(), pet.getWeightKg(), pet.getCreatedAt(), pet.getUpdatedAt());
+                pet.getDateOfBirth(), pet.getWeightKg(),
+                PhotoUrls.of(PhotoUrls.PETS, pet.getId(), pet.getPhotoVersion()),
+                pet.getCreatedAt(), pet.getUpdatedAt());
     }
 }

@@ -3,19 +3,14 @@ package com.vetclinic.auth.service;
 import com.vetclinic.auth.domain.RefreshToken;
 import com.vetclinic.auth.exception.InvalidRefreshTokenException;
 import com.vetclinic.auth.repository.RefreshTokenRepository;
+import com.vetclinic.auth.security.TokenHasher;
 import com.vetclinic.auth.security.jwt.JwtProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Base64;
-import java.util.HexFormat;
 import java.util.UUID;
 
 /**
@@ -35,22 +30,17 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class RefreshTokenService {
 
-    private static final int TOKEN_BYTES = 32;
-
     private final RefreshTokenRepository refreshTokenRepository;
     private final JwtProperties jwtProperties;
-    private final SecureRandom secureRandom = new SecureRandom();
 
     /** Sinh một refresh token mới cho người dùng. Trả về chuỗi gốc — lần duy nhất nó tồn tại. */
     @Transactional
     public String issue(UUID userId) {
-        byte[] bytes = new byte[TOKEN_BYTES];
-        secureRandom.nextBytes(bytes);
-        String raw = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+        String raw = TokenHasher.newRawToken();
 
         refreshTokenRepository.save(RefreshToken.builder()
                 .userId(userId)
-                .tokenHash(hash(raw))
+                .tokenHash(TokenHasher.hash(raw))
                 .expiresAt(Instant.now().plus(Duration.ofMillis(jwtProperties.getRefreshTokenExpiration())))
                 .build());
 
@@ -66,7 +56,7 @@ public class RefreshTokenService {
      */
     @Transactional(noRollbackFor = InvalidRefreshTokenException.class)
     public UUID consume(String raw) {
-        RefreshToken token = refreshTokenRepository.findByTokenHash(hash(raw))
+        RefreshToken token = refreshTokenRepository.findByTokenHash(TokenHasher.hash(raw))
                 .orElseThrow(InvalidRefreshTokenException::new);
 
         Instant now = Instant.now();
@@ -89,18 +79,8 @@ public class RefreshTokenService {
     /** Đăng xuất. Token không tồn tại hay đã thu hồi thì thôi, không báo lỗi. */
     @Transactional
     public void revoke(String raw) {
-        refreshTokenRepository.findByTokenHash(hash(raw))
+        refreshTokenRepository.findByTokenHash(TokenHasher.hash(raw))
                 .filter(t -> !t.isRevoked())
                 .ifPresent(t -> t.setRevokedAt(Instant.now()));
-    }
-
-    private static String hash(String raw) {
-        try {
-            byte[] digest = MessageDigest.getInstance("SHA-256").digest(raw.getBytes(StandardCharsets.UTF_8));
-            return HexFormat.of().formatHex(digest);
-        } catch (NoSuchAlgorithmException e) {
-            // Mọi JVM đều bắt buộc có SHA-256; tới được đây là môi trường hỏng, không phải lỗi dữ liệu.
-            throw new IllegalStateException("SHA-256 not available", e);
-        }
     }
 }

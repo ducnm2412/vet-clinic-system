@@ -87,7 +87,7 @@ function PetProfile({ pet }: { pet: Pet }) {
         </Container>
 
         <Container className="grid gap-8 py-10 md:grid-cols-[auto_1fr] md:gap-12 md:py-14">
-          <PetAvatar species={pet.species} className="h-52 w-40" />
+          <PetAvatar species={pet.species} photoUrl={pet.photoUrl} name={pet.name} className="h-52 w-40" />
 
           <div className="min-w-0">
             <h1 className="t-h2">{pet.name}</h1>

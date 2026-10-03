@@ -41,3 +41,19 @@ app:
     # Để trống -> bỏ qua seed. Chỉ seed nếu email này chưa tồn tại (idempotent).
     email: ${ADMIN_EMAIL:}
     password: ${ADMIN_PASSWORD:}
+  refresh-cookie:
+    # Cờ Secure của cookie refresh token. Mặc định false để chạy được ở dev (http://localhost:3000
+    # không phải HTTPS, trình duyệt sẽ bỏ qua cookie Secure). Bật true ở production (HTTPS).
+    secure: ${REFRESH_COOKIE_SECURE:false}
+
+google:
+  # OAuth Client ID (loại Web) từ Google Cloud Console — không phải secret, chỉ dùng để kiểm
+  # audience của ID token. Để trống thì /auth/google luôn từ chối (audience rỗng không khớp gì).
+  client-id: ${GOOGLE_CLIENT_ID:}
+
+facebook:
+  # App ID không phải secret (dùng cả ở frontend). App Secret THẬT SỰ là bí mật — chỉ đọc ở
+  # đây, không bao giờ đưa vào build frontend. Để trống thì /auth/facebook luôn từ chối.
+  app-id: ${FACEBOOK_APP_ID:}
+  app-secret: ${FACEBOOK_APP_SECRET:}
+  api-version: ${FACEBOOK_API_VERSION:v21.0}

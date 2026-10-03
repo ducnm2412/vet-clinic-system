@@ -96,7 +96,7 @@ function PetCard({ pet }: { pet: Pet }) {
       className="group block rounded-[var(--radius-card)] border border-mist p-6 transition-[border-color,transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:border-teal hover:shadow-[var(--shadow-lift)]"
     >
       <div className="flex items-start gap-5">
-        <PetAvatar species={pet.species} small className="h-20 w-16" />
+        <PetAvatar species={pet.species} photoUrl={pet.photoUrl} name={pet.name} small className="h-20 w-16" />
         <div className="min-w-0">
           <h2 className="t-h3 truncate group-hover:text-teal-deep">{pet.name}</h2>
           <p className="mt-1 text-stone">

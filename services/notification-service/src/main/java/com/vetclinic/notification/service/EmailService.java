@@ -52,6 +52,28 @@ public class EmailService {
     }
 
     /**
+     * Quên mật khẩu. Tên người dùng do họ tự nhập lúc đăng ký nên được escape HTML. Link hết hạn
+     * sau 1 giờ (auth-service quyết định) — hiện cả giờ hết hạn cụ thể thay vì chỉ nói "1 giờ" vì
+     * người đọc có thể mở mail muộn.
+     */
+    public void sendPasswordResetEmail(String toEmail, String firstName, String resetToken,
+                                       Instant resetTokenExpiresAt) {
+        String resetLink = frontendUrl + "/reset-password?token=" + resetToken;
+        String expiresAtText = EXPIRY_FORMAT.format(resetTokenExpiresAt);
+
+        String html = "<p>Chào " + esc(firstName) + ",</p>"
+                + "<p>Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản VetClinic của bạn. "
+                + "Nhấn vào link sau để đặt mật khẩu mới:</p>"
+                + "<p><a href=\"" + esc(resetLink) + "\">" + esc(resetLink) + "</a></p>"
+                + "<p>Link có hiệu lực trong <strong>1 giờ</strong> (đến <strong>" + expiresAtText
+                + "</strong>) và chỉ dùng được một lần.</p>"
+                + "<p>Nếu bạn không yêu cầu việc này, hãy bỏ qua email — mật khẩu của bạn vẫn giữ nguyên.</p>"
+                + "<p>VetClinic</p>";
+
+        send(toEmail, "Đặt lại mật khẩu VetClinic", html);
+    }
+
+    /**
      * CN-43 — email xác nhận đặt lịch khám.
      *
      * Tên thú cưng và lý do khám do khách tự gõ, nên mọi giá trị đều được escape HTML trước khi

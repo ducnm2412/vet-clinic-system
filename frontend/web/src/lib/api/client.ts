@@ -7,45 +7,21 @@ import type { ApiErrorBody } from "@/types";
  */
 const BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "/api";
 
-const TOKEN_KEY = "vetclinic.accessToken";
-const REFRESH_KEY = "vetclinic.refreshToken";
-
-function readStorage(key: string): string | null {
-  if (typeof window === "undefined") return null;
-  try {
-    return window.localStorage.getItem(key);
-  } catch {
-    return null;
-  }
-}
-
-function writeStorage(key: string, value: string | null) {
-  if (typeof window === "undefined") return;
-  try {
-    if (value) window.localStorage.setItem(key, value);
-    else window.localStorage.removeItem(key);
-  } catch {
-    // Trình duyệt chặn storage (cửa sổ riêng tư) — coi như chưa đăng nhập.
-  }
-}
+/**
+ * Access token chỉ sống trong biến JS này (không localStorage) — mất đi khi tải lại trang, đó là
+ * chủ đích: localStorage đọc được bởi BẤT KỲ script nào chạy trên trang, kể cả script độc hại
+ * nếu trang dính XSS; biến trong bộ nhớ thì không script nào ngoài app đọc được. Refresh token
+ * nằm trong cookie httpOnly do auth-service set — JS không bao giờ đọc/ghi được nó, trình duyệt
+ * tự gửi kèm khi gọi /auth/refresh, /auth/logout.
+ */
+let accessToken: string | null = null;
 
 export function getToken(): string | null {
-  return readStorage(TOKEN_KEY);
+  return accessToken;
 }
 
-export function getRefreshToken(): string | null {
-  return readStorage(REFRESH_KEY);
-}
-
-/** Gọi với null là xoá cả hai token — access token không đứng một mình được. */
 export function setToken(token: string | null) {
-  writeStorage(TOKEN_KEY, token);
-  if (!token) writeStorage(REFRESH_KEY, null);
-}
-
-export function setSession(accessToken: string, refreshToken: string) {
-  writeStorage(TOKEN_KEY, accessToken);
-  writeStorage(REFRESH_KEY, refreshToken);
+  accessToken = token;
 }
 
 export class ApiError extends Error {
@@ -77,13 +53,18 @@ function announceSessionExpired() {
 interface RequestOptions extends RequestInit {
   /** Endpoint công khai: không đính token, và 401 không coi là hết phiên. */
   publicRoute?: boolean;
+  /** Trả về nội dung nhị phân (ảnh) thay vì đọc JSON. Lỗi vẫn đọc như JSON bình thường. */
+  asBlob?: boolean;
 }
 
 /*
   VD-05 — làm mới phiên ngầm.
 
-  Access token sống 15 phút. Gặp 401 thì đổi refresh token lấy cặp mới rồi gửi lại đúng
-  request đó một lần, người dùng không thấy gì.
+  Access token sống 15 phút. Gặp 401 thì gọi /auth/refresh (refresh token đi kèm tự động qua
+  cookie httpOnly, không cần đọc/gửi gì từ JS) để lấy access token mới rồi gửi lại đúng request
+  đó một lần, người dùng không thấy gì. Cùng một hàm này còn được AuthProvider gọi một lần lúc
+  khởi động ứng dụng để khôi phục phiên ngầm từ cookie — access token trong bộ nhớ đã mất sau khi
+  tải lại trang, chỉ còn cookie là bằng chứng phiên cũ còn sống hay không.
 
   Chỉ có MỘT lần làm mới chạy tại một thời điểm. Một trang thường bắn ba bốn request cùng
   lúc; nếu mỗi cái tự làm mới thì cái thứ hai sẽ dùng refresh token mà cái thứ nhất vừa
@@ -92,21 +73,18 @@ interface RequestOptions extends RequestInit {
 */
 let refreshing: Promise<boolean> | null = null;
 
-function refreshSession(): Promise<boolean> {
+export function refreshSession(): Promise<boolean> {
   if (refreshing) return refreshing;
 
   refreshing = (async () => {
-    const refreshToken = getRefreshToken();
-    if (!refreshToken) return false;
     try {
-      const res = await fetch(`${BASE}/auth/refresh`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refreshToken }),
-      });
-      if (!res.ok) return false;
-      const body = (await res.json()) as { accessToken: string; refreshToken: string };
-      setSession(body.accessToken, body.refreshToken);
+      const res = await fetch(`${BASE}/auth/refresh`, { method: "POST" });
+      if (!res.ok) {
+        setToken(null);
+        return false;
+      }
+      const body = (await res.json()) as { accessToken: string };
+      setToken(body.accessToken);
       if (typeof window !== "undefined") {
         window.dispatchEvent(new CustomEvent(SESSION_REFRESHED_EVENT));
       }
@@ -126,10 +104,11 @@ export async function request<T>(
   options: RequestOptions = {},
   retried = false,
 ): Promise<T> {
-  const { publicRoute = false, ...init } = options;
+  const { publicRoute = false, asBlob = false, ...init } = options;
 
   const headers = new Headers(init.headers);
-  if (init.body && !headers.has("Content-Type")) {
+  // FormData phải để trình duyệt tự đặt Content-Type kèm boundary — ép JSON là hỏng multipart.
+  if (init.body && !headers.has("Content-Type") && !(init.body instanceof FormData)) {
     headers.set("Content-Type", "application/json");
   }
   // Nhớ token đã gửi đi, để lúc gặp 401 còn biết nó có còn là token mới nhất hay không.
@@ -144,6 +123,7 @@ export async function request<T>(
   }
 
   if (res.status === 204) return undefined as T;
+  if (asBlob && res.ok) return (await res.blob()) as T;
 
   const text = await res.text();
   const body: unknown = text ? safeParse(text) : null;
@@ -205,7 +185,16 @@ export const http = {
     request<T>(path, { method: "POST", body: json(body), publicRoute }),
   put: <T>(path: string, body?: unknown) => request<T>(path, { method: "PUT", body: json(body) }),
   del: <T>(path: string) => request<T>(path, { method: "DELETE" }),
+  /** Tải file lên (multipart). Không tự đặt Content-Type — xem `request`. */
+  postForm: <T>(path: string, form: FormData) => request<T>(path, { method: "POST", body: form }),
+  /** Tải ảnh kèm token (thẻ img thường không gửi được Authorization). */
+  getBlob: (path: string) => request<Blob>(path, { method: "GET", asBlob: true }),
 };
+
+/** Địa chỉ đầy đủ tới một path của API, dùng cho thẻ img trỏ tới ảnh công khai. */
+export function apiUrl(path: string): string {
+  return `${BASE}${path}`;
+}
 
 /** Ghép query string, bỏ qua giá trị rỗng để không gửi tham số thừa. */
 export function qs(params: Record<string, string | number | boolean | undefined | null>): string {

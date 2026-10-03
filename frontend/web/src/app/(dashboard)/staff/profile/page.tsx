@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ApiError, staffApi } from "@/lib/api";
+import { Camera } from "lucide-react";
+import { ApiError, apiUrl, staffApi } from "@/lib/api";
 import type { StaffProfile } from "@/types";
 import { PageHeader } from "@/components/layout/DashboardShell";
+import { PhotoUploadButton } from "@/components/PhotoUploadButton";
 import { Button, ErrorState, Skeleton, TextField, useToast } from "@/components/ui";
 
 export default function StaffProfilePage() {
@@ -51,6 +53,25 @@ function ProfileForm({ profile }: { profile: StaffProfile }) {
 
   return (
     <section className="max-w-md space-y-4 rounded-[var(--radius-control)] border border-line bg-surface p-4">
+      <div className="flex items-center gap-4">
+        <span className="grid size-20 shrink-0 place-items-center overflow-hidden rounded-full bg-mist text-bark">
+          {profile.photoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={apiUrl(profile.photoUrl)} alt="Ảnh của bạn" className="size-full object-cover" />
+          ) : (
+            <Camera aria-hidden className="size-6" />
+          )}
+        </span>
+        <div>
+          <PhotoUploadButton
+            variant="dashboard"
+            label={profile.photoUrl ? "Đổi ảnh" : "Thêm ảnh"}
+            upload={staffApi.uploadMyPhoto}
+            onUploaded={() => qc.invalidateQueries({ queryKey: ["staff"] })}
+          />
+          <p className="mt-1.5 text-sm text-bark">JPG, PNG, WebP, tối đa 5MB.</p>
+        </div>
+      </div>
       <TextField
         label="Vị trí"
         placeholder="Lễ tân, thủ kho…"
