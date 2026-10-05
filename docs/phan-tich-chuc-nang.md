@@ -34,16 +34,15 @@ Chú thích trạng thái: ✅ Đã hiện thực · ⚠️ Hiện thực một 
 | CN-04 | Xem thông tin phiên đăng nhập | AC-01→04 | Giải mã JWT lấy email → truy vấn hồ sơ user | JWT | Thông tin user + danh sách role | ✅ |
 | CN-05 | Tạo tài khoản Bác sĩ/Nhân viên | AC-04 | Tạo tài khoản `status=ACTIVE` ngay, chỉ cho phép role DOCTOR/STAFF | Họ tên, email, mật khẩu, role | Thông báo tạo thành công | ✅ |
 | CN-06 | Phân quyền truy cập (RBAC) | Hệ thống | Filter JWT stateless chặn theo route và role, không truy vấn DB mỗi request | JWT trong header | Cho phép / 401 / 403 | ✅ |
-| CN-07 | Làm mới access token | AC-01→04 | Dùng refresh token cấp lại access token khi hết hạn | `refreshToken` | `accessToken` mới | ⏳ |
+| CN-07 | Làm mới access token | AC-01→04 | Dùng refresh token cấp lại access token khi hết hạn | `refreshToken` | `accessToken` mới | ✅ |
 | CN-08 | Khoá / mở khoá tài khoản | AC-04 | Chuyển `status=LOCKED`, chặn đăng nhập | ID tài khoản | Kết quả cập nhật | ✅ |
 
-### 2.2. Module Hồ sơ người dùng & Thú cưng (`profile-service` — `profile_db`)
+### 2.2. Module Hồ sơ người dùng (`profile-service` — `profile_db`)
 
 | Mã CN | Tên chức năng | Tác nhân | Mô tả xử lý | Đầu vào | Đầu ra | Trạng thái |
 |---|---|---|---|---|---|---|
 | CN-09 | Xem/Cập nhật hồ sơ khách hàng | AC-01 | Đọc & sửa thông tin cá nhân gắn với `userId` trong JWT | Số điện thoại, ngày sinh, giới tính… | Hồ sơ khách hàng | ✅ |
 | CN-10 | Quản lý sổ địa chỉ | AC-01 | Thêm / sửa / xoá / liệt kê địa chỉ giao hàng | Thông tin địa chỉ | Danh sách địa chỉ | ✅ |
-| CN-11 | Quản lý hồ sơ thú cưng | AC-01 | Thêm / sửa / xoá / liệt kê thú cưng (tên, loài, giống, giới tính, cân nặng…) | Thông tin thú cưng | Danh sách thú cưng | ✅ |
 | CN-12 | Xem/Cập nhật hồ sơ bác sĩ | AC-02 | Chuyên khoa, kinh nghiệm, mô tả giới thiệu | Thông tin chuyên môn | Hồ sơ bác sĩ | ✅ |
 | CN-13 | Quản lý chứng chỉ hành nghề | AC-02 | Thêm / sửa / xoá / liệt kê chứng chỉ của chính bác sĩ | Số hiệu, nơi cấp, hạn | Danh sách chứng chỉ | ✅ |
 | CN-14 | Tra cứu danh sách bác sĩ công khai | Public | Trả danh sách bác sĩ rút gọn cho trang đặt lịch (không cần đăng nhập) | — | Danh sách bác sĩ | ✅ |
@@ -54,23 +53,25 @@ Chú thích trạng thái: ✅ Đã hiện thực · ⚠️ Hiện thực một 
 
 | Mã CN | Tên chức năng | Tác nhân | Mô tả xử lý | Trạng thái |
 |---|---|---|---|---|
-| CN-17 | Tra cứu khung giờ trống | AC-01 | Hiển thị lịch làm việc và slot còn trống theo bác sĩ/ngày | ⏳ |
-| CN-18 | Đặt lịch khám online | AC-01 | Chọn thú cưng, dịch vụ, bác sĩ, khung giờ → tạo lịch hẹn, phát sự kiện lên RabbitMQ | ⏳ |
-| CN-19 | Đặt lịch tại quầy | AC-03 | Lễ tân tạo lịch hộ khách vãng lai | ⏳ |
-| CN-20 | Huỷ / đổi lịch hẹn | AC-01, AC-03 | Cập nhật trạng thái lịch, giải phóng khung giờ | ⏳ |
-| CN-21 | Quản lý trạng thái lịch khám | AC-02, AC-03 | Luồng: Chờ xác nhận → Đã xác nhận → Đang khám → Hoàn tất / Đã huỷ | ⏳ |
-| CN-22 | Quản lý khung giờ làm việc | AC-04 | Cấu hình ca trực, số slot tối đa mỗi khung giờ | ⏳ |
+| CN-17 | Tra cứu khung giờ trống | AC-01 | Hiển thị lịch làm việc và slot còn trống theo bác sĩ/ngày | ✅ |
+| CN-18 | Đặt lịch khám online | AC-01 | Chọn thú cưng, dịch vụ và khung giờ → tạo lịch hẹn, hệ thống tự xếp bác sĩ, phát sự kiện lên RabbitMQ | ✅ |
+| CN-19 | Đặt lịch tại quầy | AC-03 | Lễ tân tìm khách hoặc mở tài khoản ngay tại quầy, lập hồ sơ thú cưng rồi đặt lịch hộ | ✅ |
+| CN-20 | Huỷ / đổi lịch hẹn | AC-01, AC-03 | Huỷ xong là giải phóng khung giờ. **Đổi lịch chưa có** — khách phải huỷ rồi đặt lại | ⚠️ |
+| CN-21 | Quản lý trạng thái lịch khám | AC-02, AC-03 | Luồng: Chờ xác nhận → Đã xác nhận → Đang khám → Hoàn tất / Đã huỷ | ✅ |
+| CN-22 | Quản lý khung giờ làm việc | AC-04 | Cấu hình ca trực, số slot tối đa mỗi khung giờ | ✅ |
 
-### 2.4. Module Bệnh án & Đơn thuốc (`pet-service` — `pet_db`)
+### 2.4. Module Hồ sơ thú cưng, Bệnh án & Đơn thuốc (`pet-service` — `pet_db`)
 
 | Mã CN | Tên chức năng | Tác nhân | Mô tả xử lý | Trạng thái |
 |---|---|---|---|---|
-| CN-23 | Lập hồ sơ bệnh án | AC-02 | Ghi triệu chứng, chẩn đoán, kết quả điều trị theo mỗi lượt khám | ⏳ |
-| CN-24 | Tra cứu lịch sử khám bệnh | AC-01, AC-02 | Xem toàn bộ lượt khám trước đây của một thú cưng | ⏳ |
-| CN-25 | Kê đơn thuốc | AC-02 | Lập đơn thuốc gắn với bệnh án, liều dùng, số lượng | ⏳ |
+| CN-11 | Quản lý hồ sơ thú cưng | AC-01 | Thêm / sửa / xoá / liệt kê thú cưng (tên, loài, giống, giới tính, cân nặng…); chủ nuôi lấy từ token | ✅ |
+| CN-11b | Tra cứu thú cưng của khách | AC-02, AC-03, AC-04 | Bác sĩ và nhân viên xem mọi thú cưng, kể cả theo nhiều chủ một lượt | ✅ |
+| CN-23 | Lập hồ sơ bệnh án | AC-02 | Ghi chẩn đoán, điều trị, ghi chú theo mỗi lượt khám; một lịch hẹn một bệnh án | ✅ |
+| CN-24 | Tra cứu lịch sử khám bệnh | AC-01, AC-02 | Xem toàn bộ lượt khám trước đây của một thú cưng, mới nhất trước | ✅ |
+| CN-25 | Kê đơn thuốc | AC-02 | Lập đơn thuốc gắn với bệnh án: tên thuốc, liều, số lần, số ngày | ✅ |
 | CN-26 | Nhắc lịch tái khám / tiêm phòng | Hệ thống | Sinh sự kiện nhắc lịch gửi sang Notification Service | ⏳ |
 
-> **Ghi chú thiết kế:** entity `Pet` hiện nằm trong `profile-service` (thuộc hồ sơ khách hàng). Do đó `pet-service` nên thu hẹp phạm vi thành **bệnh án & đơn thuốc**, tránh trùng lặp quyền sở hữu dữ liệu giữa hai service.
+> **Ghi chú thiết kế (cập nhật 25/09/2026):** entity `Pet` trước đây nằm trong `profile-service` và bệnh án nằm trong `booking-service`. Đã tách cả hai sang `pet-service` (VD-10) thay vì thu hẹp `pet-service` thành bệnh án — thú cưng là thực thể trung tâm của phòng khám thú y, lịch hẹn và bệnh án đều trỏ vào nó. Bệnh án giữ sẵn `pet_id`, chủ nuôi và bác sĩ nên tra được cả khi `booking-service` tắt. CN-26 (nhắc tái khám, tiêm phòng) vẫn chưa làm.
 
 ### 2.5. Module Sản phẩm & Tồn kho (`product-service` — `product_db`)
 
@@ -117,17 +118,17 @@ Chú thích trạng thái: ✅ Đã hiện thực · ⚠️ Hiện thực một 
 
 | Mã CN | Tên chức năng | Tác nhân | Mô tả xử lý | Trạng thái |
 |---|---|---|---|---|
-| CN-38 | Chấm công vào/ra | AC-02, AC-03 | Ghi nhận check-in / check-out kèm mốc thời gian | ⏳ |
-| CN-39 | Quản lý lịch làm việc | AC-04 | Xếp ca trực cho bác sĩ, nhân viên theo tuần | ⏳ |
-| CN-40 | Tổng hợp giờ công | AC-04 | Tính tổng giờ làm, số ngày công theo kỳ lương | ⏳ |
-| CN-41 | Phát sự kiện chấm công | Hệ thống | Publish RabbitMQ → Reporting Service | ⏳ |
+| CN-38 | Chấm công vào/ra | AC-02, AC-03 | Ghi nhận check-in / check-out kèm mốc thời gian | ✅ |
+| CN-39 | Quản lý lịch làm việc | AC-04 | Xếp ca trực cho bác sĩ, nhân viên theo tuần | ✅ |
+| CN-40 | Tổng hợp giờ công | AC-04 | Tính tổng giờ làm, số ngày công theo kỳ lương | ✅ |
+| CN-41 | Phát sự kiện ca trực | Hệ thống | Publish RabbitMQ → booking-service mở/đóng giờ khám | ✅ |
 
 ### 2.8. Module Thông báo (`notification-service` — không có DB riêng)
 
 | Mã CN | Tên chức năng | Tác nhân | Mô tả xử lý | Trạng thái |
 |---|---|---|---|---|
 | CN-42 | Gửi email xác minh tài khoản | Hệ thống | Nhận sự kiện đăng ký → gửi mail chứa link xác minh | ⚠️ Hiện chỉ ghi log ra console tại `auth-service` |
-| CN-43 | Thông báo đặt lịch thành công | Hệ thống | Consume sự kiện booking → gửi Email/Zalo OA cho khách | ⏳ |
+| CN-43 | Thông báo đặt lịch thành công | Hệ thống | Consume sự kiện booking → gửi Email/Zalo OA cho khách | ✅ |
 | CN-44 | Thông báo đơn hàng | Hệ thống | Consume sự kiện order → xác nhận đơn, cập nhật giao hàng | ⏳ |
 | CN-45 | Nhắc lịch tái khám / tiêm phòng | Hệ thống | Gửi nhắc theo lịch định kỳ | ⏳ |
 
@@ -137,7 +138,7 @@ Chú thích trạng thái: ✅ Đã hiện thực · ⚠️ Hiện thực một 
 |---|---|---|---|---|
 | CN-46 | Báo cáo doanh thu | AC-04 | Tổng hợp doanh thu bán hàng + dịch vụ khám theo ngày/tháng/quý | ✅ |
 | CN-47 | Thống kê lịch khám | AC-04 | Số lượt khám, tỉ lệ huỷ lịch, hiệu suất theo bác sĩ | ✅ |
-| CN-48 | Báo cáo chấm công | AC-04 | Tổng hợp giờ công toàn bộ nhân sự | ⏳ |
+| CN-48 | Báo cáo chấm công | AC-04 | Tổng hợp giờ công toàn bộ nhân sự | ✅ |
 | CN-49 | Dashboard quản trị | AC-04 | Bảng điều khiển tổng hợp các chỉ số vận hành | ✅ |
 
 ### 2.10. Chức năng hạ tầng (nền tảng kỹ thuật)
@@ -147,7 +148,7 @@ Chú thích trạng thái: ✅ Đã hiện thực · ⚠️ Hiện thực một 
 | CN-50 | Đăng ký & khám phá dịch vụ | `eureka-server` | Các service tự đăng ký, tra cứu nhau qua tên logic thay vì IP/port | ✅ |
 | CN-51 | Định tuyến tập trung | `api-gateway` | Một điểm vào duy nhất (cổng 8080), route `lb://` theo Eureka | ✅ (mới khai báo route `auth-service`) |
 | CN-52 | Quản lý phiên bản schema CSDL | Flyway | Migration có phiên bản, Hibernate chạy `ddl-auto: validate` | ✅ (auth, profile) |
-| CN-53 | Giao tiếp bất đồng bộ | RabbitMQ | Truyền sự kiện giữa các service, giảm phụ thuộc trực tiếp | ⏳ |
+| CN-53 | Giao tiếp bất đồng bộ | RabbitMQ | Truyền sự kiện giữa các service, giảm phụ thuộc trực tiếp | ✅ |
 | CN-54 | Đóng gói & triển khai | Docker Compose | Khởi chạy toàn bộ hệ thống + 7 PostgreSQL + RabbitMQ + Redis | ✅ (khung) |
 
 ---

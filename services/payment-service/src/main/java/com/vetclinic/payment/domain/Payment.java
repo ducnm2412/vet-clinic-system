@@ -48,7 +48,7 @@ public class Payment {
     private UUID customerUserId;
 
     // NULL khi mới tạo từ prescription.created (status PENDING_AMOUNT) — chưa có price catalog
-    // ở booking-service nên staff phải nhập tay; chuyển sang PENDING sau khi nhập xong.
+    // ở pet-service nên staff phải nhập tay; chuyển sang PENDING sau khi nhập xong.
     @Column(precision = 12, scale = 2)
     private BigDecimal amount;
 

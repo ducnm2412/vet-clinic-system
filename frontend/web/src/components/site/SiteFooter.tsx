@@ -27,6 +27,7 @@ const COLUMNS: Array<{ title: string; links: Array<{ href: string; label: string
       { href: "/appointments/create", label: "Đặt lịch khám" },
       { href: "/pets", label: "Thú cưng của tôi" },
       { href: "/appointments", label: "Lịch khám của tôi" },
+      { href: "/account", label: "Thông tin và địa chỉ" },
       { href: "/login", label: "Đăng nhập" },
     ],
   },

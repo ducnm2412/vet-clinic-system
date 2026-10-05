@@ -1,5 +1,6 @@
 package com.vetclinic.product.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vetclinic.product.support.TestJwtSupport;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,8 +15,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.UUID;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -31,6 +34,9 @@ class ProductControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @Value("${jwt.secret}")
     private String jwtSecret;
@@ -49,6 +55,55 @@ class ProductControllerTest {
                 .andReturn();
 
         return com.jayway.jsonpath.JsonPath.read(result.getResponse().getContentAsString(), "$.id");
+    }
+
+    // ---------- VD-03: ẩn thay vì xoá ----------
+
+    @Test
+    void hidingKeepsTheProductOutOfTheShopButStaffStillSeeIt() throws Exception {
+        String categoryId = createCategory("thuc-an-hide");
+        MvcResult created = mockMvc.perform(post("/products")
+                        .header("Authorization", "Bearer " + tokenFor("ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"categoryId\":\"" + categoryId + "\",\"sku\":\"SKU-HIDE\",\"name\":\"Hat an kieng\","
+                                + "\"price\":120000,\"unit\":\"goi\",\"initialStock\":5}"))
+                .andExpect(status().isCreated())
+                .andReturn();
+        String id = com.jayway.jsonpath.JsonPath.read(created.getResponse().getContentAsString(), "$.id");
+
+        mockMvc.perform(put("/products/" + id + "/hide")
+                        .header("Authorization", "Bearer " + tokenFor("ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.active").value(false));
+
+        // Khách vãng lai không thấy nữa (VD-01, VD-24), nhưng hàng vẫn còn trong kho của phòng khám.
+        mockMvc.perform(get("/products/" + id)).andExpect(status().isNotFound());
+        mockMvc.perform(get("/products/" + id).header("Authorization", "Bearer " + tokenFor("STAFF")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.stockQuantity").value(5));
+
+        mockMvc.perform(put("/products/" + id + "/unhide")
+                        .header("Authorization", "Bearer " + tokenFor("ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.active").value(true));
+        mockMvc.perform(get("/products/" + id)).andExpect(status().isOk());
+    }
+
+    @Test
+    void thereIsNoWayToDeleteAProductAnyMore() throws Exception {
+        // VD-03: xoá sản phẩm kéo theo cả lịch sử kho, nên endpoint đó đã bị gỡ hẳn.
+        mockMvc.perform(delete("/products/" + UUID.randomUUID())
+                        .header("Authorization", "Bearer " + tokenFor("ADMIN")))
+                .andExpect(status().isMethodNotAllowed());
+    }
+
+    @Test
+    void onlyAdminHidesProducts() throws Exception {
+        for (String role : List.of("STAFF", "DOCTOR", "CUSTOMER")) {
+            mockMvc.perform(put("/products/" + UUID.randomUUID() + "/hide")
+                            .header("Authorization", "Bearer " + tokenFor(role)))
+                    .andExpect(status().isForbidden());
+        }
     }
 
     // ---------- CN-29: tra cứu công khai ----------
@@ -160,6 +215,62 @@ class ProductControllerTest {
                         .param("size", "200"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[?(@.sku == '%s')]".formatted(sku)).doesNotExist());
+    }
+
+    // ---------- VD-24: hàng đã ẩn không tra được theo UUID ----------
+
+    /** Tạo hàng ẩn và trả về id của nó. */
+    private String createHiddenProductId(String slug, String sku) throws Exception {
+        String categoryId = createCategory(slug);
+        String body = mockMvc.perform(post("/products")
+                        .header("Authorization", "Bearer " + tokenFor("ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"categoryId":"%s","sku":"%s","name":"Hang da an","price":10000,"unit":"cai","active":false}
+                                """.formatted(categoryId, sku)))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        return objectMapper.readTree(body).get("id").asText();
+    }
+
+    @Test
+    void getById_hiddenProduct_isNotFoundForOutsiders() throws Exception {
+        // Kịch bản của VD-24: có UUID trong tay là đọc được hàng chưa bán / đã ngừng bán.
+        String id = createHiddenProductId("vd24-outsider", "SKU-VD24-OUT");
+
+        mockMvc.perform(get("/products/{id}", id)).andExpect(status().isNotFound());
+        mockMvc.perform(get("/products/{id}", id).header("Authorization", "Bearer " + tokenFor("CUSTOMER")))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/products/{id}", id).header("Authorization", "Bearer " + tokenFor("DOCTOR")))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void getById_hiddenProduct_stillVisibleToStockKeepers() throws Exception {
+        String id = createHiddenProductId("vd24-staff", "SKU-VD24-STAFF");
+
+        for (String role : List.of("STAFF", "ADMIN")) {
+            mockMvc.perform(get("/products/{id}", id).header("Authorization", "Bearer " + tokenFor(role)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.active").value(false));
+        }
+    }
+
+    @Test
+    void getById_productOnSale_staysPublic() throws Exception {
+        String categoryId = createCategory("vd24-public");
+        String body = mockMvc.perform(post("/products")
+                        .header("Authorization", "Bearer " + tokenFor("ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"categoryId":"%s","sku":"SKU-VD24-PUB","name":"Hang dang ban","price":10000,"unit":"cai"}
+                                """.formatted(categoryId)))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        mockMvc.perform(get("/products/{id}", objectMapper.readTree(body).get("id").asText()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.sku").value("SKU-VD24-PUB"));
     }
 
     // ---------- CN-27, CN-28: quản trị ----------

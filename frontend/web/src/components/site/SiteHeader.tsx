@@ -146,6 +146,9 @@ export function SiteHeader() {
                         <AccountItem href="/orders" onClick={() => setAccountOpen(false)}>
                           Đơn hàng của tôi
                         </AccountItem>
+                        <AccountItem href="/account" onClick={() => setAccountOpen(false)}>
+                          Thông tin và địa chỉ
+                        </AccountItem>
                         <hr className="my-1 border-mist" />
                       </>
                     )}

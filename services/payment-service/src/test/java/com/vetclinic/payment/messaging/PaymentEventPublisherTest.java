@@ -99,7 +99,7 @@ class PaymentEventPublisherTest {
         assertThat(rabbitTemplate.receiveAndConvert(TEST_QUEUE, 5000)).isNotNull();
 
         // Gọi lại lần 2 khi đã COMPLETED — không được publish thêm event nữa, tránh spam
-        // booking-service mỗi lần client retry API.
+        // pet-service mỗi lần client retry API.
         paymentService.confirmCash(payment.getId());
         assertThat(rabbitTemplate.receiveAndConvert(TEST_QUEUE, 2000)).isNull();
     }

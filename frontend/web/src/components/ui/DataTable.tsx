@@ -124,7 +124,12 @@ export function DataTable<T>({
               }
               className={cn("bg-surface px-4 py-3", onRowClick && "cursor-pointer active:bg-paper")}
             >
-              <p className="font-medium text-ink">{columns[0]?.cell(row)}</p>
+              {/*
+                div chứ không phải p: ô đầu tiên của nhiều bảng là một khối hai dòng (tên ở trên,
+                mã ở dưới), mà <p> thì không được chứa <div> — trình duyệt tự đóng thẻ, React báo
+                hydration error. Cùng kiểu chữ, khác mỗi thẻ bọc.
+              */}
+              <div className="font-medium text-ink">{columns[0]?.cell(row)}</div>
               <dl className="mt-1.5 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[13px]">
                 {columns.slice(1).map((c) => (
                   <div key={c.key} className="col-span-2 grid grid-cols-subgrid">

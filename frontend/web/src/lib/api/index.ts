@@ -9,11 +9,13 @@ export {
   http,
   qs,
 } from "./client";
-export { authApi, readToken, ROLE_LABEL } from "./auth";
-export { customerApi, doctorApi, staffApi, petLookupApi, customerLookupApi } from "./profile";
+export { authApi, readToken, isExpired, ROLE_LABEL } from "./auth";
+export { customerApi, doctorApi, staffApi, customerLookupApi } from "./profile";
+export { myPetApi, petLookupApi, medicalRecordApi } from "./pets";
 export { productApi, categoryApi } from "./products";
 export { cartApi, orderApi, orderManageApi, nextActions } from "./orders";
-export { bookingApi, medicalRecordApi, suggestionsFrom } from "./bookings";
+export { bookingApi, clinicServiceApi, suggestionsFrom } from "./bookings";
 export { paymentApi } from "./payments";
 export { reportingApi, type ReportRange } from "./reporting";
+export { attendanceApi, shiftApi, type DateRange } from "./staff";
 export { MISSING, type MissingEndpoint, type MissingKey } from "./missing";

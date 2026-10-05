@@ -3,6 +3,7 @@ package com.vetclinic.booking.controller;
 import com.vetclinic.booking.domain.AppointmentStatus;
 import com.vetclinic.booking.dto.AppointmentDetailResponse;
 import com.vetclinic.booking.dto.AppointmentRequest;
+import com.vetclinic.booking.dto.WalkInAppointmentRequest;
 import com.vetclinic.booking.dto.AppointmentResponse;
 import com.vetclinic.booking.dto.AppointmentStatusUpdateRequest;
 import com.vetclinic.booking.security.RoleUtils;
@@ -42,6 +43,19 @@ public class AppointmentController {
                                                   @RequestHeader("Authorization") String bearerToken,
                                                   @Valid @RequestBody AppointmentRequest request) {
         return appointmentService.createAppointment(principal.userId(), principal.email(), bearerToken, request);
+    }
+
+    /**
+     * CN-19: lễ tân đặt lịch hộ khách đang đứng ở quầy. Đường riêng chứ không mở rộng endpoint
+     * của khách: hai việc khác nhau về người gọi, về cách kiểm quyền sở hữu và về ai được gọi.
+     */
+    @PostMapping("/booking/appointments/walk-in")
+    @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
+    public AppointmentResponse createWalkIn(@Valid @RequestBody WalkInAppointmentRequest request,
+                                           @RequestHeader("Authorization") String bearerToken) {
+        return appointmentService.createWalkInAppointment(request.customerUserId(), bearerToken,
+                request.appointment());
     }
 
     @GetMapping("/booking/appointments/me")

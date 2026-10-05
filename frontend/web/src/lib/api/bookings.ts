@@ -7,8 +7,8 @@ import type {
   AppointmentSlot,
   AppointmentStatus,
   AvailableTime,
-  MedicalRecord,
-  MedicalRecordRequest,
+  ClinicService,
+  ClinicServiceRequest,
   SuggestedSlot,
 } from "@/types";
 
@@ -19,9 +19,20 @@ export const bookingApi = {
    * Khi khung giờ đã kín, backend trả 409 kèm tối đa 3 gợi ý; dùng `suggestionsFrom`
    * để lấy chúng ra thay vì chỉ hiện thông báo lỗi chung.
    */
-  create: (body: AppointmentRequest) => http.post<Appointment>("/booking/appointments", body),
+  create: (body: AppointmentRequest) =>
+    http.post<Appointment>("/booking/appointments", body),
 
   mine: () => http.get<Appointment[]>("/booking/appointments/me"),
+
+  /**
+   * CN-19: lễ tân đặt lịch hộ khách đang đứng ở quầy. Backend đối chiếu con vật có đúng của khách
+   * đã chọn không — nhân viên không phải chủ nên không đi đường /pets/me được.
+   */
+  createWalkIn: (customerUserId: string, appointment: AppointmentRequest) =>
+    http.post<Appointment>("/booking/appointments/walk-in", {
+      customerUserId,
+      appointment,
+    }),
 
   /** Lịch của chính bác sĩ đang đăng nhập. */
   forMeAsDoctor: (date?: string) =>
@@ -37,9 +48,11 @@ export const bookingApi = {
       })}`,
     ),
 
-  byId: (id: string) => http.get<AppointmentDetail>(`/booking/appointments/${id}`),
+  byId: (id: string) =>
+    http.get<AppointmentDetail>(`/booking/appointments/${id}`),
 
-  cancel: (id: string) => http.put<Appointment>(`/booking/appointments/${id}/cancel`),
+  cancel: (id: string) =>
+    http.put<Appointment>(`/booking/appointments/${id}/cancel`),
 
   updateStatus: (id: string, status: AppointmentStatus) =>
     http.put<Appointment>(`/booking/appointments/${id}/status`, { status }),
@@ -49,29 +62,30 @@ export const bookingApi = {
 
   /** Sinh khung giờ cho một bác sĩ trong một ngày. Scheduler cũng chạy việc này định kỳ. */
   generateSlots: (doctorUserId: string, date: string) =>
-    http.post<AppointmentSlot[]>("/booking/slots/generate", { doctorUserId, date }),
+    http.post<AppointmentSlot[]>("/booking/slots/generate", {
+      doctorUserId,
+      date,
+    }),
 };
 
-export const medicalRecordApi = {
-  /** Vừa tạo vừa sửa — backend dùng PUT cho cả hai. */
-  save: (appointmentId: string, body: MedicalRecordRequest) =>
-    http.put<MedicalRecord>(`/booking/appointments/${appointmentId}/medical-record`, body),
-
-  byAppointment: (appointmentId: string) =>
-    http.get<MedicalRecord>(`/booking/appointments/${appointmentId}/medical-record`),
-
-  /** Đánh dấu khách đã nhận thuốc — chỉ làm được sau khi phiếu thu đã thanh toán. */
-  markReceived: (appointmentId: string) =>
-    http.put<MedicalRecord>(`/booking/appointments/${appointmentId}/medical-record/receive`),
-
-  /** Hàng đợi PAID dùng chung mọi bác sĩ — chỉ STAFF/ADMIN gọi được. */
-  pending: () => http.get<MedicalRecord[]>("/booking/medical-records/pending"),
-
-  /** "Bệnh án còn treo" của riêng bác sĩ đang đăng nhập (PENDING hoặc PAID) — chỉ DOCTOR gọi được. */
-  mine: () => http.get<MedicalRecord[]>("/booking/medical-records/mine/outstanding"),
-
-  /** Lịch sử khám của 1 thú cưng, mới nhất trước — DOCTOR/STAFF/ADMIN gọi được. */
-  byPet: (petId: string) => http.get<MedicalRecord[]>(`/booking/medical-records/by-pet/${petId}`),
+/**
+ * VD-21: danh mục dịch vụ của phòng khám. Danh sách công khai — trang chủ và trang đặt lịch đọc
+ * được khi khách chưa đăng nhập; nhân viên và quản trị thấy thêm dịch vụ đã ngừng.
+ */
+export const clinicServiceApi = {
+  /**
+   * Không đánh dấu publicRoute: khách chưa đăng nhập vẫn gọi được (backend cho phép), còn nhân
+   * viên và quản trị cần gửi token mới thấy dịch vụ đã ngừng cung cấp.
+   */
+  list: () => http.get<ClinicService[]>("/booking/services"),
+  create: (body: ClinicServiceRequest) =>
+    http.post<ClinicService>("/booking/services", body),
+  update: (id: string, body: ClinicServiceRequest) =>
+    http.put<ClinicService>(`/booking/services/${id}`, body),
+  /** Không có xoá: lịch hẹn cũ vẫn trỏ tới dịch vụ này. */
+  hide: (id: string) => http.put<ClinicService>(`/booking/services/${id}/hide`),
+  unhide: (id: string) =>
+    http.put<ClinicService>(`/booking/services/${id}/unhide`),
 };
 
 /**

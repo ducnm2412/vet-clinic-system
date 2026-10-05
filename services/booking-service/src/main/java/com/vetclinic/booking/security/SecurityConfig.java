@@ -4,6 +4,7 @@ import com.vetclinic.booking.security.jwt.JwtAuthFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -27,6 +28,9 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/error").permitAll()
+                        // VD-21: trang chủ và trang đặt lịch đọc danh mục dịch vụ khi khách chưa
+                        // đăng nhập. Chỉ GET công khai; thêm và sửa vẫn phải là ADMIN (@PreAuthorize).
+                        .requestMatchers(HttpMethod.GET, "/booking/services").permitAll()
                         // Rule role cụ thể (vd CUSTOMER-only cho /booking/appointments) đặt bằng
                         // @PreAuthorize ngay trên controller — ở đây chỉ cần yêu cầu đã xác thực
                         // cho mọi route, giống pattern PetController bên profile-service.

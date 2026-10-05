@@ -2,7 +2,6 @@ package com.vetclinic.profile.service;
 
 import com.vetclinic.profile.domain.Address;
 import com.vetclinic.profile.domain.CustomerProfile;
-import com.vetclinic.profile.domain.Pet;
 import com.vetclinic.profile.dto.CustomerSummaryResponse;
 import com.vetclinic.profile.repository.CustomerProfileRepository;
 import lombok.RequiredArgsConstructor;
@@ -51,11 +50,7 @@ public class CustomerSummaryService {
                 .findFirst()
                 .map(CustomerSummaryService::format)
                 .orElse(null);
-        List<String> pets = profile.getPets().stream()
-                .sorted(Comparator.comparing(Pet::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder())))
-                .map(Pet::getName)
-                .toList();
-        return new CustomerSummaryResponse(profile.getUserId(), profile.getPhone(), address, pets);
+        return new CustomerSummaryResponse(profile.getUserId(), profile.getPhone(), address);
     }
 
     private static String format(Address a) {

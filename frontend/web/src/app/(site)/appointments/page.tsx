@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { CalendarDays, Clock3, MapPin, Stethoscope } from "lucide-react";
-import { bookingApi, customerApi } from "@/lib/api";
+import { bookingApi, myPetApi } from "@/lib/api";
 import { formatDate, formatTime, todayISO } from "@/lib/utils/format";
 import { CLINIC } from "@/config/clinic";
 import { useDoctorDirectory } from "@/lib/useDoctors";
@@ -24,7 +24,7 @@ export default function AppointmentsPage() {
 function AppointmentsBody() {
   const appointments = useQuery({ queryKey: ["appointments", "mine"], queryFn: bookingApi.mine });
   // Lịch hẹn chỉ mang `petId`, nên phải tra tên bé từ danh sách thú cưng của chính khách.
-  const pets = useQuery({ queryKey: ["pets", "mine"], queryFn: customerApi.pets });
+  const pets = useQuery({ queryKey: ["pets", "mine"], queryFn: myPetApi.list });
   const doctors = useDoctorDirectory();
 
   const petById = new Map((pets.data ?? []).map((p) => [p.id, p]));

@@ -1,5 +1,6 @@
 package com.vetclinic.booking.messaging;
 
+import com.vetclinic.booking.client.PetServiceClient;
 import com.vetclinic.booking.client.ProfileServiceClient;
 import com.vetclinic.booking.domain.AppointmentSlot;
 import com.vetclinic.booking.dto.AppointmentRequest;
@@ -51,6 +52,9 @@ class AppointmentEventPublisherTest {
     private org.springframework.amqp.rabbit.core.RabbitTemplate rabbitTemplate;
 
     @MockBean
+    private PetServiceClient petServiceClient;
+
+    @MockBean
     private ProfileServiceClient profileServiceClient;
 
     @AfterEach
@@ -68,7 +72,7 @@ class AppointmentEventPublisherTest {
         amqpAdmin.declareQueue(queue);
         amqpAdmin.declareBinding(binding);
 
-        when(profileServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
+        when(petServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
 
         UUID doctorId = UUID.randomUUID();
         LocalDate date = LocalDate.of(2026, 12, 10);
@@ -79,7 +83,7 @@ class AppointmentEventPublisherTest {
         UUID customerUserId = UUID.randomUUID();
         UUID petId = UUID.randomUUID();
         appointmentService.createAppointment(customerUserId, "Bearer test-token",
-                new AppointmentRequest(petId, date, time, "Checkup"));
+                new AppointmentRequest(petId, date, time, null, "Checkup"));
 
         AppointmentCreatedEvent event = (AppointmentCreatedEvent) rabbitTemplate.receiveAndConvert(TEST_QUEUE, 5000);
 
@@ -94,7 +98,7 @@ class AppointmentEventPublisherTest {
     }
 
     private PetResponse dummyPet() {
-        return new PetResponse(UUID.randomUUID(), "Milo", "Dog", "Poodle", "MALE",
-                LocalDate.of(2020, 1, 1), null, Instant.now(), Instant.now());
+        return new PetResponse(UUID.randomUUID(), UUID.randomUUID(), "Milo", "Dog", "Poodle", "MALE",
+                LocalDate.of(2020, 1, 1), null, null, null, Instant.now(), Instant.now());
     }
 }

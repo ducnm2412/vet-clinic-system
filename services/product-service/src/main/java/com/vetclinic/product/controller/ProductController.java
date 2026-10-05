@@ -4,6 +4,8 @@ import com.vetclinic.product.dto.PageResponse;
 import com.vetclinic.product.dto.ProductRequest;
 import com.vetclinic.product.dto.ProductResponse;
 import com.vetclinic.product.dto.StockAdjustmentRequest;
+import com.vetclinic.product.dto.StockDeductionRequest;
+import com.vetclinic.product.dto.StockDeductionResponse;
 import com.vetclinic.product.dto.StockMovementResponse;
 import com.vetclinic.product.security.jwt.AuthenticatedUser;
 import com.vetclinic.product.service.ProductService;
@@ -15,7 +17,6 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -78,9 +79,13 @@ public class ProductController {
         return productService.listLowStock();
     }
 
+    /**
+     * VD-24: công khai, nhưng hàng đã ẩn chỉ STAFF/ADMIN mới xem được — người khác nhận 404.
+     * Trước đây ai có UUID cũng đọc được hàng chưa/ngừng bán.
+     */
     @GetMapping("/{id}")
-    public ProductResponse getById(@PathVariable UUID id) {
-        return productService.getById(id);
+    public ProductResponse getById(@PathVariable UUID id, Authentication authentication) {
+        return productService.getById(id, canSeeInactive(authentication));
     }
 
     @GetMapping("/{id}/stock-movements")
@@ -96,6 +101,22 @@ public class ProductController {
         return productService.adjustStock(id, request, principal.userId());
     }
 
+    /**
+     * VD-14: order-service gọi khi nhân viên xác nhận đơn, và ĐỢI kết quả. Thiếu hàng thì trả 409
+     * và không trừ dòng nào — đơn giữ nguyên trạng thái chờ xác nhận.
+     *
+     * Đường dẫn literal "/products/stock/deduct" được Spring ưu tiên hơn mẫu "/products/{id}/...".
+     * Gọi lại với cùng orderId không trừ hai lần.
+     */
+    @PostMapping("/stock/deduct")
+    public StockDeductionResponse deductForOrder(@Valid @RequestBody StockDeductionRequest request) {
+        List<ProductService.OrderLine> lines = request.lines().stream()
+                .map(l -> new ProductService.OrderLine(l.productId(), l.quantity()))
+                .toList();
+        return new StockDeductionResponse(request.orderId(),
+                productService.applyOrderSale(request.orderId(), lines));
+    }
+
     // ---------- CN-28: quản lý sản phẩm (ADMIN) ----------
 
     @PostMapping
@@ -109,9 +130,16 @@ public class ProductController {
         return productService.update(id, request);
     }
 
-    @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable UUID id) {
-        productService.delete(id);
+    // VD-03: không có DELETE. Ẩn rồi bán lại, giống khoá / mở khoá tài khoản — xoá sẽ cuốn theo
+    // lịch sử kho của mặt hàng đó, mà đơn hàng cũ vẫn đang trỏ tới nó.
+
+    @PutMapping("/{id}/hide")
+    public ProductResponse hide(@PathVariable UUID id) {
+        return productService.setActive(id, false);
+    }
+
+    @PutMapping("/{id}/unhide")
+    public ProductResponse unhide(@PathVariable UUID id) {
+        return productService.setActive(id, true);
     }
 }

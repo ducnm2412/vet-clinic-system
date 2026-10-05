@@ -33,7 +33,12 @@ export const productApi = {
 
   create: (body: ProductRequest) => http.post<Product>("/products", body),
   update: (id: string, body: ProductRequest) => http.put<Product>(`/products/${id}`, body),
-  remove: (id: string) => http.del<void>(`/products/${id}`),
+  /**
+   * VD-03: không có xoá sản phẩm. Xoá sẽ cuốn theo toàn bộ lịch sử nhập xuất kho của mặt hàng,
+   * trong khi đơn hàng cũ vẫn đang trỏ tới nó — nên chỉ ẩn khỏi cửa hàng, giống khoá tài khoản.
+   */
+  hide: (id: string) => http.put<Product>(`/products/${id}/hide`),
+  unhide: (id: string) => http.put<Product>(`/products/${id}/unhide`),
 
   /** STAFF/ADMIN. Mọi thay đổi tồn phải đi qua đây để có vết trong lịch sử. */
   adjustStock: (id: string, body: StockAdjustmentRequest) =>

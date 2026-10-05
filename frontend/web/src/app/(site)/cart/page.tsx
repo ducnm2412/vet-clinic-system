@@ -3,14 +3,14 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Minus, Plus, Trash2 } from "lucide-react";
-import { ApiError, cartApi, orderApi } from "@/lib/api";
+import { ApiError, cartApi, customerApi, orderApi } from "@/lib/api";
 import { useCart } from "@/lib/useCart";
-import { formatPrice } from "@/lib/utils/format";
+import { formatAddress, formatPrice } from "@/lib/utils/format";
 import { useToast } from "@/components/ui";
 import type { CartItem } from "@/types";
 import { ArchPlaceholder, ButtonLink, Container, SiteButton } from "@/components/site/primitives";
@@ -217,8 +217,14 @@ function CheckoutPanel({ subtotal, checkoutable }: { subtotal: number; checkouta
     register,
     handleSubmit,
     setError,
+    setValue,
     formState: { errors },
   } = useForm<FormValues>({ resolver: zodResolver(schema) });
+
+  // CN-10: sổ địa chỉ. Gọi hỏng hay chưa khai địa chỉ nào thì phần này biến mất, khách vẫn gõ
+  // tay như trước — không chặn việc đặt hàng chỉ vì một tiện ích.
+  const addresses = useQuery({ queryKey: ["addresses"], queryFn: customerApi.addresses });
+  const saved = addresses.data ?? [];
 
   const checkout = useMutation({
     mutationFn: (values: FormValues) =>
@@ -266,6 +272,30 @@ function CheckoutPanel({ subtotal, checkoutable }: { subtotal: number; checkouta
             error={errors.recipientPhone?.message}
             {...register("recipientPhone")}
           />
+          {saved.length > 0 && (
+            <div className="sm:col-span-2">
+              <p className="mb-2 text-[15px] font-medium">Địa chỉ đã lưu</p>
+              <div className="flex flex-wrap gap-2">
+                {saved.map((a) => (
+                  <button
+                    key={a.id}
+                    type="button"
+                    onClick={() =>
+                      setValue("shippingAddress", formatAddress(a), { shouldValidate: true })
+                    }
+                    className="rounded-full border border-mist bg-white px-3 py-1.5 text-left text-[15px] text-pine transition-colors hover:border-teal"
+                  >
+                    {formatAddress(a)}
+                    {a.isDefault && <span className="ml-1.5 text-teal">· mặc định</span>}
+                  </button>
+                ))}
+              </div>
+              <p className="mt-2 text-[15px] text-stone">
+                Bấm một địa chỉ để điền vào ô dưới, hoặc gõ địa chỉ khác.
+              </p>
+            </div>
+          )}
+
           <SiteTextarea
             label="Địa chỉ"
             required

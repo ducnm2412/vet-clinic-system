@@ -1,4 +1,3 @@
-import { HeartPulse, Scissors, ShieldCheck, Stethoscope, type LucideIcon } from "lucide-react";
 
 /*
   Nội dung thương hiệu của website khách hàng.
@@ -7,9 +6,8 @@ import { HeartPulse, Scissors, ShieldCheck, Stethoscope, type LucideIcon } from 
   ở một chỗ, sửa một chỗ. Phần địa chỉ và số điện thoại là thông tin tạm của đồ án; khi
   triển khai thật thì thay bằng thông tin thật của phòng khám.
 
-  TODO(backend): chưa service nào quản lý danh mục dịch vụ. `AppointmentRequest` cũng
-  không có trường dịch vụ, nên khách chọn dịch vụ ở đây cũng không gửi đi đâu được —
-  xem VD-21 trong docs/van-de-ton-dong.md.
+  Danh mục dịch vụ KHÔNG còn ở đây: từ 25/09/2026 nó là dữ liệu thật của booking-service
+  (`GET /booking/services`, VD-21), quản trị tự thêm sửa. Xem components/site/ClinicServices.tsx.
 */
 
 export const CLINIC = {
@@ -17,39 +15,6 @@ export const CLINIC = {
   phone: "0292 3838 686",
   hours: "Thứ Hai đến Chủ Nhật, 7:30 – 20:00",
 } as const;
-
-export interface Service {
-  icon: LucideIcon;
-  name: string;
-  description: string;
-}
-
-export const SERVICES: Service[] = [
-  {
-    icon: Stethoscope,
-    name: "Khám tổng quát",
-    description:
-      "Bác sĩ nghe tim phổi, kiểm tra răng miệng, da lông và cân nặng, rồi ghi lại thành bệnh án để lần sau còn đối chiếu.",
-  },
-  {
-    icon: ShieldCheck,
-    name: "Tiêm phòng",
-    description:
-      "Vắc xin dại, care, parvo và các mũi nhắc theo lịch. Chúng tôi giữ lịch giúp bạn và nhắc trước ngày đến hạn.",
-  },
-  {
-    icon: HeartPulse,
-    name: "Phẫu thuật",
-    description:
-      "Triệt sản, lấy dị vật, xử lý vết thương. Có phòng mổ riêng, gây mê theo cân nặng và theo dõi đến khi bé tỉnh hẳn.",
-  },
-  {
-    icon: Scissors,
-    name: "Chăm sóc và làm đẹp",
-    description:
-      "Tắm, cắt tỉa, vệ sinh tai và cắt móng. Bé nào sợ nước thì làm chậm, không ép, không nhốt chờ cả buổi.",
-  },
-];
 
 /** Vì sao chọn chúng tôi — ba điều nói được bằng sự thật, không phải khẩu hiệu. */
 export const REASONS: Array<{ title: string; body: string }> = [

@@ -29,34 +29,37 @@ ADMIN,             ?activeOnly=false   -> 1
 Có 4 test hồi quy trong `ProductControllerTest` — hai test kịch bản tấn công được chạy
 **trước** khi sửa để chắc chúng đỏ thật.
 
-**Còn lại, cố ý chưa đóng:** `GET /products/{id}` vẫn trả hàng đã ẩn cho bất kỳ ai biết UUID.
-Không đóng ở đây vì `order-service` gọi đúng endpoint này **không kèm token** và dựa vào việc
-nhận được `active=false` để hiện "Sản phẩm đã ngừng bán" trong giỏ. Chặn nó thì giỏ hàng của
-khách sẽ hiện "(sản phẩm đã bị xoá)" với tên trống. Rủi ro còn lại thấp hơn nhiều so với lỗi
-gốc: phải biết trước UUID, không liệt kê được. Muốn đóng hẳn thì `order-service` cần gọi bằng
-danh tính service riêng — xem VD-24.
+Phần còn lại — `GET /products/{id}` trả hàng đã ẩn cho bất kỳ ai biết UUID — **đã đóng nốt ngày
+24/09**, xem VD-24.
 
-### 🟡 VD-02. Không có khoá chống tranh chấp khi sửa tồn kho
+### ✅ VD-02. Không có khoá chống tranh chấp khi sửa tồn kho — đã sửa 24/09/2026
 
-`ProductService.adjustStock` và `applySale` đọc `stockQuantity` rồi ghi đè, không có
-`@Version` hay `SELECT FOR UPDATE`. Hai thao tác đồng thời sẽ ghi đè nhau và số tồn sai.
+`adjustStock` và `applySale` đọc `stockQuantity` rồi ghi đè, không khoá gì. Hai nhân viên bấm
+nhập kho cùng lúc là một lần nhập biến mất.
 
-Hiện chưa lộ ra vì listener RabbitMQ mặc định chỉ 1 consumer thread nên sự kiện xử lý tuần
-tự. Nhưng `POST /products/{id}/stock` thì hai nhân viên bấm cùng lúc là dính ngay.
+**Đã sửa:** `ProductRepository.findByIdForUpdate` khoá dòng sản phẩm (`SELECT ... FOR UPDATE`),
+mọi chỗ ĐỔI tồn kho đều đi qua nó — người thứ hai đợi người thứ nhất commit rồi mới đọc. Cùng
+cách booking-service khoá khung giờ khám.
 
-**Hướng sửa:** thêm `@Version` vào entity `Product` (optimistic locking).
+Chọn khoá dòng thay vì `@Version`: nhân viên không phải gặp lỗi "có người vừa sửa, thử lại", và
+không phải viết vòng thử lại. `ProductStockConcurrencyTest` chạy hai luồng thật trên database
+test; bỏ khoá ra là hai test hỏng ngay (hai đơn cùng mua món cuối đều qua, và 10+5+7 ra 17).
 
-### 🟡 VD-03. Xoá sản phẩm làm mất sạch lịch sử kho
+### ✅ VD-03. Xoá sản phẩm làm mất sạch lịch sử kho — đã sửa 25/09/2026
 
 `stock_movements.product_id` có `ON DELETE CASCADE`, nên `DELETE /products/{id}` cuốn theo
-toàn bộ vết nhập/xuất — mâu thuẫn với chính mục đích "ghi vết để đối soát".
+toàn bộ vết nhập/xuất — mâu thuẫn với chính mục đích "ghi vết để đối soát". Đơn hàng cũ cũng còn
+trỏ tới sản phẩm đó.
 
-**Hướng sửa:** chuyển sang soft delete (đặt `active=false`), hoặc chặn xoá sản phẩm đã từng
-có giao dịch. Nên quyết trước khi có dữ liệu thật, đổi sau sẽ phải di trú.
+Đã bỏ hẳn endpoint xoá, thay bằng `PUT /products/{id}/hide` và `/unhide` — giống cách đã làm với
+tài khoản (CN-08): khoá, không xoá. Cột `active` đã có sẵn nên không phải di trú gì.
+
+Hàng đã ẩn biến mất khỏi cửa hàng với khách (VD-01, VD-24) nhưng nhân viên vẫn tra được và tồn kho
+vẫn nguyên. Nút "Xoá" ở trang quản trị đổi thành "Ẩn khỏi cửa hàng" / "Bán lại".
 
 ### 🟢 VD-04. Chưa có giữ chỗ tồn kho
 
-Kho chỉ trừ khi đơn *hoàn tất*. Hai khách cùng đặt món cuối cùng thì cả hai đều qua được
+Kho trừ khi nhân viên xác nhận đơn (sau khi sửa VD-14). Hai khách cùng đặt món cuối cùng thì cả hai đều qua được
 bước đặt hàng, đến lúc trừ kho mới phát hiện thiếu.
 
 Phải bàn cùng lúc với `order-service` (xem VD-14), không giải riêng trong `product-service`
@@ -73,15 +76,31 @@ Phải bàn cùng lúc với `order-service` (xem VD-14), không giải riêng t
 
 ## order-service
 
-### 🟡 VD-14. Kiểm tra tồn kho lúc checkout không có tính nguyên tử
+### ✅ VD-14. Xác nhận đơn không chắc còn hàng — đã sửa 24/09/2026
 
-`checkout` hỏi `product-service` xem còn đủ hàng không, nhưng giữa lúc hỏi và lúc nhân viên
-xác nhận đơn (mới thực sự trừ kho) thì hàng có thể đã bán hết cho người khác. Khi đó
-`product-service` ghi log lỗi và bỏ qua, đơn vẫn ở `CONFIRMED` nhưng kho không trừ.
+`checkout` hỏi tồn kho, nhưng tới lúc nhân viên xác nhận (mới thực sự trừ kho) thì hàng có thể
+đã bán hết. Trước đây xác nhận chỉ phát sự kiện rồi trả về ngay: `product-service` ghi log lỗi
+và bỏ qua, **đơn vẫn CONFIRMED trong khi kho không trừ** — hứa bán món không còn hàng.
 
-Đây là mặt còn lại của VD-04 (chưa có giữ chỗ tồn kho). Giải đúng thì cần API `reserve` /
-`release` bên `product-service`, hoặc để `confirm` gọi đồng bộ sang `product-service` và
-thất bại thì không cho chuyển trạng thái.
+**Đã sửa:** `order-service` gọi `POST /products/stock/deduct` ngay lúc xác nhận và **đợi kết
+quả**, trong cùng transaction với việc đổi trạng thái đơn.
+
+- Trừ cả đơn, tất-cả-hoặc-không. Thiếu một món là 409, không dòng nào bị trừ, đơn giữ nguyên
+  `PENDING`, và nhân viên đọc được đúng món nào thiếu: *Sản phẩm "..." chỉ còn 0 gói, cần 1*.
+- `product-service` tắt thì trả 503 "thử lại sau", đơn không được xác nhận — thà không chốt còn
+  hơn chốt bán mà không biết còn hàng không.
+- Gọi lại với cùng `orderId` không trừ hai lần (vết trong `stock_movements`). Nhờ vậy trường hợp
+  hiếm "bên kia trừ xong nhưng bên này commit hỏng" chỉ cần bấm xác nhận lại.
+- Endpoint mới chỉ mở cho STAFF/ADMIN, và `order-service` đính chính token của nhân viên đang
+  bấm — chưa cần danh tính riêng giữa hai service (VD-24 vẫn còn cho `GET /products/{id}`).
+- Sự kiện `order.completed` vẫn phát để service khác dùng; `product-service` nghe rồi bỏ qua vì
+  đã trừ.
+
+Kiểm chứng trên hệ thống thật: hai đơn cùng mua món cuối cùng, đơn sau nhận 409 và giữ nguyên
+`PENDING`, vết kho chỉ có một dòng `SALE`.
+
+**Còn lại:** vẫn chưa giữ chỗ lúc khách đặt hàng (VD-04) — hai khách vẫn đặt được cùng món cuối,
+chỉ là người thứ hai bị từ chối lúc nhân viên xác nhận thay vì lúc đặt.
 
 ### 🟡 VD-15. CN-34 mới dừng ở COD
 
@@ -175,11 +194,47 @@ Chưa có `POST /auth/change-password` lẫn luồng reset qua email.
 
 ## profile-service
 
-### 🟡 VD-10. Ranh giới `Pet` chồng lấn với `pet-service`
+### ✅ VD-10. Ranh giới `Pet` chồng lấn với `pet-service` — đã sửa 25/09/2026
 
-Entity `Pet` đang nằm trong `profile-service` (thuộc hồ sơ khách hàng), trong khi roadmap có
-`pet-service` riêng. Đã thống nhất trong `phan-tich-chuc-nang.md` mục 2.4: thu hẹp
-`pet-service` thành **bệnh án & đơn thuốc**. Cần bám đúng ranh giới này khi làm tới nơi.
+Entity `Pet` nằm trong `profile-service` trong khi roadmap có `pet-service` riêng. Đã chọn tách
+thật thay vì thu hẹp `pet-service`: thú cưng là thực thể trung tâm của phòng khám thú y — lịch hẹn,
+bệnh án, đơn thuốc đều trỏ vào nó — nên để nó lẫn trong hồ sơ hành chính của khách là sai chỗ.
+
+**Chặng 1 (xong):**
+
+- `pet-service` mới, port `8091`, `pet_db` riêng (host `5440`). Chủ nuôi lưu bằng `owner_user_id`
+  (userId của `auth-service`) chứ không phải `customer_profile_id`, nên `pet-service` không phụ
+  thuộc vào cách `profile-service` lưu hồ sơ khách.
+- `profile-service` bỏ hẳn phần thú cưng. Bảng cũ **không bị DROP**, chỉ đổi tên thành
+  `pets_moved_to_pet_service_backup` (`V3__move_pets_to_pet_service.sql`) — dữ liệu đã chạy thật,
+  giữ lại để đối chiếu.
+- Di trú dữ liệu: `scripts/migrate-pets-to-pet-service.sh`, join qua `customer_profiles` để đổi
+  khoá, **giữ nguyên `id` từng con vật** vì `booking_db` đang trỏ tới. Chạy lại nhiều lần được.
+- `booking-service` gọi `PetServiceClient` thay cho `ProfileServiceClient`, truyền nguyên token của
+  người dùng nên `pet-service` tự quyết quyền sở hữu.
+- Bảng Khách hàng của admin giờ gọi hai service: điện thoại/địa chỉ từ `profile-service`, thú cưng
+  từ `GET /pets/by-owners`. `CustomerSummaryResponse` không còn `petNames`.
+
+**Chặng 2 (xong):**
+
+- Bệnh án và đơn thuốc sang `pet-service`. Không còn khoá ngoại tới `appointments`: `appointment_id`
+  là UUID thường, còn `pet_id` thì có khoá ngoại thật vì thú cưng ở ngay trong service này.
+- `pet_id`, chủ nuôi và bác sĩ được chép vào bệnh án lúc lập, lấy từ `booking-service` chứ không từ
+  client — tin body gửi lên thì một bác sĩ có thể gắn bệnh án vào con vật của người khác. Đọc bệnh
+  án về sau không cần `booking-service`, nên hồ sơ lâm sàng tra được cả khi service kia tắt.
+- `prescription.created` giờ phát lên exchange `pet.events`; `payment-service` chỉ đổi chỗ nghe, nội
+  dung message không đổi. `payment.completed` cũng chuyển chỗ nghe từ `booking-service` sang
+  `pet-service` (queue `pet.payment-completed`).
+- Thú cưng đã có bệnh án thì không xoá được hồ sơ (409), và xoá tài khoản khách cũng không kéo theo
+  con đó. Trước đây bệnh án nằm khác database nên không có gì chặn: xoá con vật là để lại bệnh án
+  mồ côi không ai tra ra được nữa.
+- Di trú: `scripts/migrate-medical-records-to-pet-service.sh`, join `appointments` và
+  `appointment_slots` để lấy ba trường trên, giữ nguyên `id` bệnh án vì
+  `payment_db.payments.medical_record_id` đang trỏ tới. Bệnh án của con vật không còn hồ sơ thì bị
+  bỏ lại và báo số lượng, không làm đứt cả lượt di trú.
+
+Việc còn lại của module này là CN-26 (nhắc tái khám, tiêm phòng) — chưa làm, không thuộc phần tách
+service.
 
 ---
 
@@ -206,32 +261,41 @@ Frontend ghép `doctorUserId` với danh sách bác sĩ công khai:
 trong bảng `users` của auth-service — xem VD-20. Khi backend trả tên thì chỉ sửa một hàm
 `doctorLabel` trong `frontend/web/src/lib/useDoctors.ts`.
 
-### 🟡 VD-17. Bệnh án chỉ tra được theo lịch hẹn, không theo thú cưng
+### ✅ VD-17. Bệnh án chỉ tra được theo lịch hẹn, không theo thú cưng — đã sửa 25/09/2026
 
-Bệnh án truy cập qua `GET /booking/appointments/{id}/medical-record`. Không có endpoint nào
-lấy lịch sử khám của **một thú cưng** qua nhiều lần hẹn.
+Bệnh án chỉ truy cập được qua từng lịch hẹn, không có đường nào lấy lịch sử khám của **một thú
+cưng** qua nhiều lần hẹn — đúng chức năng CN-24 và là thứ bác sĩ cần nhất khi khám: con vật này
+trước đây bị gì, đã dùng thuốc nào.
 
-Đây đúng là chức năng CN-24 "tra cứu lịch sử khám bệnh" và là thứ bác sĩ cần nhất khi khám:
-con vật này trước đây bị gì, đã dùng thuốc nào.
+Việc tách `pet-service` (VD-10 chặng 2) giải quyết luôn: bệnh án nằm cùng service với thú cưng và có
+sẵn `pet_id`, nên chỉ là một câu lọc thường, không phải join ba bảng.
 
-**Hướng sửa:** thêm `GET /booking/pets/{petId}/medical-records`.
+- `GET /pets/{petId}/medical-records` cho bác sĩ, nhân viên, admin.
+- `GET /pets/me/{petId}/medical-records` cho khách — của chính con mình nuôi.
+
+Trang hồ sơ thú cưng của khách giờ hiện chẩn đoán ngay dưới từng lần khám, không phải mở từng lịch
+hẹn mới thấy.
 
 ---
 
 ## Toàn hệ thống
 
-### 🟡 VD-11. CN-22 và CN-39 chồng lấn — chưa chốt
+### ✅ VD-11. CN-22 và CN-39 chồng lấn — đã chốt 24/09/2026
 
-- `CN-22` (booking-service): "quản lý khung giờ làm việc, cấu hình ca trực"
-- `CN-39` (staff-service): "xếp ca trực cho bác sĩ, nhân viên theo tuần"
+Hai chức năng cùng nói về *ca trực của bác sĩ*, không chốt thì có hai nguồn sự thật.
 
-Hai chức năng cùng nói về *ca trực của bác sĩ*. Không chốt thì sẽ có hai nguồn sự thật và
-booking không biết hỏi ai để biết bác sĩ có rảnh không.
+**Đã chốt ngược với đề xuất cũ: `staff-service` giữ ca trực.** Ca trực là chuyện nhân sự (ai
+đi làm hôm nào), còn khung giờ khám là hệ quả của nó. `booking-service` nghe sự kiện
+`shift.added` / `shift.removed` và giữ một bản sao trong bảng `doctor_shifts` để sinh khung giờ
+mà không phải gọi sang service khác — lượt sinh slot chạy nền, không có token người dùng nào.
 
-**Đề xuất:** lịch làm việc (kế hoạch) thuộc `booking-service` vì nó cần tính slot trống theo
-thời gian thực; `staff-service` chỉ giữ chấm công thực tế (check-in/out, tổng giờ công).
+Hệ quả thấy ngay: **bác sĩ không có ca thì ngày đó khách không đặt được lịch**. Trước đây mọi
+bác sĩ đều có đủ khung giờ mọi ngày, kể cả ngày nghỉ.
 
-### 🟡 VD-12. Test tích hợp cần Postgres thật
+CN-22 (cấu hình khung giờ) còn lại đúng phần giờ mở cửa và độ dài mỗi lượt khám — vẫn là hằng
+số trong `ClinicSchedule` của booking-service.
+
+### ✅ VD-12. Test tích hợp chạy nhầm vào database thật — đã sửa 24/09/2026
 
 `auth-service` và `profile-service` không có `src/test/resources/application.yml` riêng, nên
 `@SpringBootTest` dùng thẳng `application.yml` chính và cần DB thật đúng cổng. Chạy `mvn test`
@@ -240,35 +304,48 @@ trần sẽ hỏng nếu không set biến môi trường.
 `product-service` đã đỡ hơn một phần: test controller tắt listener RabbitMQ nên không cần
 broker, nhưng vẫn cần Postgres.
 
-**Hướng sửa:** dùng Testcontainers, hoặc thêm profile test trỏ sẵn đúng cổng.
+**Vì sao nguy hiểm:** một số test của `booking-service` không chạy trong transaction và dọn
+bằng `deleteAll()` — `AppointmentEventPublisherTest` xoá **toàn bộ** lịch hẹn lẫn khung giờ.
+Ngày 13/09 chạy nhầm bộ test này vào `booking_db` thật làm mất sạch lịch hẹn, phải khôi phục
+từ bản sao lưu.
 
+**Đã sửa bằng hai lớp:**
 
-**⚠️ Không bao giờ chạy test vào database đang dùng.** Một số test của `booking-service`
-không chạy trong transaction và dọn bằng `deleteAll()` — `AppointmentEventPublisherTest` xoá
-**toàn bộ** lịch hẹn lẫn khung giờ. Ngày 13/09 chạy nhầm bộ test này vào `booking_db` thật
-làm mất sạch lịch hẹn, phải khôi phục từ bản sao lưu.
+1. **Mặc định đúng.** Mỗi `pom.xml` khai `DB_PORT` và `DB_NAME` trỏ vào database `*_test` ngay
+   trong `maven-surefire-plugin`. Cấu hình trong pom thắng cả biến môi trường lẫn `-D` trên
+   dòng lệnh, nên `DB_NAME=booking_db mvn test` vẫn chạy vào `booking_db_test`.
+2. **Chốt chặn lúc chạy.** `TestDatabaseGuard` (mỗi service một bản, đăng ký trong
+   `src/test/resources/META-INF/spring.factories`) đọc `spring.datasource.url` và ném lỗi nếu
+   tên database không kết thúc bằng `_test`. Chặn trước khi Spring mở kết nối đầu tiên, và bắt
+   cả trường hợp test tự khai `spring.datasource.url` trong `@SpringBootTest`.
 
-Mỗi database có sẵn một bản test riêng trong cùng container, trỏ vào bằng `DB_NAME`:
+Cũng đặt luôn `JWT_SECRET` riêng cho test và múi giờ `Asia/Ho_Chi_Minh` (VD-25), nên chạy test
+trong IDE không phải khai gì thêm.
 
 ```bash
-# booking-service (tương tự auth_db_test cho auth-service)
-docker exec booking-db createdb -U postgres booking_db_test
-DB_PORT=5437 DB_NAME=booking_db_test mvn test -DargLine="-Duser.timezone=Asia/Ho_Chi_Minh"
+bash scripts/create-test-databases.sh   # một lần, sau khi docker compose up -d
+bash scripts/test.sh                    # tất cả service
+bash scripts/test.sh booking-service    # một service
 ```
+
+Script `test.sh` chỉ nạp mật khẩu database và RabbitMQ từ `.env`; phần chọn database test nằm
+trong pom nên chạy `mvn test` trực tiếp cũng an toàn.
+
+**Còn lại:** vẫn cần Postgres thật đang chạy (chưa dùng Testcontainers), và
+`ProfileServiceClientTest` của booking-service vẫn phải có Eureka + profile-service thật nên
+đã loại khỏi lượt chạy thường.
 
 ### ⚪ VD-13. Gateway trả 503 khoảng 30 giây sau khi rebuild
 
 Spring Cloud LoadBalancer cache danh sách instance từ Eureka theo chu kỳ. Không phải lỗi,
 nhưng dễ làm mất công debug nhầm. Đã ghi trong `frontend/README.md`.
 
-### 🟡 VD-18. Ba mảng giao diện quản trị chưa có API (còn lại sau 13/09)
+### 🟡 VD-18. Hai mảng giao diện quản trị chưa có API (còn lại sau 24/09)
 
 Rà khi dựng frontend Next.js. Các màn hình dưới đây không có endpoint nào phục vụ:
 
 | Màn hình | Thiếu gì |
 |---|---|
-| Chấm công | `staff-service` chưa tồn tại |
-| Lịch sử khám của thú cưng | Xem VD-17 |
 | Thông báo trong ứng dụng | `notification-service` không có REST endpoint |
 
 Frontend đang để placeholder có đánh dấu `TODO` và tầng mock riêng (`lib/api/mock/`), không
@@ -330,7 +407,7 @@ một lần: lấy `first_name || ' ' || last_name` từ `auth_db.users` ghi và
 
 **Còn lại:** chưa có ảnh chân dung (`photoUrl`).
 
-### 🟡 VD-21. `AppointmentRequest` không có trường dịch vụ
+### ✅ VD-21. `AppointmentRequest` không có trường dịch vụ — đã sửa 25/09/2026 (trừ chia slot)
 
 Phát hiện khi dựng luồng đặt lịch cho khách.
 
@@ -343,11 +420,24 @@ nội dung tĩnh trong `frontend/web/src/config/clinic.ts`.
 
 Frontend tạm hướng dẫn khách ghi vào ô lý do khám.
 
-**Hướng sửa:** một bảng `services` (tên, mô tả, thời lượng, giá tham khảo) và thêm
-`serviceId` vào `AppointmentRequest`. Thời lượng còn dùng để chia slot cho đúng — hiện mọi
-ca đều cố định 30 phút bất kể làm gì.
+Đã thêm bảng `clinic_services` trong `booking_db` (`V7`), seed sẵn bốn dịch vụ chuyển nguyên văn
+từ `frontend/web/src/config/clinic.ts`, kèm `GET /booking/services` công khai và thêm/sửa cho ADMIN.
+Tên bảng và lớp là `clinic_services`/`ClinicService` chứ không phải `services`/`Service`: trong dự án
+này "service" còn nghĩa là microservice, đọc code sẽ lẫn.
 
-### 🟡 VD-22. `PetResponse` thiếu ảnh, dị ứng và ghi chú
+`appointments.service_id` để trống được — lịch hẹn cũ không có, và khách chưa rõ cần gì thì vẫn đặt
+được rồi mô tả ở ô lý do khám. Bắt chọn sẽ đẩy người ta chọn bừa. Chọn dịch vụ vừa bị ngừng thì trả
+409 kèm tên dịch vụ, không lặng lẽ tạo lịch hẹn trống.
+
+Trang chủ giờ đọc danh mục từ backend thay vì nội dung tĩnh; biểu tượng vẫn ở frontend, tra theo
+`slug`. Admin có trang Dịch vụ để thêm, sửa, ngừng cung cấp — không có xoá, vì lịch hẹn cũ vẫn trỏ
+tới (cùng lý do với VD-03).
+
+**Còn thời lượng chia slot:** chưa làm. `durationMinutes` hiện chỉ để hiện cho khách và nhân viên
+ước lượng; mọi ca vẫn cố định 30 phút. Chia slot theo thời lượng đụng vào sinh slot, đặt lịch và ca
+trực cùng lúc, và làm vỡ lịch đã đặt — để riêng một lần khác.
+
+### ✅ VD-22. `PetResponse` thiếu ảnh, dị ứng và ghi chú — đã sửa 25/09/2026 (trừ ảnh)
 
 Phát hiện khi dựng trang hồ sơ thú cưng cho khách.
 
@@ -359,42 +449,56 @@ lẫn bác sĩ đều cần:
 - `allergies` — dị ứng thuốc là thông tin an toàn, phải đập vào mắt bác sĩ trước khi kê đơn.
 - `notes` — thói quen, tính nết, những thứ dặn người khám.
 
-**Hướng sửa:** thêm ba trường vào `PetRequest`/`PetResponse`. Riêng `allergies` nên hiện
-nổi bật ở màn hình khám của bác sĩ, không chỉ nằm trong hồ sơ.
+Đã thêm `allergies` và `notes` vào `PetRequest`/`PetResponse` (`V3` của `pet_db`). Ô để trống lưu
+thành `null` chứ không phải chuỗi rỗng — "chưa khai" khác hẳn "đã khai là không có gì".
+
+`allergies` theo được tới tận màn hình khám: `booking-service` trả kèm trong chi tiết lịch hẹn, và
+bác sĩ thấy nó trong một khối viền vàng riêng ngay trên chỗ kê đơn, không nằm lẫn trong danh sách
+cân nặng, giới tính.
+
+**Còn `photoUrl`:** chưa làm. Dán link ảnh thì thực tế không ai có sẵn link, còn tải ảnh lên thật
+thì cần thêm chỗ lưu file (MinIO hoặc thư mục gắn vào container) — một hạ tầng mới cho cả dự án,
+để riêng một lần khác. Giao diện vẫn dùng mái vòm màu theo loài.
 
 ### 🟢 VD-23. Bệnh án chưa có trả 404, trình duyệt vẫn ghi lỗi ra console
 
-Không phải lỗi chức năng. `GET /booking/appointments/{id}/medical-record` trả 404 khi bác
+Không phải lỗi chức năng. `GET /medical-records/by-appointment/{id}` trả 404 khi bác
 sĩ chưa lập bệnh án — frontend bắt và hiểu đúng là "chưa có", nhưng trình duyệt vẫn ghi một
 dòng 404 đỏ vào console. Ai mở DevTools lên xem sẽ tưởng có lỗi.
 
-**Hướng sửa (khi rảnh):** trả 200 kèm thân rỗng, hoặc thêm `GET .../medical-record/exists`.
+**Hướng sửa (khi rảnh):** trả 200 kèm thân rỗng, hoặc thêm `GET .../exists`.
 Không gấp.
 
-### 🟡 VD-24. `order-service` gọi `product-service` không kèm danh tính
+### ✅ VD-24. Xem được hàng đã ẩn nếu biết UUID — đã sửa 24/09/2026
 
-Phát hiện khi sửa VD-01.
+Phát hiện khi sửa VD-01. `order-service` gọi `GET /products/{id}` như khách vãng lai, nên
+endpoint đó phải trả cả hàng đã ẩn để giỏ hàng biết món nào ngừng bán — và ai có UUID cũng đọc
+được hàng chưa bán hoặc đã ngừng bán.
 
-`ProductClient` gọi `GET /products/{id}` như một khách vãng lai. Vì vậy endpoint đó buộc phải
-mở công khai **và** trả cả hàng đã ẩn, nếu không giỏ hàng không biết món nào đã ngừng bán.
-Hai yêu cầu đó kéo nhau: không đóng được lỗ hổng xem hàng ẩn theo UUID mà không làm hỏng giỏ.
+**Đã sửa mà không cần danh tính service:** `GET /products/{id}` giờ trả **404** cho hàng đã ẩn,
+trừ khi người gọi là STAFF/ADMIN. Trả 404 chứ không 403 — 403 là tự xác nhận "có sản phẩm này,
+chỉ không cho xem", đủ để dò danh mục hàng sắp bán.
 
-**Hướng sửa:** cho service gọi nhau bằng danh tính riêng (token service-to-service, hoặc
-endpoint nội bộ `/internal/products/{id}` chỉ mở trong mạng Docker). Khi có rồi, `GET
-/products/{id}` công khai mới trả 404 cho hàng đã ẩn được.
+Giỏ hàng không hỏng: `order-service` vốn đã xử lý 404 sẵn. Món bị ẩn hiện thành
+"(sản phẩm không còn bán)", không mua được, và chặn đặt đơn. Đổi lại, khách mất tên món trong
+giỏ — chấp nhận được, vì tên hàng đã ngừng bán không phải thứ khách cần biết.
 
-### 🟢 VD-25. Test tích hợp lỗi trên Windows vì múi giờ `Asia/Saigon`
+Kiểm chứng trên hệ thống thật: sau khi admin ẩn một sản phẩm đang nằm trong giỏ của khách —
+khách vãng lai và khách hàng tra UUID đều nhận 404, nhân viên và quản trị vẫn xem được; giỏ
+hàng chặn đặt; thêm lại món đó vào giỏ trả 409 "Sản phẩm này không còn bán". Trang sản phẩm
+phía khách hiện "Không tìm thấy sản phẩm này".
+
+**Ghi chú:** cách này dựa vào việc `order-service` không cần thấy hàng ẩn. Nếu sau này có luồng
+service gọi nhau thật sự cần quyền cao hơn người dùng cuối, khi đó mới phải làm danh tính riêng
+giữa các service.
+
+### ✅ VD-25. Test tích hợp lỗi trên Windows vì múi giờ `Asia/Saigon` — đã sửa 24/09/2026
 
 JVM trên Windows gửi múi giờ tên cũ `Asia/Saigon`, PostgreSQL 16 từ chối:
 `FATAL: invalid value for parameter "TimeZone"`. Mọi test dùng database đều lỗi ngay lúc
 dựng context, trông như code hỏng trong khi code không sai gì.
 
-**Cách chạy test hiện tại:**
-
-```bash
-mvn test -DargLine="-Duser.timezone=Asia/Ho_Chi_Minh"
-```
-
-**Hướng sửa gọn hơn:** đặt `<argLine>-Duser.timezone=Asia/Ho_Chi_Minh</argLine>` trong cấu
-hình `maven-surefire-plugin` ở từng `pom.xml`, để không ai phải nhớ cờ này.
+**Đã sửa:** `<argLine>-Duser.timezone=Asia/Ho_Chi_Minh</argLine>` nằm trong
+`maven-surefire-plugin` của mọi `pom.xml`, không ai phải nhớ cờ này nữa. Truyền
+`-DargLine=...` trên dòng lệnh sẽ KHÔNG ghi đè được cấu hình pom — muốn đổi thì sửa pom.
 

@@ -4,14 +4,14 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { ApiError, customerApi } from "@/lib/api";
+import { ApiError, myPetApi } from "@/lib/api";
 import { useToast } from "@/components/ui";
 import type { Pet } from "@/types";
 import { PhotoUploadButton } from "@/components/PhotoUploadButton";
 import { PetAvatar } from "./PetAvatar";
 import { SiteButton } from "./primitives";
 import { SiteDialog } from "./SiteDialog";
-import { SiteInput, SiteSelect } from "./fields";
+import { SiteInput, SiteSelect, SiteTextarea } from "./fields";
 
 // Loài phổ biến ở phòng khám thú y Việt Nam; vẫn cho gõ tự do vì danh sách không thể đủ.
 const SPECIES = ["Chó", "Mèo", "Chim", "Thỏ", "Hamster", "Bò sát", "Cá"];
@@ -23,6 +23,8 @@ const schema = z.object({
   gender: z.enum(["MALE", "FEMALE", "UNKNOWN"]),
   dateOfBirth: z.string().optional(),
   weightKg: z.coerce.number().positive("Cân nặng phải lớn hơn 0").optional(),
+  allergies: z.string().max(2000).optional(),
+  notes: z.string().max(2000).optional(),
 });
 
 // Zod 4 đổi kiểu đầu vào và đầu ra của `coerce`, nên phải khai cả hai cho React Hook Form.
@@ -56,6 +58,8 @@ export function PetFormDialog({
       gender: pet?.gender ?? "UNKNOWN",
       dateOfBirth: pet?.dateOfBirth ?? "",
       weightKg: pet?.weightKg ?? undefined,
+      allergies: pet?.allergies ?? "",
+      notes: pet?.notes ?? "",
     },
   });
 
@@ -68,8 +72,10 @@ export function PetFormDialog({
         gender: v.gender,
         dateOfBirth: v.dateOfBirth || undefined,
         weightKg: v.weightKg,
+        allergies: v.allergies || undefined,
+        notes: v.notes || undefined,
       };
-      return pet ? customerApi.updatePet(pet.id, body) : customerApi.addPet(body);
+      return pet ? myPetApi.update(pet.id, body) : myPetApi.add(body);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["pets"] });
@@ -174,6 +180,24 @@ export function PetFormDialog({
             {...register("weightKg")}
           />
         </div>
+
+        <SiteTextarea
+          label="Dị ứng"
+          rows={2}
+          placeholder="Dị ứng Penicillin, không ăn được cá biển…"
+          hint="Bác sĩ đọc mục này trước khi kê đơn. Không có thì để trống."
+          error={errors.allergies?.message}
+          {...register("allergies")}
+        />
+
+        <SiteTextarea
+          label="Ghi chú"
+          rows={2}
+          placeholder="Sợ tiếng ồn, hay cắn khi bị giữ chặt…"
+          hint="Thói quen, tính nết, những gì bạn muốn dặn người khám."
+          error={errors.notes?.message}
+          {...register("notes")}
+        />
       </form>
     </SiteDialog>
   );

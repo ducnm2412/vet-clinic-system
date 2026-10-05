@@ -12,21 +12,27 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class RabbitMQConfig {
 
-    // booking-service là chủ khai báo gốc của exchange này — phải khớp chính xác
-    // durable/autoDelete (true, false), khai lệch sẽ bị Rabbit throw PRECONDITION_FAILED
-    // khi redeclare một exchange đã tồn tại với thuộc tính khác.
-    public static final String BOOKING_EVENTS_EXCHANGE = "booking.events";
+    // pet-service là chủ khai báo gốc của exchange này — phải khớp chính xác durable/autoDelete
+    // (true, false), khai lệch sẽ bị Rabbit throw PRECONDITION_FAILED khi redeclare một exchange
+    // đã tồn tại với thuộc tính khác.
+    //
+    // Từ 25/09/2026 (VD-10 chặng 2): prescription.created do pet-service phát, không còn
+    // booking-service — bệnh án đã chuyển sang đó. Nội dung message không đổi nên chỉ phải đổi chỗ
+    // nghe. Binding cũ tới booking.events còn sót trong Rabbit là vô hại: không ai phát
+    // prescription.created lên exchange đó nữa. Muốn dọn sạch thì xoá queue
+    // payment.prescription-created rồi để service khai lại.
+    public static final String PET_EVENTS_EXCHANGE = "pet.events";
     public static final String PRESCRIPTION_CREATED_QUEUE = "payment.prescription-created";
     private static final String ROUTING_KEY_PRESCRIPTION_CREATED = "prescription.created";
 
-    // payment-service là chủ khai báo gốc của exchange này (booking-service redeclare lại y hệt
+    // payment-service là chủ khai báo gốc của exchange này (pet-service redeclare lại y hệt
     // (true, false) để nhận payment.completed) — chỉ khai TopicExchange, không cần queue/binding
     // ở đây vì payment-service chỉ publish, không tự nghe lại message của chính mình.
     public static final String PAYMENT_EVENTS_EXCHANGE = "payment.events";
 
     @Bean
-    public TopicExchange bookingEventsExchange() {
-        return new TopicExchange(BOOKING_EVENTS_EXCHANGE, true, false);
+    public TopicExchange petEventsExchange() {
+        return new TopicExchange(PET_EVENTS_EXCHANGE, true, false);
     }
 
     @Bean
@@ -40,12 +46,12 @@ public class RabbitMQConfig {
     }
 
     @Bean
-    public Binding prescriptionCreatedBinding(Queue prescriptionCreatedQueue, TopicExchange bookingEventsExchange) {
-        return BindingBuilder.bind(prescriptionCreatedQueue).to(bookingEventsExchange)
+    public Binding prescriptionCreatedBinding(Queue prescriptionCreatedQueue, TopicExchange petEventsExchange) {
+        return BindingBuilder.bind(prescriptionCreatedQueue).to(petEventsExchange)
                 .with(ROUTING_KEY_PRESCRIPTION_CREATED);
     }
 
-    // Bắt buộc phải có để @RabbitListener parse được JSON booking-service gửi thành record
+    // Bắt buộc phải có để @RabbitListener parse được JSON pet-service gửi thành record
     // Java (mặc định Spring Boot dùng SimpleMessageConverter, không hiểu JSON).
     @Bean
     public MessageConverter messageConverter() {

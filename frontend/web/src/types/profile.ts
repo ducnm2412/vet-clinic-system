@@ -3,14 +3,17 @@ export type PetGender = "MALE" | "FEMALE" | "UNKNOWN";
 /** profile-service: PetResponse. Thú cưng hiện thuộc profile-service, không phải pet-service. */
 export interface Pet {
   id: string;
+  /** Chủ nuôi — userId bên auth-service. pet-service trả kèm để ghép với bảng tài khoản. */
+  ownerUserId: string;
   name: string;
   species: string;
   breed: string | null;
   gender: PetGender;
   dateOfBirth: string | null;
   weightKg: number | null;
-  /** Đường dẫn ảnh (kèm ?v= để bỏ cache khi đổi ảnh); null nếu chưa có. Phải đăng nhập mới xem được. */
-  photoUrl: string | null;
+  /** Dị ứng thuốc hoặc thức ăn; null khi chủ nuôi chưa khai (VD-22). */
+  allergies: string | null;
+  notes: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -22,6 +25,8 @@ export interface PetRequest {
   gender: PetGender;
   dateOfBirth?: string;
   weightKg?: number;
+  allergies?: string;
+  notes?: string;
 }
 
 export interface CustomerProfile {
@@ -104,13 +109,17 @@ export interface DoctorLicenseRequest {
   expiryDate?: string;
 }
 
-/** profile-service: CustomerSummaryResponse — bảng Khách hàng của admin. */
+/**
+ * profile-service: CustomerSummaryResponse — bảng Khách hàng của admin.
+ *
+ * Không có tên thú cưng ở đây: hồ sơ thú cưng nằm ở pet-service, lấy riêng qua
+ * {@link petLookupApi.byOwners}.
+ */
 export interface CustomerSummary {
   userId: string;
   phone: string | null;
   /** Địa chỉ mặc định, không có thì địa chỉ đầu tiên. */
   address: string | null;
-  petNames: string[];
 }
 
 export interface StaffProfile {

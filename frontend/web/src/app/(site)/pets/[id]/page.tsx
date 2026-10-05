@@ -4,11 +4,11 @@ import { useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarDays, ChevronLeft, Pencil, Trash2 } from "lucide-react";
-import { ApiError, bookingApi, customerApi } from "@/lib/api";
+import { CalendarDays, ChevronLeft, Pencil, TriangleAlert, Trash2 } from "lucide-react";
+import { ApiError, bookingApi, myPetApi } from "@/lib/api";
 import { formatAge, formatDate, formatTime } from "@/lib/utils/format";
 import { useToast } from "@/components/ui";
-import type { Appointment, Pet } from "@/types";
+import type { Appointment, MedicalRecord, Pet } from "@/types";
 import { ButtonLink, Container, SiteButton } from "@/components/site/primitives";
 import { CustomerOnly } from "@/components/site/CustomerOnly";
 import { PetAvatar } from "@/components/site/PetAvatar";
@@ -28,7 +28,7 @@ export default function PetDetailPage() {
 function PetDetailBody() {
   const { id } = useParams<{ id: string }>();
 
-  const pet = useQuery({ queryKey: ["pets", id], queryFn: () => customerApi.pet(id) });
+  const pet = useQuery({ queryKey: ["pets", id], queryFn: () => myPetApi.get(id) });
 
   if (pet.isLoading) return <PetSkeleton />;
 
@@ -60,7 +60,7 @@ function PetProfile({ pet }: { pet: Pet }) {
   const router = useRouter();
 
   const remove = useMutation({
-    mutationFn: () => customerApi.deletePet(pet.id),
+    mutationFn: () => myPetApi.remove(pet.id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["pets"] });
       toast.success(`Đã xoá hồ sơ ${pet.name}`);
@@ -106,6 +106,20 @@ function PetProfile({ pet }: { pet: Pet }) {
               <Item label="Ngày sinh" value={formatDate(pet.dateOfBirth)} />
               <Item label="Lập hồ sơ" value={formatDate(pet.createdAt)} />
             </dl>
+
+            {(pet.allergies || pet.notes) && (
+              <div className="mt-8 max-w-xl space-y-3">
+                {pet.allergies && (
+                  <p className="flex gap-2 rounded-[var(--radius-card)] bg-white/70 p-3 text-[15px]">
+                    <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0 text-coral-deep" />
+                    <span>
+                      <span className="font-medium">Dị ứng:</span> {pet.allergies}
+                    </span>
+                  </p>
+                )}
+                {pet.notes && <p className="text-[15px] text-stone">{pet.notes}</p>}
+              </div>
+            )}
 
             <div className="mt-9 flex flex-wrap gap-3">
               <ButtonLink href="/appointments/create">Đặt lịch khám cho bé</ButtonLink>
@@ -170,19 +184,25 @@ function Item({ label, value }: { label: string; value: string }) {
 }
 
 /**
- * Lịch khám của riêng bé này.
+ * Lịch khám của riêng bé này, kèm chẩn đoán từng lần (CN-24).
  *
- * TODO(backend, VD-17): không có endpoint lấy bệnh án theo thú cưng — bệnh án chỉ tra
- * được theo từng lịch hẹn. Nên đây lọc từ danh sách lịch hẹn của chính khách, và mỗi lần
- * khám dẫn sang trang chi tiết để xem chẩn đoán.
- * Cần bổ sung: GET /booking/pets/{petId}/medical-records.
+ * Lịch hẹn vẫn lấy từ booking-service rồi lọc theo bé; chẩn đoán lấy một lượt từ
+ * `GET /pets/me/{petId}/medical-records` của pet-service và ghép theo `appointmentId` — trước đây
+ * không có đường nào tra bệnh án theo thú cưng, phải mở từng lịch hẹn mới thấy (VD-17).
  */
 function PetAppointments({ petId, petName }: { petId: string; petName: string }) {
   const appointments = useQuery({
     queryKey: ["appointments", "mine"],
     queryFn: bookingApi.mine,
   });
+  const records = useQuery({
+    queryKey: ["pets", petId, "medical-records"],
+    queryFn: () => myPetApi.history(petId),
+  });
   const doctors = useDoctorDirectory();
+
+  // Bệnh án tải hỏng thì danh sách lần khám vẫn hiện, chỉ thiếu dòng chẩn đoán.
+  const diagnosisOf = new Map((records.data ?? []).map((r) => [r.appointmentId, r]));
 
   const list = (appointments.data ?? [])
     .filter((a) => a.petId === petId)
@@ -214,7 +234,12 @@ function PetAppointments({ petId, petName }: { petId: string; petName: string })
       ) : (
         <ul className="mt-8 divide-y divide-mist border-y border-mist">
           {list.map((a) => (
-            <AppointmentRow key={a.id} appointment={a} doctor={doctors.label(a.doctorUserId)} />
+            <AppointmentRow
+              key={a.id}
+              appointment={a}
+              doctor={doctors.label(a.doctorUserId)}
+              record={diagnosisOf.get(a.id)}
+            />
           ))}
         </ul>
       )}
@@ -222,24 +247,46 @@ function PetAppointments({ petId, petName }: { petId: string; petName: string })
   );
 }
 
-function AppointmentRow({ appointment: a, doctor }: { appointment: Appointment; doctor: string }) {
+function AppointmentRow({
+  appointment: a,
+  doctor,
+  record,
+}: {
+  appointment: Appointment;
+  doctor: string;
+  record?: MedicalRecord;
+}) {
   return (
     <li>
       <Link
         href={`/appointments/${a.id}`}
-        className="flex flex-wrap items-center gap-x-6 gap-y-3 py-5 transition-colors hover:bg-mint/60"
+        className="block py-5 transition-colors hover:bg-mint/60"
       >
-        <div className="min-w-40">
-          <p className="font-medium">{formatDate(a.date)}</p>
-          <p className="tnum text-[15px] text-stone">
-            {formatTime(a.startTime)} đến {formatTime(a.endTime)}
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+          <div className="min-w-40">
+            <p className="font-medium">{formatDate(a.date)}</p>
+            <p className="tnum text-[15px] text-stone">
+              {formatTime(a.startTime)} đến {formatTime(a.endTime)}
+            </p>
+          </div>
+          <p className="min-w-44 text-[15px] text-stone">{doctor}</p>
+          <p className="min-w-0 flex-1 truncate text-stone">
+            {a.reason?.trim() || "Không ghi lý do khám"}
           </p>
+          <StatusPill look={APPOINTMENT_LOOK[a.status]} />
         </div>
-        <p className="min-w-44 text-[15px] text-stone">{doctor}</p>
-        <p className="min-w-0 flex-1 truncate text-stone">
-          {a.reason?.trim() || "Không ghi lý do khám"}
-        </p>
-        <StatusPill look={APPOINTMENT_LOOK[a.status]} />
+
+        {record && (
+          <p className="mt-2 max-w-3xl text-[15px] text-pine">
+            Chẩn đoán: {record.diagnosis}
+            {record.prescriptionItems.length > 0 && (
+              <span className="text-stone">
+                {" · "}
+                {record.prescriptionItems.length} loại thuốc
+              </span>
+            )}
+          </p>
+        )}
       </Link>
     </li>
   );

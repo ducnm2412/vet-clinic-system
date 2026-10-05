@@ -1,6 +1,6 @@
 # Profile Service
 
-Hồ sơ chi tiết của 3 actor: Khách hàng (địa chỉ + thú cưng), Bác sĩ (chuyên khoa + bằng cấp), Nhân viên. Không xử lý đăng nhập/mật khẩu — danh tính xác thực do `auth-service` quản lý, `profile-service` chỉ liên kết qua `userId` (UUID) lấy từ claim trong JWT.
+Hồ sơ chi tiết của 3 actor: Khách hàng (điện thoại + địa chỉ), Bác sĩ (chuyên khoa + bằng cấp), Nhân viên. Không xử lý đăng nhập/mật khẩu — danh tính xác thực do `auth-service` quản lý, `profile-service` chỉ liên kết qua `userId` (UUID) lấy từ claim trong JWT.
 
 - **Database riêng:** `profile_db` (PostgreSQL) — theo mô hình Database per Service
 - **Port:** `8083` (`SERVER_PORT`)
@@ -23,7 +23,7 @@ bằng chung JWT_SECRET, KHÔNG gọi ngược auth-service mỗi request.
 ```
 com.vetclinic.profile
 ├── controller        # CustomerProfileController, DoctorProfileController, StaffProfileController
-├── domain            # CustomerProfile, Address, Pet, DoctorProfile, DoctorLicense, StaffProfile
+├── domain            # CustomerProfile, Address, DoctorProfile, DoctorLicense, StaffProfile
 ├── dto                # Request/Response record theo từng actor
 ├── exception          # ResourceNotFoundException + GlobalExceptionHandler
 ├── repository         # Spring Data JPA, mỗi repo có findByIdAndXxxProfileId để check ownership
@@ -45,14 +45,14 @@ com.vetclinic.profile
 
 | Entity | Field chính | Quan hệ |
 |---|---|---|
-| `CustomerProfile` | `userId` (unique), `phone`, `dateOfBirth` | 1-n `Address`, 1-n `Pet` |
+| `CustomerProfile` | `userId` (unique), `phone`, `dateOfBirth` | 1-n `Address` |
 | `Address` | `line1`, `line2`, `ward`, `city`, `isDefault` | n-1 `CustomerProfile`, cascade xoá theo profile |
-| `Pet` | `name`, `species`, `breed`, `gender`, `dateOfBirth`, `weightKg` | n-1 `CustomerProfile`, cascade xoá theo profile |
 | `DoctorProfile` | `userId` (unique), `specialty`, `phone`, `bio`, `yearsOfExperience` | 1-n `DoctorLicense` |
 | `DoctorLicense` | `licenseNumber`, `issuedBy`, `issuedDate`, `expiryDate` | n-1 `DoctorProfile`, cascade xoá theo profile |
 | `StaffProfile` | `userId` (unique), `position`, `phone`, `hireDate` | — |
 
-`Pet` **không có** hồ sơ bệnh án (tiêm phòng/chẩn đoán/điều trị) — đó là dữ liệu lâm sàng phát sinh theo từng lượt khám, thuộc về `booking-service` (chưa code), tham chiếu ngược `petId` sang đây. `profile-service` chỉ giữ định danh tĩnh của thú cưng.
+Hồ sơ **thú cưng không còn ở đây** — đã tách sang `pet-service` ngày 25/09/2026 (VD-10), xem
+`services/pet-service/README.md`. `profile-service` chỉ còn giữ hồ sơ hành chính của con người.
 
 ### Schema (Flyway)
 
@@ -64,7 +64,6 @@ com.vetclinic.profile
 |---|---|---|---|
 | `GET/PUT` | `/profile/customer/me` | `ROLE_CUSTOMER` | Xem/sửa hồ sơ khách hàng (lazy-create) |
 | `GET/POST/PUT/DELETE` | `/profile/customer/me/addresses[/{id}]` | `ROLE_CUSTOMER` | CRUD địa chỉ — chỉ 1 địa chỉ `isDefault=true` tại 1 thời điểm |
-| `GET/POST/PUT/DELETE` | `/profile/customer/me/pets[/{id}]` | `ROLE_CUSTOMER` | CRUD thú cưng |
 | `GET` | `/profile/customer/by-id/{customerProfileId}` | `ROLE_STAFF` hoặc `ROLE_ADMIN` | Tra cứu hồ sơ 1 khách hàng cụ thể (vd nhân viên lễ tân cần xem khi khách gọi điện) — path tách biệt hẳn `/me` để không đụng rule phân quyền |
 | `GET/PUT` | `/profile/doctor/me` | `ROLE_DOCTOR` | Xem/sửa hồ sơ bác sĩ (lazy-create) |
 | `GET/POST/PUT/DELETE` | `/profile/doctor/me/licenses[/{id}]` | `ROLE_DOCTOR` | CRUD bằng cấp/giấy phép hành nghề |
@@ -74,7 +73,7 @@ com.vetclinic.profile
 
 ### Business rules đáng chú ý
 
-- **Ownership check ở mọi thao tác con-resource**: sửa/xoá `Address`/`Pet`/`DoctorLicense` đều query bằng `findByIdAndXxxProfileId(id, profile.getId())` — user A không thể đụng vào resource của user B dù biết đúng UUID (chống IDOR), trả 404 thay vì 403 để không lộ resource đó có tồn tại hay không.
+- **Ownership check ở mọi thao tác con-resource**: sửa/xoá `Address`/`DoctorLicense` đều query bằng `findByIdAndXxxProfileId(id, profile.getId())` — user A không thể đụng vào resource của user B dù biết đúng UUID (chống IDOR), trả 404 thay vì 403 để không lộ resource đó có tồn tại hay không.
 - **Ràng buộc `isDefault` chỉ 1 địa chỉ**: khi tạo/sửa 1 địa chỉ thành `isDefault=true`, các địa chỉ khác của cùng profile tự động bị bỏ default (`clearOtherDefaultAddresses`).
 - **`GET /profile/doctors` public nhưng `GET /profile/doctor/me` thì không** — dù cùng tiền tố `/profile/doctor`, đây là 2 khái niệm khác nhau: danh sách công khai (ai xem cũng được) vs hồ sơ của chính mình (bắt buộc phải biết "mình" là ai qua token). Tương tự `GET /profile/staff` (danh sách, Admin) khác `/profile/staff/me` (chính mình, Staff/Admin).
 - **`saveAndFlush` thay vì `save`** ở mọi thao tác tạo/sửa: bug từng gặp lúc test — Hibernate chỉ điền `@CreationTimestamp`/`@UpdateTimestamp` lúc flush, nếu không flush ngay thì response trả về ngay sau khi tạo/sửa sẽ có `createdAt`/`updatedAt` sai (null hoặc cũ).
@@ -113,4 +112,4 @@ mvn test
 
 ## Hạn chế hiện tại / việc còn thiếu
 
-- **Pet chưa có hồ sơ bệnh án** — dữ liệu lâm sàng theo lượt khám thuộc về `booking-service` (chưa code), sẽ tham chiếu `petId` sang đây
+- **Hồ sơ thú cưng đã chuyển sang `pet-service`** — bảng cũ `pets` còn nằm lại trong `profile_db` dưới tên `pets_moved_to_pet_service_backup` để đối chiếu, một lần dọn về sau sẽ xoá hẳn

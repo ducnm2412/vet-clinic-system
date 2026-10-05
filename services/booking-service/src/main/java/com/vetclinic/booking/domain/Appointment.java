@@ -9,6 +9,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
@@ -48,6 +49,14 @@ public class Appointment {
 
     @Column(name = "pet_id", nullable = false)
     private UUID petId;
+
+    /**
+     * VD-21: dịch vụ khách cần. Để trống được — lịch hẹn cũ không có, và khách vẫn đặt được mà
+     * chỉ ghi vào ô lý do khám.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "service_id")
+    private ClinicService service;
 
     @Column(columnDefinition = "TEXT")
     private String reason;

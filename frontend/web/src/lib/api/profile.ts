@@ -9,8 +9,6 @@ import type {
   DoctorLicenseRequest,
   DoctorProfile,
   DoctorPublic,
-  Pet,
-  PetRequest,
   StaffProfile,
 } from "@/types";
 
@@ -31,16 +29,8 @@ export const customerApi = {
     http.post<Address>("/profile/customer/me/addresses", body),
   updateAddress: (id: string, body: AddressRequest) =>
     http.put<Address>(`/profile/customer/me/addresses/${id}`, body),
-  deleteAddress: (id: string) => http.del<void>(`/profile/customer/me/addresses/${id}`),
-
-  pets: () => http.get<Pet[]>("/profile/customer/me/pets"),
-  pet: (id: string) => http.get<Pet>(`/profile/customer/me/pets/${id}`),
-  addPet: (body: PetRequest) => http.post<Pet>("/profile/customer/me/pets", body),
-  updatePet: (id: string, body: PetRequest) =>
-    http.put<Pet>(`/profile/customer/me/pets/${id}`, body),
-  deletePet: (id: string) => http.del<void>(`/profile/customer/me/pets/${id}`),
-  uploadPetPhoto: (id: string, file: File) =>
-    http.postForm<Pet>(`/profile/customer/me/pets/${id}/photo`, formOf(file)),
+  deleteAddress: (id: string) =>
+    http.del<void>(`/profile/customer/me/addresses/${id}`),
 };
 
 /** Hồ sơ của chính bác sĩ. Backend giới hạn cho role DOCTOR. */
@@ -54,8 +44,10 @@ export const doctorApi = {
     http.post<DoctorLicense>("/profile/doctor/me/licenses", body),
   updateLicense: (id: string, body: DoctorLicenseRequest) =>
     http.put<DoctorLicense>(`/profile/doctor/me/licenses/${id}`, body),
-  deleteLicense: (id: string) => http.del<void>(`/profile/doctor/me/licenses/${id}`),
-  uploadMyPhoto: (file: File) => http.postForm<DoctorProfile>("/profile/doctor/me/photo", formOf(file)),
+  deleteLicense: (id: string) =>
+    http.del<void>(`/profile/doctor/me/licenses/${id}`),
+  uploadMyPhoto: (file: File) =>
+    http.postForm<DoctorProfile>("/profile/doctor/me/photo", formOf(file)),
 
   /** Công khai — trang đặt lịch hiển thị được kể cả khi chưa đăng nhập. */
   listPublic: () => http.get<DoctorPublic[]>("/profile/doctors", true),
@@ -66,24 +58,21 @@ export const staffApi = {
   me: () => http.get<StaffProfile>("/profile/staff/me"),
   updateMe: (body: Partial<StaffProfile>) =>
     http.put<StaffProfile>("/profile/staff/me", body),
-  uploadMyPhoto: (file: File) => http.postForm<StaffProfile>("/profile/staff/me/photo", formOf(file)),
+  uploadMyPhoto: (file: File) =>
+    http.postForm<StaffProfile>("/profile/staff/me/photo", formOf(file)),
   /** Chỉ ADMIN. Đây là danh sách nhân sự duy nhất backend cung cấp. */
   list: () => http.get<StaffProfile[]>("/profile/staff"),
 };
 
-export const petLookupApi = {
-  /** DOCTOR/STAFF/ADMIN tra cứu thú cưng của mọi khách. */
-  list: () => http.get<Pet[]>("/profile/pets"),
-  byId: (id: string) => http.get<Pet>(`/profile/pets/${id}`),
-};
-
 export const customerLookupApi = {
   /**
-   * Chỉ ADMIN. Điện thoại, địa chỉ và thú cưng của các khách đang hiện trên một trang bảng
-   * (tối đa 100). Khách chưa từng mở trang hồ sơ thì không có trong kết quả.
+   * Chỉ ADMIN. Điện thoại và địa chỉ của các khách đang hiện trên một trang bảng (tối đa 100).
+   * Khách chưa từng mở trang hồ sơ thì không có trong kết quả. Thú cưng lấy riêng ở pet-service.
    */
   summary: (userIds: string[]) =>
-    http.get<CustomerSummary[]>(`/profile/customers/summary?userIds=${userIds.map(encodeURIComponent).join(",")}`),
+    http.get<CustomerSummary[]>(
+      `/profile/customers/summary?userIds=${userIds.map(encodeURIComponent).join(",")}`,
+    ),
 
   /** STAFF/ADMIN tra cứu một khách cụ thể. */
   byId: (customerProfileId: string) =>

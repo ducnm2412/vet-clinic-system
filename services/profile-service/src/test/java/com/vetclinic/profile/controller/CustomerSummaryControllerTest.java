@@ -2,7 +2,6 @@ package com.vetclinic.profile.controller;
 
 import com.vetclinic.profile.domain.Address;
 import com.vetclinic.profile.domain.CustomerProfile;
-import com.vetclinic.profile.domain.Pet;
 import com.vetclinic.profile.repository.CustomerProfileRepository;
 import com.vetclinic.profile.support.TestJwtSupport;
 import org.junit.jupiter.api.Test;
@@ -38,20 +37,19 @@ class CustomerSummaryControllerTest {
         return "Bearer " + TestJwtSupport.token(jwtSecret, UUID.randomUUID(), List.of(role));
     }
 
-    private UUID customerWithPetsAndAddresses() {
+    private UUID customerWithAddresses() {
         UUID userId = UUID.randomUUID();
         CustomerProfile profile = CustomerProfile.builder().userId(userId).phone("0901234567").build();
         profile.getAddresses().add(Address.builder().customerProfile(profile).line1("12 Lê Lợi").city("Huế").build());
         profile.getAddresses().add(Address.builder().customerProfile(profile).line1("5 Hai Bà Trưng")
                 .ward("Phường 6").city("TP.HCM").isDefault(true).build());
-        profile.getPets().add(Pet.builder().customerProfile(profile).name("Milo").species("Chó").build());
         customerProfileRepository.saveAndFlush(profile);
         return userId;
     }
 
     @Test
-    void adminGetsPhoneDefaultAddressAndPetsForRequestedUsersOnly() throws Exception {
-        UUID withProfile = customerWithPetsAndAddresses();
+    void adminGetsPhoneAndDefaultAddressForRequestedUsersOnly() throws Exception {
+        UUID withProfile = customerWithAddresses();
         UUID noProfile = UUID.randomUUID();
 
         mockMvc.perform(get("/profile/customers/summary").param("userIds", withProfile + "," + noProfile)
@@ -60,8 +58,7 @@ class CustomerSummaryControllerTest {
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].userId").value(withProfile.toString()))
                 .andExpect(jsonPath("$[0].phone").value("0901234567"))
-                .andExpect(jsonPath("$[0].address").value("5 Hai Bà Trưng, Phường 6, TP.HCM"))
-                .andExpect(jsonPath("$[0].petNames[0]").value("Milo"));
+                .andExpect(jsonPath("$[0].address").value("5 Hai Bà Trưng, Phường 6, TP.HCM"));
     }
 
     @Test

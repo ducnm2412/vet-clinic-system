@@ -1,7 +1,9 @@
 package com.vetclinic.booking.service;
 
+import com.vetclinic.booking.client.PetServiceClient;
 import com.vetclinic.booking.client.ProfileServiceClient;
 import com.vetclinic.booking.domain.Appointment;
+import com.vetclinic.booking.domain.ClinicService;
 import com.vetclinic.booking.domain.AppointmentSlot;
 import com.vetclinic.booking.domain.AppointmentStatus;
 import com.vetclinic.booking.domain.ClinicSchedule;
@@ -38,6 +40,8 @@ public class AppointmentService {
     private final AppointmentRepository appointmentRepository;
     private final BlockedDoctorRepository blockedDoctorRepository;
     private final ProfileServiceClient profileServiceClient;
+    private final ClinicServiceCatalog clinicServiceCatalog;
+    private final PetServiceClient petServiceClient;
     private final SuggestionService suggestionService;
     private final ApplicationEventPublisher applicationEventPublisher;
 
@@ -46,12 +50,34 @@ public class AppointmentService {
         return createAppointment(customerUserId, null, bearerToken, request);
     }
 
+    /**
+     * CN-19: lễ tân đặt lịch hộ khách tại quầy.
+     *
+     * Khác đường đặt lịch của khách ở chỗ kiểm quyền sở hữu: nhân viên không phải chủ con vật nên
+     * không hỏi được {@code /pets/me}. Ở đây tra hồ sơ con vật rồi đối chiếu chủ nuôi với khách
+     * nhân viên chọn — vẫn không cho gắn nhầm con vật của người khác, chỉ là kiểm ở chỗ khác.
+     */
+    @Transactional
+    public AppointmentResponse createWalkInAppointment(UUID customerUserId, String bearerToken,
+                                                      AppointmentRequest request) {
+        PetResponse pet = petServiceClient.getPetById(request.petId(), bearerToken);
+        if (!customerUserId.equals(pet.ownerUserId())) {
+            throw new ResourceNotFoundException(
+                    "Thú cưng " + request.petId() + " không thuộc về khách đã chọn");
+        }
+        return book(customerUserId, null, request, pet);
+    }
+
     /** `customerEmail` lấy từ JWT của khách, dùng cho email xác nhận lịch (CN-43). */
     @Transactional
     public AppointmentResponse createAppointment(UUID customerUserId, String customerEmail, String bearerToken,
                                                  AppointmentRequest request) {
-        PetResponse pet = validateOwnsPet(request.petId(), bearerToken);
+        return book(customerUserId, customerEmail, request, validateOwnsPet(request.petId(), bearerToken));
+    }
 
+    /** Phần chung của hai đường đặt lịch — quyền sở hữu con vật đã kiểm xong trước khi vào đây. */
+    private AppointmentResponse book(UUID customerUserId, String customerEmail, AppointmentRequest request,
+                                    PetResponse pet) {
         // Chặn đặt vào khung giờ đã trôi qua của hôm nay — kể cả khi client gọi thẳng API,
         // bỏ qua bộ lọc đã có ở SlotService.getAvailableTimes.
         if (request.date().isEqual(LocalDate.now(ClinicSchedule.ZONE_ID))
@@ -84,6 +110,8 @@ public class AppointmentService {
                 .slot(slot)
                 .customerUserId(customerUserId)
                 .petId(request.petId())
+                // VD-21: kiểm dịch vụ có thật và còn cung cấp; null thì bỏ qua, khách không chọn.
+                .service(clinicServiceCatalog.requireBookable(request.serviceId()))
                 .reason(request.reason())
                 .build();
 
@@ -103,7 +131,7 @@ public class AppointmentService {
     @Transactional(readOnly = true)
     public AppointmentDetailResponse getAppointmentDetail(UUID appointmentId, String bearerToken) {
         Appointment appointment = getAppointmentOrThrow(appointmentId);
-        PetResponse pet = profileServiceClient.getPetById(appointment.getPetId(), bearerToken);
+        PetResponse pet = petServiceClient.getPetById(appointment.getPetId(), bearerToken);
         return toDetailResponse(appointment, pet);
     }
 
@@ -175,7 +203,7 @@ public class AppointmentService {
 
     private PetResponse validateOwnsPet(UUID petId, String bearerToken) {
         try {
-            return profileServiceClient.getMyPet(petId, bearerToken);
+            return petServiceClient.getMyPet(petId, bearerToken);
         } catch (FeignException.NotFound | FeignException.Forbidden e) {
             throw new ResourceNotFoundException("Pet not found or not owned by customer: " + petId);
         }
@@ -183,15 +211,19 @@ public class AppointmentService {
 
     private AppointmentResponse toResponse(Appointment appointment) {
         AppointmentSlot slot = appointment.getSlot();
+        ClinicService service = appointment.getService();
         return new AppointmentResponse(appointment.getId(), slot.getId(), slot.getDoctorUserId(), slot.getDate(),
                 slot.getStartTime(), slot.getEndTime(), appointment.getCustomerUserId(), appointment.getPetId(),
+                service == null ? null : service.getId(), service == null ? null : service.getName(),
                 appointment.getReason(), appointment.getStatus(), appointment.getCreatedAt(), appointment.getUpdatedAt());
     }
 
     private AppointmentDetailResponse toDetailResponse(Appointment appointment, PetResponse pet) {
         AppointmentSlot slot = appointment.getSlot();
+        ClinicService service = appointment.getService();
         return new AppointmentDetailResponse(appointment.getId(), slot.getId(), slot.getDoctorUserId(), slot.getDate(),
                 slot.getStartTime(), slot.getEndTime(), appointment.getCustomerUserId(), appointment.getPetId(),
+                service == null ? null : service.getId(), service == null ? null : service.getName(),
                 appointment.getReason(), appointment.getStatus(), appointment.getCreatedAt(), appointment.getUpdatedAt(),
                 pet);
     }

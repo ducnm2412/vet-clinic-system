@@ -1,5 +1,8 @@
 package com.vetclinic.order.service;
 
+import com.fasterxml.jackson.core.JacksonException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vetclinic.order.client.ProductClient;
 import com.vetclinic.order.domain.Cart;
 import com.vetclinic.order.domain.CartItem;
@@ -17,11 +20,13 @@ import com.vetclinic.order.exception.EmptyCartException;
 import com.vetclinic.order.exception.InvalidOrderStateException;
 import com.vetclinic.order.exception.ProductUnavailableException;
 import com.vetclinic.order.exception.ResourceNotFoundException;
+import com.vetclinic.order.exception.StockServiceUnavailableException;
 import com.vetclinic.order.messaging.OrderCancelledEvent;
 import com.vetclinic.order.messaging.OrderCompletedEvent;
 import com.vetclinic.order.repository.CartRepository;
 import com.vetclinic.order.repository.OrderRepository;
 import com.vetclinic.order.repository.OrderStatusHistoryRepository;
+import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -52,6 +57,9 @@ public class OrderService {
     private final OrderStatusHistoryRepository historyRepository;
     private final CartRepository cartRepository;
     private final CartService cartService;
+    private final ProductClient productClient;
+    /** Chỉ dùng để đọc câu giải thích trong thân lỗi 409 của product-service. */
+    private final ObjectMapper objectMapper;
     private final ApplicationEventPublisher eventPublisher;
     private final SecureRandom secureRandom = new SecureRandom();
 
@@ -175,26 +183,67 @@ public class OrderService {
     }
 
     /**
-     * CN-37: xác nhận đơn — đây là lúc chốt bán nên phát sự kiện trừ kho.
+     * CN-37: xác nhận đơn — đây là lúc chốt bán nên trừ kho.
      *
-     * Không đợi tới lúc giao xong: hàng đã hứa cho đơn này mà còn nằm trong kho thì khách
-     * khác vẫn mua được, dẫn tới bán quá số lượng thực có.
+     * VD-14: trừ kho ĐỒNG BỘ, đợi product-service trả lời rồi mới chốt. Trước đây chỉ phát sự
+     * kiện rồi trả về ngay: thiếu hàng thì bên kia ghi log và bỏ qua, đơn vẫn CONFIRMED trong
+     * khi kho không trừ — tức là hứa bán món không còn hàng.
+     *
+     * Gọi remote nằm TRONG transaction, chấp nhận có lúc product-service đã trừ xong mà
+     * order-service commit hỏng. Khi đó đơn vẫn chờ xác nhận và nhân viên bấm lại: lần gọi sau
+     * mang cùng orderId nên product-service nhận ra đã trừ rồi và không trừ lần hai.
      */
     @Transactional
-    public OrderResponse confirm(UUID orderId, UUID staffId, String note) {
+    public OrderResponse confirm(UUID orderId, UUID staffId, String note, String bearerToken) {
         Order order = transition(orderId, OrderStatus.CONFIRMED, staffId, note);
         order.setConfirmedAt(Instant.now());
+
+        deductStock(order, bearerToken);
 
         List<OrderCompletedEvent.Line> lines = order.getItems().stream()
                 .map(i -> new OrderCompletedEvent.Line(i.getProductId(), i.getQuantity()))
                 .toList();
 
-        // Publish qua ApplicationEventPublisher, không đẩy thẳng lên RabbitMQ:
-        // OrderEventPublisher chỉ gửi thật sau khi transaction commit (AFTER_COMMIT),
-        // tránh trường hợp DB rollback nhưng kho đã bị trừ.
+        // Sự kiện vẫn phát để service khác biết đơn đã chốt bán. product-service nghe và bỏ qua
+        // vì đã trừ ở trên rồi (chống trùng theo orderId).
         eventPublisher.publishEvent(new OrderCompletedEvent(order.getId(), lines));
 
         return toResponse(order);
+    }
+
+    private void deductStock(Order order, String bearerToken) {
+        List<ProductClient.StockDeductionRequest.Line> lines = order.getItems().stream()
+                .map(i -> new ProductClient.StockDeductionRequest.Line(i.getProductId(), i.getQuantity()))
+                .toList();
+
+        try {
+            var result = productClient.deductStock(
+                    new ProductClient.StockDeductionRequest(order.getId(), lines), bearerToken);
+            log.info("Đơn {}: đã trừ kho {} dòng hàng", order.getOrderCode(), result.applied());
+        } catch (FeignException.Conflict e) {
+            // Thiếu hàng: product-service không trừ dòng nào. Trả nguyên văn lời giải thích của
+            // bên kia (có tên sản phẩm và số còn lại) cho nhân viên đang đứng ở quầy.
+            throw new ProductUnavailableException(messageOf(e));
+        } catch (FeignException.NotFound e) {
+            throw new ProductUnavailableException("Có sản phẩm trong đơn không còn tồn tại");
+        } catch (FeignException e) {
+            // Chỉ bắt lỗi GỌI service (tắt máy, quá hạn, 5xx). Lỗi lập trình phải nổi lên thành
+            // 500 để còn thấy mà sửa, không nguỵ trang thành "thử lại sau".
+            throw new StockServiceUnavailableException(e);
+        }
+    }
+
+    /** Lấy trường "message" trong thân lỗi của product-service; không đọc được thì nói chung chung. */
+    private String messageOf(FeignException e) {
+        try {
+            JsonNode message = objectMapper.readTree(e.contentUTF8()).get("message");
+            if (message != null && !message.asText().isBlank()) {
+                return message.asText();
+            }
+        } catch (JacksonException ignored) {
+            // Thân lỗi không phải JSON quen thuộc — dùng câu mặc định bên dưới.
+        }
+        return "Kho không đủ hàng cho đơn này";
     }
 
     @Transactional

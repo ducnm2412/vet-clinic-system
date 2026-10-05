@@ -17,7 +17,7 @@ import {
 
 /**
  * Tra cứu thú cưng cho bác sĩ, nhân viên và quản trị — cả ba dùng chung
- * `GET /profile/pets`. Lọc theo tên làm ở phía giao diện vì endpoint không nhận tham số
+ * `GET /pets`. Lọc theo tên làm ở phía giao diện vì endpoint không nhận tham số
  * tìm kiếm; danh sách một phòng khám đủ nhỏ để làm vậy.
  *
  * `basePath` (nếu truyền vào, ví dụ "/doctor/pets") biến mỗi thẻ thành link sang

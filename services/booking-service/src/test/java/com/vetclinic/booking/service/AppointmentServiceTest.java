@@ -1,8 +1,9 @@
 package com.vetclinic.booking.service;
 
-import com.vetclinic.booking.client.ProfileServiceClient;
+import com.vetclinic.booking.client.PetServiceClient;
 import com.vetclinic.booking.domain.AppointmentSlot;
 import com.vetclinic.booking.domain.AppointmentStatus;
+import com.vetclinic.booking.domain.ClinicService;
 import com.vetclinic.booking.domain.SlotStatus;
 import com.vetclinic.booking.dto.AppointmentDetailResponse;
 import com.vetclinic.booking.dto.AppointmentRequest;
@@ -12,6 +13,7 @@ import com.vetclinic.booking.dto.SuggestedSlotResponse;
 import com.vetclinic.booking.exception.ResourceNotFoundException;
 import com.vetclinic.booking.exception.SlotFullyBookedException;
 import com.vetclinic.booking.repository.AppointmentRepository;
+import com.vetclinic.booking.repository.ClinicServiceRepository;
 import com.vetclinic.booking.repository.AppointmentSlotRepository;
 import feign.FeignException;
 import feign.Request;
@@ -21,6 +23,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -52,13 +55,16 @@ class AppointmentServiceTest {
     @Autowired
     private AppointmentRepository appointmentRepository;
 
+    @Autowired
+    private ClinicServiceRepository clinicServiceRepository;
+
     @MockBean
-    private ProfileServiceClient profileServiceClient;
+    private PetServiceClient petServiceClient;
 
     @Test
     @Transactional
     void createAppointment_bookAvailableSlot_success() {
-        when(profileServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
+        when(petServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
 
         LocalDate date = LocalDate.of(2026, 12, 1);
         LocalTime time = LocalTime.of(9, 0);
@@ -66,7 +72,7 @@ class AppointmentServiceTest {
                 .doctorUserId(UUID.randomUUID()).date(date).startTime(time).endTime(time.plusMinutes(30)).build());
 
         UUID petId = UUID.randomUUID();
-        AppointmentRequest request = new AppointmentRequest(petId, date, time, "Checkup");
+        AppointmentRequest request = new AppointmentRequest(petId, date, time, null, "Checkup");
 
         AppointmentResponse response = appointmentService.createAppointment(
                 UUID.randomUUID(), "Bearer test-token", request);
@@ -81,15 +87,94 @@ class AppointmentServiceTest {
 
     @Test
     @Transactional
+    void createAppointment_withService_recordsWhatTheCustomerAskedFor() {
+        when(petServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
+
+        LocalDate date = LocalDate.of(2026, 12, 8);
+        LocalTime time = LocalTime.of(9, 0);
+        appointmentSlotRepository.saveAndFlush(AppointmentSlot.builder()
+                .doctorUserId(UUID.randomUUID()).date(date).startTime(time).endTime(time.plusMinutes(30)).build());
+
+        // VD-21: bốn dịch vụ đã có sẵn từ migration.
+        ClinicService tiemPhong = clinicServiceRepository.findBySlug("tiem-phong").orElseThrow();
+
+        AppointmentResponse response = appointmentService.createAppointment(UUID.randomUUID(), "Bearer t",
+                new AppointmentRequest(UUID.randomUUID(), date, time, tiemPhong.getId(), null));
+
+        assertThat(response.serviceId()).isEqualTo(tiemPhong.getId());
+        // Tên trả kèm để màn hình không phải hỏi thêm lượt nữa.
+        assertThat(response.serviceName()).isEqualTo("Tiêm phòng");
+    }
+
+    @Test
+    @Transactional
+    void createAppointment_withServiceTheClinicStopped_isRefused() {
+        when(petServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
+
+        LocalDate date = LocalDate.of(2026, 12, 9);
+        LocalTime time = LocalTime.of(9, 0);
+        appointmentSlotRepository.saveAndFlush(AppointmentSlot.builder()
+                .doctorUserId(UUID.randomUUID()).date(date).startTime(time).endTime(time.plusMinutes(30)).build());
+
+        ClinicService stopped = clinicServiceRepository.findBySlug("phau-thuat").orElseThrow();
+        stopped.setActive(false);
+        clinicServiceRepository.saveAndFlush(stopped);
+
+        // Khách mở trang đặt lịch từ trước, phòng khám ngừng dịch vụ giữa chừng: nói rõ thay vì
+        // lặng lẽ tạo lịch hẹn không có dịch vụ.
+        assertThatThrownBy(() -> appointmentService.createAppointment(UUID.randomUUID(), "Bearer t",
+                new AppointmentRequest(UUID.randomUUID(), date, time, stopped.getId(), null)))
+                .isInstanceOf(ResponseStatusException.class);
+    }
+
+    @Test
+    @Transactional
+    void walkIn_staffBooksForACustomerWhoOwnsThePet() {
+        UUID customer = UUID.randomUUID();
+        UUID petId = UUID.randomUUID();
+        when(petServiceClient.getPetById(any(), any())).thenReturn(petOf(customer, petId));
+
+        LocalDate date = LocalDate.of(2026, 12, 10);
+        LocalTime time = LocalTime.of(9, 0);
+        appointmentSlotRepository.saveAndFlush(AppointmentSlot.builder()
+                .doctorUserId(UUID.randomUUID()).date(date).startTime(time).endTime(time.plusMinutes(30)).build());
+
+        AppointmentResponse response = appointmentService.createWalkInAppointment(customer, "Bearer staff",
+                new AppointmentRequest(petId, date, time, null, "Khách đến quầy"));
+
+        assertThat(response.customerUserId()).isEqualTo(customer);
+        assertThat(response.petId()).isEqualTo(petId);
+    }
+
+    @Test
+    @Transactional
+    void walkIn_petOfSomeoneElseIsRefused() {
+        UUID chosenCustomer = UUID.randomUUID();
+        UUID petId = UUID.randomUUID();
+        // Nhân viên chọn nhầm khách: con vật này của người khác.
+        when(petServiceClient.getPetById(any(), any())).thenReturn(petOf(UUID.randomUUID(), petId));
+
+        LocalDate date = LocalDate.of(2026, 12, 11);
+        LocalTime time = LocalTime.of(9, 0);
+        appointmentSlotRepository.saveAndFlush(AppointmentSlot.builder()
+                .doctorUserId(UUID.randomUUID()).date(date).startTime(time).endTime(time.plusMinutes(30)).build());
+
+        assertThatThrownBy(() -> appointmentService.createWalkInAppointment(chosenCustomer, "Bearer staff",
+                new AppointmentRequest(petId, date, time, null, null)))
+                .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    @Transactional
     void createAppointment_petNotOwnedByCustomer_throwsResourceNotFound() {
-        when(profileServiceClient.getMyPet(any(), any())).thenThrow(notFoundFromProfileService());
+        when(petServiceClient.getMyPet(any(), any())).thenThrow(notFoundFromPetService());
 
         LocalDate date = LocalDate.of(2026, 12, 2);
         LocalTime time = LocalTime.of(9, 0);
         appointmentSlotRepository.saveAndFlush(AppointmentSlot.builder()
                 .doctorUserId(UUID.randomUUID()).date(date).startTime(time).endTime(time.plusMinutes(30)).build());
 
-        AppointmentRequest request = new AppointmentRequest(UUID.randomUUID(), date, time, null);
+        AppointmentRequest request = new AppointmentRequest(UUID.randomUUID(), date, time, null, null);
 
         assertThatThrownBy(() -> appointmentService.createAppointment(UUID.randomUUID(), "Bearer test-token", request))
                 .isInstanceOf(ResourceNotFoundException.class);
@@ -100,7 +185,7 @@ class AppointmentServiceTest {
     @Test
     @Transactional
     void createAppointment_slotFullyBooked_suggestsNearestSameDayTime() {
-        when(profileServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
+        when(petServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
 
         LocalDate date = LocalDate.of(2026, 12, 3);
         LocalTime requestedTime = LocalTime.of(9, 0);
@@ -109,7 +194,7 @@ class AppointmentServiceTest {
                 .doctorUserId(UUID.randomUUID()).date(date)
                 .startTime(LocalTime.of(9, 30)).endTime(LocalTime.of(10, 0)).build());
 
-        AppointmentRequest request = new AppointmentRequest(UUID.randomUUID(), date, requestedTime, null);
+        AppointmentRequest request = new AppointmentRequest(UUID.randomUUID(), date, requestedTime, null, null);
 
         assertThatThrownBy(() -> appointmentService.createAppointment(UUID.randomUUID(), "Bearer test-token", request))
                 .isInstanceOf(SlotFullyBookedException.class)
@@ -122,7 +207,7 @@ class AppointmentServiceTest {
 
     @Test
     void createAppointment_preventsDoubleBooking_underConcurrency() throws InterruptedException {
-        when(profileServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
+        when(petServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
 
         LocalDate date = LocalDate.of(2026, 12, 4);
         LocalTime time = LocalTime.of(9, 0);
@@ -144,7 +229,7 @@ class AppointmentServiceTest {
                     Thread.currentThread().interrupt();
                 }
 
-                AppointmentRequest request = new AppointmentRequest(UUID.randomUUID(), date, time, null);
+                AppointmentRequest request = new AppointmentRequest(UUID.randomUUID(), date, time, null, null);
                 try {
                     appointmentService.createAppointment(UUID.randomUUID(), "Bearer test-token", request);
                     successCount.incrementAndGet();
@@ -168,9 +253,9 @@ class AppointmentServiceTest {
 
     @Test
     @Transactional
-    void getAppointmentDetail_enrichesWithPetFromProfileService() {
-        when(profileServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
-        when(profileServiceClient.getPetById(any(), any())).thenReturn(dummyPet());
+    void getAppointmentDetail_enrichesWithPetFromPetService() {
+        when(petServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
+        when(petServiceClient.getPetById(any(), any())).thenReturn(dummyPet());
 
         LocalDate date = LocalDate.of(2026, 12, 5);
         LocalTime time = LocalTime.of(9, 0);
@@ -178,7 +263,7 @@ class AppointmentServiceTest {
                 .doctorUserId(UUID.randomUUID()).date(date).startTime(time).endTime(time.plusMinutes(30)).build());
 
         AppointmentResponse created = appointmentService.createAppointment(UUID.randomUUID(), "Bearer test-token",
-                new AppointmentRequest(UUID.randomUUID(), date, time, "Checkup"));
+                new AppointmentRequest(UUID.randomUUID(), date, time, null, "Checkup"));
 
         AppointmentDetailResponse detail = appointmentService.getAppointmentDetail(created.id(), "Bearer staff-token");
 
@@ -196,7 +281,7 @@ class AppointmentServiceTest {
     @Test
     @Transactional
     void listMyAppointments_returnsOnlyOwnAppointments() {
-        when(profileServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
+        when(petServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
 
         LocalDate date = LocalDate.of(2026, 12, 6);
         appointmentSlotRepository.saveAndFlush(AppointmentSlot.builder()
@@ -209,9 +294,9 @@ class AppointmentServiceTest {
         UUID customerA = UUID.randomUUID();
         UUID customerB = UUID.randomUUID();
         appointmentService.createAppointment(customerA, "Bearer test-token",
-                new AppointmentRequest(UUID.randomUUID(), date, LocalTime.of(9, 0), null));
+                new AppointmentRequest(UUID.randomUUID(), date, LocalTime.of(9, 0), null, null));
         appointmentService.createAppointment(customerB, "Bearer test-token",
-                new AppointmentRequest(UUID.randomUUID(), date, LocalTime.of(9, 30), null));
+                new AppointmentRequest(UUID.randomUUID(), date, LocalTime.of(9, 30), null, null));
 
         List<AppointmentResponse> customerAAppointments = appointmentService.listMyAppointments(customerA);
 
@@ -222,7 +307,7 @@ class AppointmentServiceTest {
     @Test
     @Transactional
     void search_filtersByDoctorAndDate() {
-        when(profileServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
+        when(petServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
 
         LocalDate date = LocalDate.of(2026, 12, 7);
         UUID doctorA = UUID.randomUUID();
@@ -235,9 +320,9 @@ class AppointmentServiceTest {
                 .startTime(LocalTime.of(9, 30)).endTime(LocalTime.of(10, 0)).build());
 
         appointmentService.createAppointment(UUID.randomUUID(), "Bearer test-token",
-                new AppointmentRequest(UUID.randomUUID(), date, LocalTime.of(9, 0), null));
+                new AppointmentRequest(UUID.randomUUID(), date, LocalTime.of(9, 0), null, null));
         appointmentService.createAppointment(UUID.randomUUID(), "Bearer test-token",
-                new AppointmentRequest(UUID.randomUUID(), date, LocalTime.of(9, 30), null));
+                new AppointmentRequest(UUID.randomUUID(), date, LocalTime.of(9, 30), null, null));
 
         List<AppointmentResponse> doctorAResults = appointmentService.search(date, null, doctorA);
 
@@ -248,7 +333,7 @@ class AppointmentServiceTest {
     @Test
     @Transactional
     void cancelAppointment_byNonOwnerCustomer_throwsResourceNotFound() {
-        when(profileServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
+        when(petServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
 
         LocalDate date = LocalDate.of(2026, 12, 8);
         LocalTime time = LocalTime.of(9, 0);
@@ -257,7 +342,7 @@ class AppointmentServiceTest {
 
         UUID owner = UUID.randomUUID();
         AppointmentResponse created = appointmentService.createAppointment(owner, "Bearer test-token",
-                new AppointmentRequest(UUID.randomUUID(), date, time, null));
+                new AppointmentRequest(UUID.randomUUID(), date, time, null, null));
 
         assertThatThrownBy(() -> appointmentService.cancelAppointment(created.id(), UUID.randomUUID(), false))
                 .isInstanceOf(ResourceNotFoundException.class);
@@ -266,7 +351,7 @@ class AppointmentServiceTest {
     @Test
     @Transactional
     void updateStatus_updatesAppointmentStatus() {
-        when(profileServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
+        when(petServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
 
         LocalDate date = LocalDate.of(2026, 12, 9);
         LocalTime time = LocalTime.of(9, 0);
@@ -274,7 +359,7 @@ class AppointmentServiceTest {
                 .doctorUserId(UUID.randomUUID()).date(date).startTime(time).endTime(time.plusMinutes(30)).build());
 
         AppointmentResponse created = appointmentService.createAppointment(UUID.randomUUID(), "Bearer test-token",
-                new AppointmentRequest(UUID.randomUUID(), date, time, null));
+                new AppointmentRequest(UUID.randomUUID(), date, time, null, null));
 
         AppointmentResponse updated = appointmentService.updateStatus(created.id(), AppointmentStatus.CONFIRMED);
 
@@ -286,7 +371,7 @@ class AppointmentServiceTest {
     // trước migration, insert thứ 2 sẽ ném DataIntegrityViolationException do vi phạm unique cũ.
     @Test
     void cancelAppointment_releasesSlot_andAllowsRebookingSameSlot() {
-        when(profileServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
+        when(petServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
 
         LocalDate date = LocalDate.of(2026, 12, 11);
         LocalTime time = LocalTime.of(9, 0);
@@ -294,7 +379,7 @@ class AppointmentServiceTest {
                 .doctorUserId(UUID.randomUUID()).date(date).startTime(time).endTime(time.plusMinutes(30)).build());
 
         AppointmentResponse first = appointmentService.createAppointment(UUID.randomUUID(), "Bearer test-token",
-                new AppointmentRequest(UUID.randomUUID(), date, time, "First booking"));
+                new AppointmentRequest(UUID.randomUUID(), date, time, null, "First booking"));
 
         appointmentService.cancelAppointment(first.id(), first.customerUserId(), false);
 
@@ -302,7 +387,7 @@ class AppointmentServiceTest {
         assertThat(reloadedAfterCancel.getStatus()).isEqualTo(SlotStatus.AVAILABLE);
 
         AppointmentResponse second = appointmentService.createAppointment(UUID.randomUUID(), "Bearer test-token",
-                new AppointmentRequest(UUID.randomUUID(), date, time, "Second booking after cancel"));
+                new AppointmentRequest(UUID.randomUUID(), date, time, null, "Second booking after cancel"));
 
         assertThat(second.slotId()).isEqualTo(slot.getId());
         assertThat(second.status()).isEqualTo(AppointmentStatus.PENDING);
@@ -311,16 +396,21 @@ class AppointmentServiceTest {
         appointmentSlotRepository.deleteById(slot.getId());
     }
 
-    private PetResponse dummyPet() {
-        return new PetResponse(UUID.randomUUID(), "Milo", "Dog", "Poodle", "MALE",
-                LocalDate.of(2020, 1, 1), null, Instant.now(), Instant.now());
+    private PetResponse petOf(UUID ownerUserId, UUID petId) {
+        return new PetResponse(petId, ownerUserId, "Milo", "Dog", "Poodle", "MALE",
+                LocalDate.of(2020, 1, 1), null, null, null, Instant.now(), Instant.now());
     }
 
-    private FeignException notFoundFromProfileService() {
-        Request request = Request.create(Request.HttpMethod.GET, "/profile/customer/me/pets/x",
+    private PetResponse dummyPet() {
+        return new PetResponse(UUID.randomUUID(), UUID.randomUUID(), "Milo", "Dog", "Poodle", "MALE",
+                LocalDate.of(2020, 1, 1), null, null, null, Instant.now(), Instant.now());
+    }
+
+    private FeignException notFoundFromPetService() {
+        Request request = Request.create(Request.HttpMethod.GET, "/pets/me/x",
                 Map.of(), null, StandardCharsets.UTF_8, null);
         Response response = Response.builder()
                 .status(404).reason("Not Found").request(request).headers(Map.of()).build();
-        return FeignException.errorStatus("ProfileServiceClient#getMyPet", response);
+        return FeignException.errorStatus("PetServiceClient#getMyPet", response);
     }
 }

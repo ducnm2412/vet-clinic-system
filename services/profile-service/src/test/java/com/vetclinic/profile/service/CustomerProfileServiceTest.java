@@ -1,20 +1,15 @@
 package com.vetclinic.profile.service;
 
-import com.vetclinic.profile.domain.PetGender;
 import com.vetclinic.profile.dto.AddressRequest;
 import com.vetclinic.profile.dto.AddressResponse;
 import com.vetclinic.profile.dto.CustomerProfileRequest;
 import com.vetclinic.profile.dto.CustomerProfileResponse;
-import com.vetclinic.profile.dto.PetRequest;
-import com.vetclinic.profile.dto.PetResponse;
 import com.vetclinic.profile.exception.ResourceNotFoundException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -92,23 +87,6 @@ class CustomerProfileServiceTest {
     }
 
     @Test
-    void createPet_thenUpdateThenDelete() {
-        UUID userId = UUID.randomUUID();
-
-        PetResponse created = customerProfileService.createPet(userId,
-                new PetRequest("Milo", "Dog", "Poodle", PetGender.MALE, null, BigDecimal.valueOf(5.5)));
-        assertThat(customerProfileService.listPets(userId)).hasSize(1);
-
-        PetResponse updated = customerProfileService.updatePet(userId, created.id(),
-                new PetRequest("Milo Updated", "Dog", null, null, null, BigDecimal.valueOf(6.0)));
-        assertThat(updated.name()).isEqualTo("Milo Updated");
-        assertThat(updated.weightKg()).isEqualByComparingTo("6.0");
-
-        customerProfileService.deletePet(userId, created.id());
-        assertThat(customerProfileService.listPets(userId)).isEmpty();
-    }
-
-    @Test
     void getProfileById_found_returnsProfile() {
         UUID userId = UUID.randomUUID();
         CustomerProfileResponse created = customerProfileService.updateMyProfile(userId,
@@ -126,32 +104,4 @@ class CustomerProfileServiceTest {
                 .isInstanceOf(ResourceNotFoundException.class);
     }
 
-    // KHÔNG dùng transaction rollback của lớp test (Propagation.NOT_SUPPORTED) — cố tình để
-    // getPet() tự mở transaction thật của riêng nó, y hệt lúc chạy production, vì bug gốc
-    // (@Transactional(readOnly = true) nhưng getOrCreateProfile lại INSERT) chỉ lộ ra khi
-    // đây thực sự là transaction ngoài cùng, không bị transaction bọc ngoài của test che mất.
-    @Test
-    @Transactional(propagation = Propagation.NOT_SUPPORTED)
-    void getPet_newCustomer_lazyCreatesProfileThenThrowsNotFoundForUnrelatedPet() {
-        UUID userId = UUID.randomUUID();
-        UUID unrelatedPetId = UUID.randomUUID();
-
-        try {
-            assertThatThrownBy(() -> customerProfileService.getPet(userId, unrelatedPetId))
-                    .isInstanceOf(ResourceNotFoundException.class);
-        } finally {
-            customerProfileService.deleteByUserId(userId);
-        }
-    }
-
-    @Test
-    void deletePet_wrongOwner_throws() {
-        UUID owner = UUID.randomUUID();
-        UUID intruder = UUID.randomUUID();
-        PetResponse pet = customerProfileService.createPet(owner,
-                new PetRequest("Milo", "Dog", null, null, null, null));
-
-        assertThatThrownBy(() -> customerProfileService.deletePet(intruder, pet.id()))
-                .isInstanceOf(ResourceNotFoundException.class);
-    }
 }

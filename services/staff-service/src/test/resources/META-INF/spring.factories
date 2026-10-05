@@ -1,0 +1,2 @@
+# VD-12: chặn test chạy vào database thật — áp dụng cho mọi @SpringBootTest của service.
+org.springframework.context.ApplicationListener=com.vetclinic.staff.TestDatabaseGuard

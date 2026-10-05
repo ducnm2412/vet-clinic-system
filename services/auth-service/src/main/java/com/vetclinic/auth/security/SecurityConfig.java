@@ -4,6 +4,7 @@ import com.vetclinic.auth.security.jwt.JwtAuthFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -36,6 +37,11 @@ public class SecurityConfig {
                         .requestMatchers("/auth/register", "/auth/login", "/auth/google", "/auth/facebook",
                                 "/auth/verify-email", "/auth/forgot-password", "/auth/reset-password",
                                 "/auth/refresh", "/auth/logout", "/error").permitAll()
+                        // CN-19: lễ tân mở tài khoản cho khách tại quầy. KHÔNG dùng @PreAuthorize ở
+                        // auth-service: service này chưa bật @EnableMethodSecurity nên annotation đó
+                        // im lặng không có tác dụng — mọi rule quyền ở đây phải khai bằng matcher.
+                        .requestMatchers(HttpMethod.POST, "/auth/customers").hasAnyRole("STAFF", "ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/auth/customers").hasAnyRole("STAFF", "ADMIN")
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated())
                 .exceptionHandling(ex -> ex.authenticationEntryPoint((request, response, authException) ->
