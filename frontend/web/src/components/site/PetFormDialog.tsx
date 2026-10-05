@@ -7,8 +7,6 @@ import { z } from "zod";
 import { ApiError, myPetApi } from "@/lib/api";
 import { useToast } from "@/components/ui";
 import type { Pet } from "@/types";
-import { PhotoUploadButton } from "@/components/PhotoUploadButton";
-import { PetAvatar } from "./PetAvatar";
 import { SiteButton } from "./primitives";
 import { SiteDialog } from "./SiteDialog";
 import { SiteInput, SiteSelect, SiteTextarea } from "./fields";
@@ -114,22 +112,6 @@ export function PetFormDialog({
         </>
       }
     >
-      {/* Chưa có id thì chưa tải ảnh lên được — thú cưng mới thêm xong mở "Sửa hồ sơ" để đăng ảnh. */}
-      {pet && (
-        <div className="mb-5 flex items-center gap-5">
-          <PetAvatar species={pet.species} photoUrl={pet.photoUrl} name={pet.name} small className="h-20 w-16" />
-          <div>
-            <PhotoUploadButton
-              variant="site"
-              label={pet.photoUrl ? "Đổi ảnh" : "Thêm ảnh"}
-              upload={(file) => customerApi.uploadPetPhoto(pet.id, file)}
-              onUploaded={() => qc.invalidateQueries({ queryKey: ["pets"] })}
-            />
-            <p className="mt-2 text-sm text-stone">JPG, PNG hoặc WebP, tối đa 5MB.</p>
-          </div>
-        </div>
-      )}
-
       <form id="pet-form" onSubmit={handleSubmit((v) => save.mutate(v))} noValidate className="space-y-4">
         <SiteInput label="Tên gọi ở nhà" required error={errors.name?.message} {...register("name")} />
 

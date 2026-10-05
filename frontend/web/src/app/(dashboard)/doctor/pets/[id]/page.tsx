@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { ApiError, medicalRecordApi, petLookupApi } from "@/lib/api";
+import { ApiError, petLookupApi } from "@/lib/api";
 import { PRESCRIPTION_STATUS, speciesStripe } from "@/lib/utils/status";
 import { formatAge, formatDate, formatDateTime } from "@/lib/utils/format";
 import { cn } from "@/lib/utils/cn";
@@ -13,7 +13,7 @@ import { Button, EmptyState, ErrorState, Spinner, StatusTag } from "@/components
 
 /**
  * Lịch sử khám của 1 thú cưng — mở từ thẻ thú cưng ở trang "Thú cưng". Gộp mọi bệnh án
- * qua các lần khám (GET /booking/medical-records/by-pet/{petId}), mới nhất trước.
+ * qua các lần khám (GET /pets/{petId}/medical-records), mới nhất trước.
  */
 export default function DoctorPetRecordsPage() {
   const { id } = useParams<{ id: string }>();
@@ -22,7 +22,7 @@ export default function DoctorPetRecordsPage() {
   const pet = useQuery({ queryKey: ["pets", id], queryFn: () => petLookupApi.byId(id) });
   const records = useQuery({
     queryKey: ["medical-records", "by-pet", id],
-    queryFn: () => medicalRecordApi.byPet(id),
+    queryFn: () => petLookupApi.history(id),
   });
 
   if (pet.isLoading) return <Spinner label="Đang mở hồ sơ thú cưng" />;

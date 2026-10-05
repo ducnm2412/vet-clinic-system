@@ -48,13 +48,6 @@ public class CustomerProfileController {
         return customerProfileService.uploadMyPhoto(principal.userId(), file);
     }
 
-    @PostMapping(value = "/profile/customer/me/pets/{petId}/photo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public PetResponse uploadPetPhoto(@AuthenticationPrincipal AuthenticatedUser principal,
-                                       @PathVariable UUID petId,
-                                       @RequestParam("file") MultipartFile file) {
-        return customerProfileService.uploadPetPhoto(principal.userId(), petId, file);
-    }
-
     @GetMapping("/profile/customer/me/addresses")
     public List<AddressResponse> listAddresses(@AuthenticationPrincipal AuthenticatedUser principal) {
         return customerProfileService.listAddresses(principal.userId());

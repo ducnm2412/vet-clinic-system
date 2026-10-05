@@ -3,6 +3,9 @@ package com.vetclinic.auth.controller;
 import com.vetclinic.auth.dto.AccessTokenResponse;
 import com.vetclinic.auth.dto.AuthResponse;
 import com.vetclinic.auth.dto.CreateCustomerAccountRequest;
+import com.vetclinic.auth.dto.FacebookLoginRequest;
+import com.vetclinic.auth.dto.ForgotPasswordRequest;
+import com.vetclinic.auth.dto.GoogleLoginRequest;
 import com.vetclinic.auth.dto.LoginRequest;
 import com.vetclinic.auth.dto.MessageResponse;
 import com.vetclinic.auth.dto.RegisterRequest;
@@ -10,6 +13,8 @@ import com.vetclinic.auth.dto.ResetPasswordRequest;
 import com.vetclinic.auth.dto.UserResponse;
 import com.vetclinic.auth.domain.RoleName;
 import com.vetclinic.auth.dto.PageResponse;
+import com.vetclinic.auth.exception.InvalidRefreshTokenException;
+import com.vetclinic.auth.security.RefreshCookieFactory;
 import com.vetclinic.auth.service.UserQueryService;
 import com.vetclinic.auth.service.AuthService;
 import com.vetclinic.auth.service.PasswordResetService;
@@ -35,6 +40,8 @@ public class AuthController {
 
     private final AuthService authService;
     private final UserQueryService userQueryService;
+    private final PasswordResetService passwordResetService;
+    private final RefreshCookieFactory refreshCookieFactory;
 
     @PostMapping("/register")
     @ResponseStatus(HttpStatus.CREATED)

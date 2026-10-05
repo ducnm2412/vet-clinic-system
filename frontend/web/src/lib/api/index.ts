@@ -9,7 +9,7 @@ export {
   http,
   qs,
 } from "./client";
-export { authApi, readToken, isExpired, ROLE_LABEL } from "./auth";
+export { authApi, readToken, ROLE_LABEL } from "./auth";
 export { customerApi, doctorApi, staffApi, customerLookupApi } from "./profile";
 export { myPetApi, petLookupApi, medicalRecordApi } from "./pets";
 export { productApi, categoryApi } from "./products";

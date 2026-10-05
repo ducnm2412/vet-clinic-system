@@ -6,6 +6,7 @@ import com.vetclinic.profile.dto.AddressRequest;
 import com.vetclinic.profile.dto.AddressResponse;
 import com.vetclinic.profile.dto.CustomerProfileRequest;
 import com.vetclinic.profile.dto.CustomerProfileResponse;
+import com.vetclinic.profile.dto.PhotoUrls;
 import com.vetclinic.profile.exception.ResourceNotFoundException;
 import com.vetclinic.profile.repository.AddressRepository;
 import com.vetclinic.profile.repository.CustomerProfileRepository;
@@ -23,6 +24,16 @@ public class CustomerProfileService {
 
     private final CustomerProfileRepository customerProfileRepository;
     private final AddressRepository addressRepository;
+    private final PhotoStorageService photoStorageService;
+
+    @Transactional
+    public CustomerProfileResponse uploadMyPhoto(UUID userId, MultipartFile file) {
+        CustomerProfile profile = getOrCreateProfile(userId);
+        photoStorageService.store(PhotoUrls.CUSTOMERS, profile.getId(), file);
+        profile.setPhotoVersion(profile.getPhotoVersion() + 1);
+        customerProfileRepository.saveAndFlush(profile);
+        return toProfileResponse(profile);
+    }
 
     @Transactional
     public CustomerProfileResponse getMyProfile(UUID userId) {

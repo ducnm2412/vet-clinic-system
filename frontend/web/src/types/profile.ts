@@ -1,6 +1,6 @@
 export type PetGender = "MALE" | "FEMALE" | "UNKNOWN";
 
-/** profile-service: PetResponse. Thú cưng hiện thuộc profile-service, không phải pet-service. */
+/** pet-service: PetResponse (VD-10). */
 export interface Pet {
   id: string;
   /** Chủ nuôi — userId bên auth-service. pet-service trả kèm để ghép với bảng tài khoản. */
@@ -14,6 +14,8 @@ export interface Pet {
   /** Dị ứng thuốc hoặc thức ăn; null khi chủ nuôi chưa khai (VD-22). */
   allergies: string | null;
   notes: string | null;
+  /** pet-service chưa hỗ trợ ảnh thú cưng nên hiện luôn vắng; giữ để UI tự rơi về hình mặc định theo loài. */
+  photoUrl?: string | null;
   createdAt: string;
   updatedAt: string;
 }

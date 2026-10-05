@@ -52,10 +52,6 @@ public class PrescriptionItem {
     @Column(columnDefinition = "TEXT")
     private String notes;
 
-    @Column(name = "photo_version", nullable = false)
-    @Builder.Default
-    private int photoVersion = 0;
-
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
