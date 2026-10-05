@@ -13,6 +13,12 @@ export const myPetApi = {
   add: (body: PetRequest) => http.post<Pet>("/pets/me", body),
   update: (id: string, body: PetRequest) => http.put<Pet>(`/pets/me/${id}`, body),
   remove: (id: string) => http.del<void>(`/pets/me/${id}`),
+  /** Ảnh đại diện (JPG/PNG/WebP, tối đa 5MB); ảnh mới ghi đè ảnh cũ. */
+  uploadPhoto: (id: string, file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    return http.postForm<Pet>(`/pets/me/${id}/photo`, form);
+  },
   /** CN-24: lịch sử khám của bé này, mới nhất trước. */
   history: (id: string) => http.get<MedicalRecord[]>(`/pets/me/${id}/medical-records`),
 };

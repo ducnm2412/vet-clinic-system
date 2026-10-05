@@ -63,7 +63,7 @@ echo "Đọc được $ROWS dòng từ profile_db"
 [ "$ROWS" -gt 0 ] || { echo "Không có gì để chuyển"; exit 0; }
 
 # Nạp vào bảng tạm rồi mới INSERT ... ON CONFLICT: COPY không biết bỏ qua trùng khoá.
-psql_pet -v ON_ERROR_STOP=1 -c "CREATE TABLE IF NOT EXISTS pets_incoming (LIKE pets); TRUNCATE pets_incoming;"
+psql_pet -v ON_ERROR_STOP=1 -c "CREATE TABLE IF NOT EXISTS pets_incoming (LIKE pets INCLUDING DEFAULTS); TRUNCATE pets_incoming;"
 # \copy là lệnh của psql, không phải SQL: phải đứng một mình trong -c, không ghép cùng câu khác.
 psql_pet -v ON_ERROR_STOP=1 -c "\copy pets_incoming (id, owner_user_id, name, species, breed, gender, date_of_birth, weight_kg, created_at, updated_at) FROM STDIN WITH (FORMAT csv)" < "$TMP"
 psql_pet -v ON_ERROR_STOP=1 -c "

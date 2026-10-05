@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,7 +19,10 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -28,7 +32,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *
  * Chủ nuôi luôn lấy từ token — không có đường nào để client tự khai mình là chủ của con khác.
  */
-@SpringBootTest(properties = "eureka.client.enabled=false")
+@SpringBootTest(properties = {"eureka.client.enabled=false", "app.upload.dir=${java.io.tmpdir}/pet-photo-test"})
 @AutoConfigureMockMvc
 @Transactional
 class PetSecurityTest {
@@ -86,6 +90,75 @@ class PetSecurityTest {
         // Khách khác hỏi đúng id đó: không tìm thấy, không phải "không có quyền".
         mockMvc.perform(get("/pets/me/" + petId).header("Authorization", bearer("CUSTOMER")))
                 .andExpect(status().isNotFound());
+    }
+
+    // 8 byte chữ ký PNG + vài byte dữ liệu: đủ để qua kiểm tra nội dung thật của file.
+    private static final byte[] PNG = {(byte) 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A, 1, 2, 3, 4};
+
+    private String createMilo(String customer) throws Exception {
+        String created = mockMvc.perform(post("/pets/me").header("Authorization", customer)
+                        .contentType(MediaType.APPLICATION_JSON).content(MILO))
+                .andReturn().getResponse().getContentAsString();
+        return created.replaceAll(".*\"id\"\\s*:\\s*\"([^\"]+)\".*", "$1");
+    }
+
+    @Test
+    void ownerUploadsPhotoAndOnlyOwnerAndClinicCanReadIt() throws Exception {
+        UUID me = UUID.randomUUID();
+        String customer = bearer("CUSTOMER", me);
+        String petId = createMilo(customer);
+
+        mockMvc.perform(get("/pets/me/" + petId).header("Authorization", customer))
+                .andExpect(jsonPath("$.photoUrl").doesNotExist());
+        mockMvc.perform(get("/pets/photos/" + petId).header("Authorization", customer))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(multipart("/pets/me/" + petId + "/photo")
+                        .file(new MockMultipartFile("file", "milo.png", "image/png", PNG))
+                        .header("Authorization", customer))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.photoUrl").value("/pets/photos/" + petId + "?v=1"));
+
+        mockMvc.perform(get("/pets/photos/" + petId).header("Authorization", customer))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "image/png"))
+                .andExpect(content().bytes(PNG));
+        for (String role : List.of("DOCTOR", "STAFF", "ADMIN")) {
+            mockMvc.perform(get("/pets/photos/" + petId).header("Authorization", bearer(role)))
+                    .andExpect(status().isOk());
+        }
+
+        // Khách khác: không thấy ảnh, không phải "không có quyền".
+        mockMvc.perform(get("/pets/photos/" + petId).header("Authorization", bearer("CUSTOMER")))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/pets/photos/" + petId)).andExpect(status().isUnauthorized());
+
+        // Tải ảnh mới: tăng phiên bản để trình duyệt bỏ cache.
+        mockMvc.perform(multipart("/pets/me/" + petId + "/photo")
+                        .file(new MockMultipartFile("file", "milo.png", "image/png", PNG))
+                        .header("Authorization", customer))
+                .andExpect(jsonPath("$.photoUrl").value("/pets/photos/" + petId + "?v=2"));
+    }
+
+    @Test
+    void photoUploadRejectsNonImagesAndOtherPeoplesPets() throws Exception {
+        String customer = bearer("CUSTOMER");
+        String petId = createMilo(customer);
+
+        // Tên và Content-Type khai là ảnh nhưng nội dung không phải: bị từ chối theo nội dung.
+        mockMvc.perform(multipart("/pets/me/" + petId + "/photo")
+                        .file(new MockMultipartFile("file", "x.png", "image/png", "not an image".getBytes()))
+                        .header("Authorization", customer))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(multipart("/pets/me/" + petId + "/photo")
+                        .file(new MockMultipartFile("file", "milo.png", "image/png", PNG))
+                        .header("Authorization", bearer("CUSTOMER")))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(multipart("/pets/me/" + petId + "/photo")
+                        .file(new MockMultipartFile("file", "milo.png", "image/png", PNG))
+                        .header("Authorization", bearer("STAFF")))
+                .andExpect(status().isForbidden());
     }
 
     @Test

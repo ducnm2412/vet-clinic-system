@@ -18,10 +18,8 @@ import { AuthedImage } from "@/components/AuthedImage";
  * Ảnh đại diện thú cưng: ảnh chủ nuôi tải lên nếu có (`photoUrl`), không thì mái vòm màu theo loài
  * kèm hình con vật tương ứng — đủ để phân biệt các bé với nhau mà không phải bịa ra ảnh không tồn tại.
  *
- * VD-22: dị ứng và ghi chú đã có trong `PetResponse` từ 25/09/2026; riêng ảnh thì chưa —
- * chưa có chỗ lưu file, nên dùng mái vòm màu theo loài thay cho ảnh thật.
- * Mỗi bé nhận một mái vòm màu theo loài kèm hình con vật tương ứng — đủ để phân biệt các bé
- * với nhau trong danh sách mà không phải bịa ra ảnh không tồn tại.
+ * Chưa có ảnh thì mỗi bé nhận một mái vòm màu theo loài kèm hình con vật tương ứng — đủ
+ * để phân biệt các bé với nhau trong danh sách mà không phải bịa ra ảnh không tồn tại.
  */
 const BY_SPECIES: Record<string, { icon: LucideIcon; skin: string }> = {
   chó: { icon: Dog, skin: "bg-[#0e9b8e]/12 text-[#0a7b70]" },

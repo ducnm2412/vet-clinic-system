@@ -6,6 +6,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.time.Instant;
 import java.util.LinkedHashMap;
@@ -27,6 +28,17 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BookingUnavailableException.class)
     public ResponseEntity<ErrorResponse> handleBookingDown(BookingUnavailableException ex) {
         return build(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage());
+    }
+
+    @ExceptionHandler(InvalidPhotoException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidPhoto(InvalidPhotoException ex) {
+        return build(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    // Vượt spring.servlet.multipart.max-file-size — bị chặn trước khi tới service nên phải bắt riêng.
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErrorResponse> handleUploadTooLarge(MaxUploadSizeExceededException ex) {
+        return build(HttpStatus.PAYLOAD_TOO_LARGE, "Ảnh quá lớn, tối đa 5MB");
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

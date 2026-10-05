@@ -5,12 +5,19 @@ import com.vetclinic.pet.dto.PetForOwnerRequest;
 import com.vetclinic.pet.dto.PetRequest;
 import com.vetclinic.pet.dto.PetResponse;
 import com.vetclinic.pet.service.MedicalRecordService;
+import com.vetclinic.pet.security.RoleUtils;
 import com.vetclinic.pet.security.jwt.AuthenticatedUser;
+import com.vetclinic.pet.service.PetPhotoStorageService;
 import com.vetclinic.pet.service.PetService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.Resource;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -22,7 +29,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
 
@@ -75,6 +84,31 @@ public class PetController {
     @PreAuthorize("hasRole('CUSTOMER')")
     public void delete(@PathVariable UUID petId, @AuthenticationPrincipal AuthenticatedUser me) {
         petService.delete(me.userId(), petId);
+    }
+
+    /** Tải ảnh đại diện (JPG/PNG/WebP, tối đa 5MB); ảnh mới ghi đè ảnh cũ. */
+    @PostMapping(value = "/me/{petId}/photo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasRole('CUSTOMER')")
+    public PetResponse uploadPhoto(@PathVariable UUID petId, @RequestParam("file") MultipartFile file,
+                                   @AuthenticationPrincipal AuthenticatedUser me) {
+        return petService.uploadPhoto(me.userId(), petId, file);
+    }
+
+    /**
+     * Đọc ảnh: khách chỉ xem được ảnh con của mình, người trong phòng khám xem được mọi con. Literal
+     * "photos" đứng riêng nên không đụng {@code /{petId}}.
+     */
+    @GetMapping("/photos/{petId}")
+    @PreAuthorize("hasAnyRole('CUSTOMER','DOCTOR','STAFF','ADMIN')")
+    public ResponseEntity<Resource> getPhoto(@PathVariable UUID petId, Authentication authentication,
+                                             @AuthenticationPrincipal AuthenticatedUser me) {
+        boolean clinicSide = RoleUtils.hasAnyRole(authentication, "DOCTOR", "STAFF", "ADMIN");
+        PetPhotoStorageService.StoredPhoto photo = petService.loadPhoto(petId, clinicSide ? null : me.userId());
+        // URL luôn kèm ?v=<photoVersion> nên đổi ảnh là đổi URL — cache lâu được.
+        return ResponseEntity.ok()
+                .contentType(photo.mediaType())
+                .cacheControl(CacheControl.maxAge(Duration.ofDays(30)).cachePrivate())
+                .body(photo.resource());
     }
 
     /** CN-24: lịch sử khám của con vật mình nuôi, mới nhất trước. */

@@ -23,6 +23,8 @@ public record PetResponse(
         /** Dị ứng — null khi chủ nuôi chưa khai. Khác hẳn "đã khai là không dị ứng gì". */
         String allergies,
         String notes,
+        /** Đường dẫn ảnh (kèm ?v=phiên bản) — null khi chưa có ảnh. */
+        String photoUrl,
         Instant createdAt,
         Instant updatedAt
 ) {

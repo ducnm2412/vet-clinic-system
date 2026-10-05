@@ -14,8 +14,8 @@ export interface Pet {
   /** Dị ứng thuốc hoặc thức ăn; null khi chủ nuôi chưa khai (VD-22). */
   allergies: string | null;
   notes: string | null;
-  /** pet-service chưa hỗ trợ ảnh thú cưng nên hiện luôn vắng; giữ để UI tự rơi về hình mặc định theo loài. */
-  photoUrl?: string | null;
+  /** Đường dẫn ảnh (kèm ?v=phiên bản); null khi chưa có ảnh — UI rơi về hình mặc định theo loài. */
+  photoUrl: string | null;
   createdAt: string;
   updatedAt: string;
 }

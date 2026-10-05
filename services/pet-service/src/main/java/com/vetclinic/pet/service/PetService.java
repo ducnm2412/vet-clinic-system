@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Collection;
 import java.util.List;
@@ -32,6 +33,7 @@ public class PetService {
 
     private final PetRepository petRepository;
     private final MedicalRecordRepository medicalRecordRepository;
+    private final PetPhotoStorageService photoStorageService;
 
     // ---------- của chính khách ----------
 
@@ -77,6 +79,30 @@ public class PetService {
         return toResponse(petRepository.saveAndFlush(pet));
     }
 
+    /** Ghi đè ảnh cũ nếu có. Chỉ chủ nuôi mới đổi được ảnh con của mình. */
+    @Transactional
+    public PetResponse uploadPhoto(UUID ownerUserId, UUID petId, MultipartFile file) {
+        Pet pet = ownedOrThrow(ownerUserId, petId);
+        photoStorageService.store(pet.getId(), file);
+        pet.setPhotoVersion(pet.getPhotoVersion() + 1);
+        return toResponse(petRepository.saveAndFlush(pet));
+    }
+
+    /**
+     * Ảnh đọc được bởi chủ nuôi hoặc người trong phòng khám. {@code ownerUserId == null} nghĩa là
+     * người gọi thuộc phòng khám (bác sĩ, nhân viên, quản trị): không giới hạn theo chủ.
+     */
+    @Transactional(readOnly = true)
+    public PetPhotoStorageService.StoredPhoto loadPhoto(UUID petId, UUID ownerUserId) {
+        Pet pet = ownerUserId == null
+                ? petRepository.findById(petId).orElse(null)
+                : petRepository.findByIdAndOwnerUserId(petId, ownerUserId).orElse(null);
+        if (pet == null || pet.getPhotoVersion() == 0) {
+            throw new ResourceNotFoundException("Không có ảnh cho thú cưng: " + petId);
+        }
+        return photoStorageService.load(petId);
+    }
+
     /**
      * Đã có bệnh án thì không xoá được: bệnh án là hồ sơ lâm sàng của phòng khám, xoá con vật đi sẽ
      * để lại bệnh án không ai tra ra được nữa. Khoá ngoại ON DELETE RESTRICT là lưới an toàn cuối,
@@ -90,6 +116,7 @@ public class PetService {
                     + " đã có bệnh án tại phòng khám nên không xoá được hồ sơ. Sửa lại thông tin nếu cần.");
         }
         petRepository.delete(pet);
+        photoStorageService.delete(petId);
     }
 
     /**
@@ -136,6 +163,7 @@ public class PetService {
         List<Pet> pets = petRepository.findByOwnerUserIdOrderByCreatedAtAsc(ownerUserId);
         List<Pet> deletable = pets.stream().filter(pet -> !medicalRecordRepository.existsByPetId(pet.getId())).toList();
         petRepository.deleteAll(deletable);
+        deletable.forEach(pet -> photoStorageService.delete(pet.getId()));
         int kept = pets.size() - deletable.size();
         if (kept > 0) {
             log.info("Giữ lại {} hồ sơ thú cưng của tài khoản {} vì đã có bệnh án", kept, ownerUserId);
@@ -157,9 +185,15 @@ public class PetService {
         return trimmed.isEmpty() ? null : trimmed;
     }
 
+    // URL dựng lại từ (id, version) lúc trả response, không lưu chuỗi trong DB. `?v=` chỉ để trình duyệt
+    // bỏ cache khi ảnh được thay.
+    private static String photoUrl(Pet pet) {
+        return pet.getPhotoVersion() > 0 ? "/pets/photos/" + pet.getId() + "?v=" + pet.getPhotoVersion() : null;
+    }
+
     private static PetResponse toResponse(Pet pet) {
         return new PetResponse(pet.getId(), pet.getOwnerUserId(), pet.getName(), pet.getSpecies(), pet.getBreed(),
                 pet.getGender(), pet.getDateOfBirth(), pet.getWeightKg(), pet.getAllergies(), pet.getNotes(),
-                pet.getCreatedAt(), pet.getUpdatedAt());
+                photoUrl(pet), pet.getCreatedAt(), pet.getUpdatedAt());
     }
 }

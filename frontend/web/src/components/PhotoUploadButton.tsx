@@ -7,7 +7,7 @@ import { ApiError } from "@/lib/api";
 import { Button, useToast } from "@/components/ui";
 import { SiteButton } from "@/components/site/primitives";
 
-// Khớp giới hạn của profile-service (PhotoStorageService): chặn sớm để khỏi tải cả file lớn rồi mới bị từ chối.
+// Khớp giới hạn của profile-service và pet-service (PhotoStorageService): chặn sớm để khỏi tải cả file lớn rồi mới bị từ chối.
 const MAX_BYTES = 5 * 1024 * 1024;
 const ACCEPT = "image/jpeg,image/png,image/webp";
 

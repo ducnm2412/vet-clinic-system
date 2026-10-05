@@ -317,6 +317,10 @@ services:
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_USERNAME: ${RABBITMQ_USER:-guest}
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
+      # Thu muc luu anh thu cung — nam tren volume ben duoi.
+      UPLOAD_DIR: /data/uploads
+    volumes:
+      - pet-uploads-data:/data/uploads
     depends_on:
       pet-db:
         condition: service_healthy
@@ -493,6 +497,7 @@ volumes:
   auth-db-data:
   profile-db-data:
   profile-uploads-data:
+  pet-uploads-data:
   product-db-data:
   order-db-data:
   booking-db-data:

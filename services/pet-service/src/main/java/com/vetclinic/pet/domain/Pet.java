@@ -71,6 +71,11 @@ public class Pet {
     @Column(columnDefinition = "TEXT")
     private String notes;
 
+    /** 0 = chưa có ảnh; tăng 1 mỗi lần tải ảnh mới để URL đổi và cache cũ bị bỏ. */
+    @Column(name = "photo_version", nullable = false)
+    @Builder.Default
+    private int photoVersion = 0;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
