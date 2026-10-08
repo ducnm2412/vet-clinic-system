@@ -3,11 +3,15 @@ import type {
   AddToCartRequest,
   Cart,
   CheckoutRequest,
+  CounterInvoiceRequest,
   Order,
   OrderStatus,
   OrderStatusHistory,
+  MockPaymentSubmit,
   OrderSummary,
   PageResponse,
+  PaymentInit,
+  PaymentResult,
 } from "@/types";
 
 /** Giỏ hàng chỉ dành cho CUSTOMER — backend chặn các role khác ở /cart/**. */
@@ -29,6 +33,18 @@ export const orderApi = {
   byId: (id: string) => http.get<Order>(`/orders/${id}`),
   history: (id: string) => http.get<OrderStatusHistory[]>(`/orders/${id}/history`),
   cancelMine: (id: string, reason: string) => http.post<Order>(`/orders/${id}/cancel`, { reason }),
+
+  /** Lấy link sang cổng để trả tiền đơn online. Mỗi lần gọi cấp link mới và vô hiệu link cũ. */
+  startPayment: (id: string) => http.post<PaymentInit>(`/orders/${id}/pay`),
+  /** Chỉ dùng ở trang cổng giả lập (chạy thử khi chưa có cổng thật). */
+  submitMockPayment: (body: MockPaymentSubmit) =>
+    http.post<PaymentResult>("/orders/pay/mock/submit", body),
+  /**
+   * Trang trả về của VNPAY gửi nguyên các tham số vnp_* (kèm chữ ký) lên đây. Không cần đăng nhập: backend
+   * tin chữ ký, không tin người gọi. Gọi lặp lại không gây thêm tác dụng.
+   */
+  vnpayReturn: (params: Record<string, string>) =>
+    http.get<PaymentResult>(`/orders/pay/vnpay/return${qs(params)}`),
 };
 
 /** Nhánh quản trị đơn — STAFF/ADMIN. Đặt ở /orders/manage vì gateway đã dành /admin cho auth. */
@@ -38,6 +54,13 @@ export const orderManageApi = {
       `/orders/manage${qs({ status: params.status, page: params.page ?? 0, size: params.size ?? 20 })}`,
     ),
   byId: (id: string) => http.get<Order>(`/orders/manage/${id}`),
+
+  /**
+   * Hoá đơn gộp tại quầy (tiền khám + sản phẩm), lập và thu trong một lần. Trừ kho ngay và,
+   * nếu có khoản khám, hoàn tất khoản đó ở payment-service qua `order.invoice-paid`.
+   */
+  createCounterInvoice: (body: CounterInvoiceRequest) =>
+    http.post<Order>("/orders/manage/counter", body),
 
   /**
    * Xác nhận là bước phát `order.completed` để product-service trừ kho.

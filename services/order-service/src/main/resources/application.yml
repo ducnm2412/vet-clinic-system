@@ -37,3 +37,24 @@ jwt:
 # Phí giao hàng cố định cho toàn hệ thống; tách ra config để đổi không phải build lại.
 order:
   shipping-fee: ${ORDER_SHIPPING_FEE:30000}
+  # Hạn trả tiền của đơn thanh toán online; quá hạn chưa trả thì đơn bị tự huỷ.
+  online-payment-timeout-minutes: ${ORDER_ONLINE_PAYMENT_TIMEOUT_MINUTES:30}
+  # Cổng thanh toán giả lập để chạy thử khi chưa có tài khoản merchant. Chỉ bật ở môi trường dev/demo:
+  # cổng này cho "trả tiền" mà không có tiền thật. Khi bật bắt buộc đặt secret (khoá ký HMAC).
+  mock-gateway:
+    enabled: ${ORDER_MOCK_GATEWAY_ENABLED:false}
+    secret: ${ORDER_MOCK_GATEWAY_SECRET:}
+    # Trang giả lập cổng nằm ở frontend; đường dẫn tương đối nên đi cùng domain với web.
+    page-url: ${ORDER_MOCK_GATEWAY_PAGE_URL:/pay/mock}
+  # Cổng VNPAY. Không bật cùng lúc với cổng giả lập ở trên. Bật thì phải đặt đủ tmn-code, hash-secret
+  # (do VNPAY cấp) và return-url (trang web khách được đưa về sau khi trả tiền).
+  vnpay:
+    enabled: ${ORDER_VNPAY_ENABLED:false}
+    tmn-code: ${ORDER_VNPAY_TMN_CODE:}
+    hash-secret: ${ORDER_VNPAY_HASH_SECRET:}
+    pay-url: ${ORDER_VNPAY_PAY_URL:https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}
+    return-url: ${ORDER_VNPAY_RETURN_URL:}
+    # API hỏi lại trạng thái giao dịch (querydr); bản thật là https://pay.vnpay.vn/merchant_webapi/api/transaction
+    query-url: ${ORDER_VNPAY_QUERY_URL:https://sandbox.vnpayment.vn/merchant_webapi/api/transaction}
+    # Địa chỉ IP của máy chủ này gửi kèm khi hỏi lại giao dịch (VNPAY bắt buộc có trường này)
+    server-ip: ${ORDER_VNPAY_SERVER_IP:127.0.0.1}

@@ -5,8 +5,9 @@ Giỏ hàng, đặt hàng và xử lý đơn cho phần bán hàng trực tuyế
 - **Database:** `order_db` (PostgreSQL, cổng host `5436`)
 - **Cổng service:** `8085`
 - **Chức năng:** CN-32 → CN-37 trong `docs/phan-tich-chuc-nang.md`
-- **Thanh toán:** COD. CN-34 (VNPay/Momo) chưa làm — cần tài khoản merchant và URL công
-  khai để nhận IPN callback, `localhost` thì cổng thanh toán không gọi tới được.
+- **Thanh toán:** COD, thanh toán online qua cổng (VNPAY sandbox, hoặc cổng giả lập để demo) và thu
+  tiền mặt/chuyển khoản tại quầy cho hoá đơn gộp. Xem [Thanh toán online](#thanh-toán-online--cn-34) và
+  [hướng dẫn bật VNPAY](../../docs/huong-dan-thanh-toan-vnpay.md).
 
 ## Luồng trạng thái đơn — CN-35
 
@@ -59,19 +60,54 @@ Thêm lại sản phẩm đã có trong giỏ thì cộng dồn số lượng, k
 | GET | `/orders/{id}/history` | Vết chuyển trạng thái |
 | POST | `/orders/{id}/cancel` | Chỉ huỷ được khi còn `PENDING` |
 
+| POST | `/orders/{id}/pay` | Lấy link trả tiền đơn online (cấp mã giao dịch mới, vô hiệu mã cũ) |
+
 ### Xử lý đơn — CN-36 (role `STAFF` hoặc `ADMIN`)
 
-| Method | Path |
-|---|---|
-| GET | `/orders/manage?status=PENDING` |
-| GET | `/orders/manage/{id}` |
-| POST | `/orders/manage/{id}/confirm` |
-| POST | `/orders/manage/{id}/ship` |
-| POST | `/orders/manage/{id}/complete` |
-| POST | `/orders/manage/{id}/cancel` |
+| Method | Path | Ghi chú |
+|---|---|---|
+| GET | `/orders/manage?status=PENDING` | |
+| GET | `/orders/manage/{id}` | |
+| POST | `/orders/manage/{id}/confirm` | Đơn online chưa trả bị từ chối |
+| POST | `/orders/manage/{id}/ship` | |
+| POST | `/orders/manage/{id}/complete` | |
+| POST | `/orders/manage/{id}/cancel` | |
+| POST | `/orders/manage/counter` | Lập và thu hoá đơn gộp tại quầy (khám + sản phẩm) |
 
 Đường dẫn quản trị đặt dưới `/orders/manage/**` chứ không phải `/admin/**` — gateway đã dành
 `/admin/**` cho `auth-service`.
+
+## Thanh toán online — CN-34
+
+Khách chọn COD hoặc online khi đặt hàng. Đơn online tạo ra ở `PENDING` + `UNPAID` với hạn trả
+(`ORDER_ONLINE_PAYMENT_TIMEOUT_MINUTES`, mặc định 30 phút) và **không** thêm trạng thái mới: trả xong đơn
+vẫn `PENDING`, nhân viên xác nhận như thường. Kho chỉ trừ lúc xác nhận.
+
+| Quy tắc | Chi tiết |
+|---|---|
+| Xác nhận | Đơn online chưa trả không xác nhận được |
+| Hết hạn | Job quét mỗi phút, đơn quá hạn 2 phút mà chưa trả thì tự huỷ — sau khi **hỏi lại cổng** để không huỷ nhầm đơn đã trả mà thông báo bị lỡ |
+| Huỷ sau khi trả | Đơn `CANCELLED` + `PAID` = cần hoàn tiền thủ công (cờ `refundRequired`) |
+| Trả muộn sau khi đơn bị huỷ | Vẫn ghi nhận đã trả, rơi vào trạng thái cần hoàn tiền |
+
+Cổng nằm sau interface `OnlinePaymentGateway`; chỉ **một** cổng được bật (`OnlineGatewayExclusivityCheck`):
+
+| Cổng | Bật bằng | Dùng khi |
+|---|---|---|
+| `VnpayGateway` | `ORDER_VNPAY_ENABLED=true` + `TMN_CODE`, `HASH_SECRET`, `RETURN_URL` | Sandbox/thật |
+| `MockPaymentGateway` | `ORDER_MOCK_GATEWAY_ENABLED=true` + `SECRET` | Demo, test offline. **Không bật ở môi trường thật** |
+
+Endpoint cổng gọi về (không cần đăng nhập, tin vào chữ ký):
+
+| Method | Path | Ghi chú |
+|---|---|---|
+| GET | `/orders/pay/vnpay/ipn` | IPN của VNPAY, phản hồi `{"RspCode","Message"}` theo định dạng của họ |
+| GET | `/orders/pay/vnpay/return` | Trang web chuyển tham số khách được đưa về; cũng ghi nhận, không trùng lặp với IPN |
+| POST | `/orders/pay/callback` | Kết quả chung dạng JSON (cổng khác) |
+| POST | `/orders/pay/mock/submit` | Chỉ cổng giả lập, cần đăng nhập |
+
+Mọi kết quả đi qua `OnlinePaymentService.recordGatewayResult` — khoá dòng, không trùng lặp, kiểm số tiền.
+Chi tiết cấu hình, đường hầm cho IPN và kịch bản thử: [`docs/huong-dan-thanh-toan-vnpay.md`](../../docs/huong-dan-thanh-toan-vnpay.md).
 
 ## Quyết định thiết kế
 
@@ -101,6 +137,7 @@ Publish lên exchange `order.events`:
 |---|---|---|
 | `order.completed` | Nhân viên **xác nhận** đơn | `product-service` trừ tồn kho |
 | `order.cancelled` | Huỷ đơn **đã từng trừ kho** | `product-service` hoàn hàng về kho |
+| `order.invoice-paid` | Hoá đơn gộp tại quầy có khoản khám đã thu | `payment-service` hoàn tất khoản khám đó |
 
 ```json
 { "orderId": "...", "lines": [ { "productId": "...", "quantity": 2 } ] }
@@ -126,5 +163,8 @@ Chạy test cần `order-db` đang bật (`docker compose up -d order-db`) và c
 mvn test
 ```
 
-29 test: 15 service (checkout, luồng trạng thái, phát sự kiện, phân quyền xem đơn),
-6 luật chuyển trạng thái, 8 validation DTO.
+Gần 170 test. Phần lớn là unit test với repository giả; một số chạy trên PostgreSQL thật và cần
+database `order_db_test` (`bash scripts/create-test-databases.sh`), gồm phân quyền qua toàn chuỗi filter,
+câu SQL thống kê doanh thu, IPN/trang trả về của VNPAY và job tự huỷ đơn quá hạn. Test không bao giờ chạy
+vào `order_db` thật (`TestDatabaseGuard`). Test cổng VNPAY dùng bản giả cho phần gọi mạng, chưa gọi sandbox
+thật.

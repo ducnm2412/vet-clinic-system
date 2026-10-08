@@ -1,6 +1,8 @@
 import type {
   AppointmentStatus,
   UserStatus,
+  OrderPaymentMethod,
+  OrderPaymentStatus,
   OrderStatus,
   PaymentStatus,
   PrescriptionStatus,
@@ -30,6 +32,18 @@ export const ORDER_STATUS: Record<OrderStatus, StatusStyle> = {
   SHIPPING: { label: "Đang giao", dot: "bg-info", tint: "bg-info-wash text-ink" },
   COMPLETED: { label: "Hoàn tất", dot: "bg-moss", tint: "bg-moss-wash text-ink" },
   CANCELLED: { label: "Đã huỷ", dot: "bg-danger", tint: "bg-danger-wash text-ink" },
+};
+
+export const ORDER_PAYMENT_STATUS: Record<OrderPaymentStatus, StatusStyle> = {
+  UNPAID: { label: "Chưa thu tiền", dot: "bg-amber", tint: "bg-amber-wash text-ink" },
+  PAID: { label: "Đã thu tiền", dot: "bg-moss", tint: "bg-moss-wash text-ink" },
+};
+
+export const ORDER_PAYMENT_METHOD: Record<OrderPaymentMethod, string> = {
+  COD: "Thanh toán khi nhận hàng",
+  ONLINE: "Thanh toán online",
+  CASH: "Tiền mặt tại quầy",
+  BANK_TRANSFER: "Chuyển khoản",
 };
 
 export const APPOINTMENT_STATUS: Record<AppointmentStatus, StatusStyle> = {

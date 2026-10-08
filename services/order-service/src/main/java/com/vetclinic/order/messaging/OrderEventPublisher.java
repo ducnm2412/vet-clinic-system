@@ -28,6 +28,13 @@ public class OrderEventPublisher {
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onInvoicePaid(InvoicePaidEvent event) {
+        rabbitTemplate.convertAndSend(RabbitMQConfig.ORDER_EVENTS_EXCHANGE,
+                RabbitMQConfig.ROUTING_KEY_INVOICE_PAID, event);
+        log.info("Đã phát order.invoice-paid cho đơn {} (khoản khám {})", event.orderId(), event.examPaymentId());
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onOrderCancelled(OrderCancelledEvent event) {
         rabbitTemplate.convertAndSend(RabbitMQConfig.ORDER_EVENTS_EXCHANGE,
                 RabbitMQConfig.ROUTING_KEY_ORDER_CANCELLED, event);

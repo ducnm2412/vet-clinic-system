@@ -12,6 +12,7 @@ public class RabbitMQConfig {
     public static final String ORDER_EVENTS_EXCHANGE = "order.events";
     public static final String ROUTING_KEY_ORDER_COMPLETED = "order.completed";
     public static final String ROUTING_KEY_ORDER_CANCELLED = "order.cancelled";
+    public static final String ROUTING_KEY_INVOICE_PAID = "order.invoice-paid";
 
     // Khai báo idempotent: product-service cũng khai y hệt exchange này ở phía consumer,
     // service nào khởi động trước cũng không sao.

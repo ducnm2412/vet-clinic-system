@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError, nextActions, orderManageApi } from "@/lib/api";
-import { ORDER_STATUS } from "@/lib/utils/status";
+import { ORDER_PAYMENT_METHOD, ORDER_PAYMENT_STATUS, ORDER_STATUS } from "@/lib/utils/status";
 import { formatDateTime, formatPrice } from "@/lib/utils/format";
 import type { OrderStatus, OrderSummary } from "@/types";
 import {
@@ -15,6 +15,7 @@ import {
   Pagination,
   Spinner,
   StatusTag,
+  Tag,
   TableFrame,
   TableSkeleton,
   TextAreaField,
@@ -54,7 +55,14 @@ export function OrderManageView() {
     {
       key: "code",
       header: "Mã đơn",
-      cell: (o) => <span className="font-medium text-ink">{o.orderCode}</span>,
+      cell: (o) => (
+        <span className="inline-flex flex-wrap items-center gap-2">
+          <span className="font-medium text-ink">{o.orderCode}</span>
+          {o.channel === "COUNTER" && <Tag>Tại quầy</Tag>}
+          {o.paymentMethod === "ONLINE" && <Tag>Online</Tag>}
+          {o.refundRequired && <Tag className="border-danger text-danger">Cần hoàn tiền</Tag>}
+        </span>
+      ),
     },
     { key: "recipient", header: "Người nhận", cell: (o) => o.recipientName },
     {
@@ -65,6 +73,12 @@ export function OrderManageView() {
     },
     { key: "items", header: "Số món", numeric: true, hideBelow: "lg", cell: (o) => o.totalItems },
     { key: "status", header: "Trạng thái", cell: (o) => <StatusTag status={ORDER_STATUS[o.status]} /> },
+    {
+      key: "payment",
+      header: "Thanh toán",
+      hideBelow: "md",
+      cell: (o) => <StatusTag status={ORDER_PAYMENT_STATUS[o.paymentStatus]} />,
+    },
     { key: "total", header: "Tổng tiền", numeric: true, cell: (o) => formatPrice(o.total) },
   ];
 
@@ -177,7 +191,15 @@ function OrderDetailDialog({ orderId, onClose }: { orderId: string | null; onClo
   });
 
   const data = order.data;
-  const actions = data ? nextActions(data.status) : [];
+  // Đơn online chưa trả thì chưa xác nhận được (backend cũng chặn); ẩn nút để khỏi bấm rồi nhận lỗi.
+  const awaitingPayment =
+    data !== undefined &&
+    data.status === "PENDING" &&
+    data.paymentMethod === "ONLINE" &&
+    data.paymentStatus === "UNPAID";
+  const actions = data
+    ? nextActions(data.status).filter((a) => !(awaitingPayment && a === "confirm"))
+    : [];
 
   return (
     <Dialog
@@ -216,13 +238,40 @@ function OrderDetailDialog({ orderId, onClose }: { orderId: string | null; onClo
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-3">
             <StatusTag status={ORDER_STATUS[data.status]} />
-            <span className="text-sm text-bark">Thanh toán khi nhận hàng</span>
+            <StatusTag status={ORDER_PAYMENT_STATUS[data.paymentStatus]} />
+            {data.channel === "COUNTER" && <Tag>Tại quầy</Tag>}
+            <span className="text-sm text-bark">
+              {data.paymentMethod ? ORDER_PAYMENT_METHOD[data.paymentMethod] : "Chưa có cách thu"}
+            </span>
           </div>
+
+          {awaitingPayment && (
+            <p className="rounded-[var(--radius-control)] bg-amber-wash px-3 py-2 text-sm">
+              Khách chọn thanh toán online và chưa trả
+              {data.paymentExpiresAt ? ` (hạn ${formatDateTime(data.paymentExpiresAt)})` : ""}. Chưa xác nhận
+              được đơn này; quá hạn hệ thống tự huỷ.
+            </p>
+          )}
+
+          {data.refundRequired && (
+            <p className="rounded-[var(--radius-control)] bg-danger-wash px-3 py-2 text-sm">
+              Đơn đã thanh toán online nhưng bị huỷ — cần hoàn tiền thủ công cho khách
+              {data.paidAt ? ` (đã thu lúc ${formatDateTime(data.paidAt)})` : ""}.
+            </p>
+          )}
+
+          {data.paidAt && (
+            <p className="text-sm text-bark">
+              Đã thu lúc {formatDateTime(data.paidAt)}
+              {data.transferReference ? ` · mã giao dịch ${data.transferReference}` : ""}
+            </p>
+          )}
 
           <div className="rounded-[var(--radius-control)] bg-paper px-3 py-2.5 text-sm">
             <p className="font-medium text-ink">{data.recipientName}</p>
-            <p className="text-ink-soft">{data.recipientPhone}</p>
+            {data.recipientPhone && <p className="text-ink-soft">{data.recipientPhone}</p>}
             <p className="mt-0.5 text-ink-soft">{data.shippingAddress}</p>
+            {data.userId === null && <p className="mt-0.5 text-bark">Khách lẻ, không có tài khoản</p>}
             {data.note && <p className="mt-1 text-bark">Ghi chú: {data.note}</p>}
           </div>
 
@@ -246,10 +295,18 @@ function OrderDetailDialog({ orderId, onClose }: { orderId: string | null; onClo
               <dt className="text-bark">Tạm tính</dt>
               <dd className="tnum">{formatPrice(data.subtotal)}</dd>
             </div>
-            <div className="flex justify-between">
-              <dt className="text-bark">Phí giao hàng</dt>
-              <dd className="tnum">{formatPrice(data.shippingFee)}</dd>
-            </div>
+            {data.examAmount > 0 && (
+              <div className="flex justify-between">
+                <dt className="text-bark">Tiền khám / thuốc</dt>
+                <dd className="tnum">{formatPrice(data.examAmount)}</dd>
+              </div>
+            )}
+            {data.channel === "ONLINE" && (
+              <div className="flex justify-between">
+                <dt className="text-bark">Phí giao hàng</dt>
+                <dd className="tnum">{formatPrice(data.shippingFee)}</dd>
+              </div>
+            )}
             <div className="flex justify-between border-t border-line pt-1 font-medium">
               <dt>Tổng cộng</dt>
               <dd className="tnum">{formatPrice(data.total)}</dd>

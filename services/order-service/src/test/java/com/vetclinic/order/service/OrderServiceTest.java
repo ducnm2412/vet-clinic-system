@@ -1,13 +1,17 @@
 package com.vetclinic.order.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.vetclinic.order.client.PaymentClient;
 import com.vetclinic.order.client.ProductClient;
 import com.vetclinic.order.domain.Cart;
 import com.vetclinic.order.domain.CartItem;
 import com.vetclinic.order.domain.Order;
+import com.vetclinic.order.domain.OrderChannel;
 import com.vetclinic.order.domain.OrderItem;
 import com.vetclinic.order.domain.OrderStatus;
+import com.vetclinic.order.domain.OrderStatusHistory;
 import com.vetclinic.order.domain.PaymentMethod;
+import com.vetclinic.order.domain.PaymentStatus;
 import com.vetclinic.order.dto.CheckoutRequest;
 import com.vetclinic.order.dto.OrderResponse;
 import com.vetclinic.order.exception.EmptyCartException;
@@ -17,6 +21,8 @@ import com.vetclinic.order.exception.ResourceNotFoundException;
 import com.vetclinic.order.exception.StockServiceUnavailableException;
 import com.vetclinic.order.messaging.OrderCancelledEvent;
 import com.vetclinic.order.messaging.OrderCompletedEvent;
+import com.vetclinic.order.payment.GatewayUnavailableException;
+import com.vetclinic.order.payment.OnlinePaymentGateway;
 import com.vetclinic.order.repository.CartRepository;
 import com.vetclinic.order.repository.OrderRepository;
 import com.vetclinic.order.repository.OrderStatusHistoryRepository;
@@ -31,11 +37,14 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -48,6 +57,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -59,7 +69,9 @@ class OrderServiceTest {
     @Mock private CartRepository cartRepository;
     @Mock private CartService cartService;
     @Mock private ProductClient productClient;
+    @Mock private PaymentClient paymentClient;
     @Mock private ApplicationEventPublisher eventPublisher;
+    @Mock private ObjectProvider<OnlinePaymentGateway> onlineGateway;
 
     private OrderService orderService;
 
@@ -72,8 +84,13 @@ class OrderServiceTest {
     @BeforeEach
     void setUp() {
         orderService = new OrderService(orderRepository, historyRepository, cartRepository,
-                cartService, productClient, new ObjectMapper(), eventPublisher);
+                cartService, productClient, paymentClient, new ObjectMapper(), eventPublisher, onlineGateway);
+        when(onlineGateway.getIfAvailable()).thenReturn(org.mockito.Mockito.mock(OnlinePaymentGateway.class));
         ReflectionTestUtils.setField(orderService, "shippingFee", new BigDecimal("30000"));
+        ReflectionTestUtils.setField(orderService, "onlinePaymentTimeoutMinutes", 30L);
+
+        // Huỷ/hết hạn đọc đơn bằng bản khoá dòng; test dùng chung kho đơn giả với findById.
+        when(orderRepository.findByIdForUpdate(any())).thenAnswer(inv -> orderRepository.findById(inv.getArgument(0)));
 
         userId = UUID.randomUUID();
         productId = UUID.randomUUID();
@@ -113,6 +130,65 @@ class OrderServiceTest {
         // Giá phải được chụp lại vào đơn, không phải tham chiếu sang product-service.
         assertThat(response.items().get(0).unitPrice()).isEqualByComparingTo("150000");
         assertThat(response.items().get(0).sku()).isEqualTo("SKU-1");
+    }
+
+    @Test
+    void checkout_cod_hasNoPaymentDeadline() {
+        stubProduct(10, true, "150000");
+
+        OrderResponse response = orderService.checkout(userId, request());
+
+        assertThat(response.paymentMethod()).isEqualTo(PaymentMethod.COD);
+        assertThat(response.paymentStatus()).isEqualTo(PaymentStatus.UNPAID);
+        assertThat(response.paymentExpiresAt()).isNull();
+    }
+
+    @Test
+    void checkout_online_isPendingUnpaidWithDeadline() {
+        stubProduct(10, true, "150000");
+        Instant before = Instant.now();
+
+        OrderResponse response = orderService.checkout(userId, new CheckoutRequest(
+                "Nguyen Van A", "0901234567", "12 Le Loi", null, PaymentMethod.ONLINE));
+
+        assertThat(response.status()).isEqualTo(OrderStatus.PENDING);
+        assertThat(response.paymentMethod()).isEqualTo(PaymentMethod.ONLINE);
+        assertThat(response.paymentStatus()).isEqualTo(PaymentStatus.UNPAID);
+        assertThat(response.paidAt()).isNull();
+        // Hạn trả = lúc đặt + 30 phút (cho phép lệch vài giây do thời gian chạy test).
+        assertThat(response.paymentExpiresAt())
+                .isBetween(before.plus(Duration.ofMinutes(30)), Instant.now().plus(Duration.ofMinutes(30)));
+        assertThat(response.total()).isEqualByComparingTo("330000");
+    }
+
+    @Test
+    void checkout_online_stillDoesNotDeductStock() {
+        stubProduct(10, true, "150000");
+
+        orderService.checkout(userId, new CheckoutRequest(
+                "Nguyen Van A", "0901234567", "12 Le Loi", null, PaymentMethod.ONLINE));
+
+        // Kho chỉ trừ khi nhân viên xác nhận đơn (sau khi đã trả tiền), không phải lúc đặt.
+        verifyNoInteractions(eventPublisher);
+    }
+
+    @Test
+    void checkout_online_withoutGateway_isRejectedBeforeAnythingIsSaved() {
+        when(onlineGateway.getIfAvailable()).thenReturn(null);
+
+        assertThatThrownBy(() -> orderService.checkout(userId, new CheckoutRequest(
+                "Nguyen Van A", "0901234567", "12 Le Loi", null, PaymentMethod.ONLINE)))
+                .isInstanceOf(GatewayUnavailableException.class);
+
+        verify(orderRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void checkout_cod_doesNotNeedGateway() {
+        when(onlineGateway.getIfAvailable()).thenReturn(null);
+        stubProduct(10, true, "150000");
+
+        assertThat(orderService.checkout(userId, request()).paymentMethod()).isEqualTo(PaymentMethod.COD);
     }
 
     @Test
@@ -303,6 +379,171 @@ class OrderServiceTest {
         // Trả 404 chứ không phải 403, để người lạ không dò được id đơn nào có thật.
         assertThatThrownBy(() -> orderService.getMyOrder(UUID.randomUUID(), order.getId()))
                 .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    void counterOrderWithoutAccount_isInvisibleToCustomersInsteadOfCrashing() {
+        // Hoá đơn của khách lẻ có userId NULL: không được NPE, chỉ trả 404 như đơn của người khác.
+        Order order = existingOrder(OrderStatus.COMPLETED);
+        order.setUserId(null);
+        when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
+
+        assertThatThrownBy(() -> orderService.getMyOrder(userId, order.getId()))
+                .isInstanceOf(ResourceNotFoundException.class);
+        assertThatThrownBy(() -> orderService.getHistory(order.getId(), userId, false))
+                .isInstanceOf(ResourceNotFoundException.class);
+        assertThatThrownBy(() -> orderService.cancel(order.getId(), userId, false, "x"))
+                .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    void complete_codOrderBecomesPaid() {
+        Order order = existingOrder(OrderStatus.SHIPPING);
+        assertThat(order.getPaymentStatus()).isEqualTo(PaymentStatus.UNPAID);
+        assertThat(order.getChannel()).isEqualTo(OrderChannel.ONLINE);
+        when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
+
+        OrderResponse response = orderService.complete(order.getId(), UUID.randomUUID(), null);
+
+        assertThat(response.paymentStatus()).isEqualTo(PaymentStatus.PAID);
+        assertThat(response.paidAt()).isNotNull().isEqualTo(response.completedAt());
+    }
+
+    // ---------- đơn thanh toán online: xác nhận, giao, huỷ, hết hạn ----------
+
+    private Order onlineOrder(OrderStatus status, PaymentStatus paymentStatus) {
+        Order order = existingOrder(status);
+        order.setPaymentMethod(PaymentMethod.ONLINE);
+        order.setPaymentStatus(paymentStatus);
+        order.setPaymentExpiresAt(Instant.now().plus(Duration.ofMinutes(10)));
+        if (paymentStatus == PaymentStatus.PAID) {
+            order.setPaidAt(Instant.now().minus(Duration.ofMinutes(5)));
+        }
+        return order;
+    }
+
+    @Test
+    void confirm_onlineOrderNotPaidYet_isRefusedAndStockUntouched() {
+        Order order = onlineOrder(OrderStatus.PENDING, PaymentStatus.UNPAID);
+        when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
+
+        assertThatThrownBy(() -> orderService.confirm(order.getId(), UUID.randomUUID(), null, TOKEN))
+                .isInstanceOf(InvalidOrderStateException.class)
+                .hasMessageContaining("chưa được thanh toán");
+
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.PENDING);
+        verify(productClient, never()).deductStock(any(), any());
+        verify(eventPublisher, never()).publishEvent(any(OrderCompletedEvent.class));
+    }
+
+    @Test
+    void confirm_onlineOrderAlreadyPaid_goesThrough() {
+        Order order = onlineOrder(OrderStatus.PENDING, PaymentStatus.PAID);
+        when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
+
+        OrderResponse response = orderService.confirm(order.getId(), UUID.randomUUID(), null, TOKEN);
+
+        assertThat(response.status()).isEqualTo(OrderStatus.CONFIRMED);
+        verify(productClient).deductStock(any(), eq(TOKEN));
+    }
+
+    @Test
+    void confirm_codOrder_stillConfirmsWithoutPayment() {
+        Order order = existingOrder(OrderStatus.PENDING);
+        when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
+
+        assertThat(orderService.confirm(order.getId(), UUID.randomUUID(), null, TOKEN).status())
+                .isEqualTo(OrderStatus.CONFIRMED);
+    }
+
+    @Test
+    void complete_onlineOrder_keepsOriginalPaidAt() {
+        Order order = onlineOrder(OrderStatus.SHIPPING, PaymentStatus.PAID);
+        Instant paidAt = order.getPaidAt();
+        when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
+
+        OrderResponse response = orderService.complete(order.getId(), UUID.randomUUID(), null);
+
+        assertThat(response.paymentStatus()).isEqualTo(PaymentStatus.PAID);
+        assertThat(response.paidAt()).isEqualTo(paidAt).isBefore(response.completedAt());
+    }
+
+    @Test
+    void cancel_paidOnlineOrder_isFlaggedForManualRefund() {
+        Order order = onlineOrder(OrderStatus.PENDING, PaymentStatus.PAID);
+        when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
+
+        OrderResponse response = orderService.cancel(order.getId(), userId, false, "Đổi ý");
+
+        assertThat(response.status()).isEqualTo(OrderStatus.CANCELLED);
+        assertThat(response.paymentStatus()).isEqualTo(PaymentStatus.PAID);
+        assertThat(response.refundRequired()).isTrue();
+        ArgumentCaptor<OrderStatusHistory> history = ArgumentCaptor.forClass(OrderStatusHistory.class);
+        verify(historyRepository, org.mockito.Mockito.times(2)).save(history.capture());
+        assertThat(history.getAllValues().get(1).getNote()).contains("hoàn tiền");
+    }
+
+    @Test
+    void cancel_unpaidOrders_doNotNeedRefund() {
+        Order online = onlineOrder(OrderStatus.PENDING, PaymentStatus.UNPAID);
+        Order cod = existingOrder(OrderStatus.PENDING);
+        when(orderRepository.findById(online.getId())).thenReturn(Optional.of(online));
+        when(orderRepository.findById(cod.getId())).thenReturn(Optional.of(cod));
+
+        assertThat(orderService.cancel(online.getId(), userId, false, "x").refundRequired()).isFalse();
+        assertThat(orderService.cancel(cod.getId(), userId, false, "x").refundRequired()).isFalse();
+    }
+
+    @Test
+    void expiredUnpaidOnlineOrder_isCancelledWithoutRestock() {
+        Order order = onlineOrder(OrderStatus.PENDING, PaymentStatus.UNPAID);
+        order.setPaymentExpiresAt(Instant.now().minusSeconds(5));
+        when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
+
+        assertThat(orderService.cancelExpiredUnpaidOrder(order.getId())).isTrue();
+
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.CANCELLED);
+        assertThat(order.getCancelReason()).contains("Quá hạn");
+        assertThat(order.getCancelledAt()).isNotNull();
+        verify(eventPublisher, never()).publishEvent(any(OrderCancelledEvent.class));
+        verify(historyRepository).save(any(OrderStatusHistory.class));
+    }
+
+    @Test
+    void expiredCheck_skipsOrdersThatNoLongerQualify() {
+        Order paid = onlineOrder(OrderStatus.PENDING, PaymentStatus.PAID);
+        paid.setPaymentExpiresAt(Instant.now().minusSeconds(5));
+        Order notYetDue = onlineOrder(OrderStatus.PENDING, PaymentStatus.UNPAID);
+        Order alreadyCancelled = onlineOrder(OrderStatus.CANCELLED, PaymentStatus.UNPAID);
+        alreadyCancelled.setPaymentExpiresAt(Instant.now().minusSeconds(5));
+        Order cod = existingOrder(OrderStatus.PENDING);
+        for (Order o : java.util.List.of(paid, notYetDue, alreadyCancelled, cod)) {
+            when(orderRepository.findById(o.getId())).thenReturn(Optional.of(o));
+            assertThat(orderService.cancelExpiredUnpaidOrder(o.getId())).isFalse();
+        }
+
+        // Khách vừa trả đúng lúc job chạy: đơn phải còn nguyên, không bị huỷ.
+        assertThat(paid.getStatus()).isEqualTo(OrderStatus.PENDING);
+        assertThat(notYetDue.getStatus()).isEqualTo(OrderStatus.PENDING);
+        assertThat(orderService.cancelExpiredUnpaidOrder(UUID.randomUUID())).isFalse();
+        verify(historyRepository, never()).save(any(OrderStatusHistory.class));
+    }
+
+    @Test
+    void findExpiredUnpaidOnlineOrder_returnsOnlyOrdersStillWaitingPastTheirDeadline() {
+        Order expired = onlineOrder(OrderStatus.PENDING, PaymentStatus.UNPAID);
+        expired.setPaymentExpiresAt(Instant.now().minusSeconds(5));
+        Order notDue = onlineOrder(OrderStatus.PENDING, PaymentStatus.UNPAID);
+        Order paid = onlineOrder(OrderStatus.PENDING, PaymentStatus.PAID);
+        paid.setPaymentExpiresAt(Instant.now().minusSeconds(5));
+        for (Order o : java.util.List.of(expired, notDue, paid)) {
+            when(orderRepository.findById(o.getId())).thenReturn(Optional.of(o));
+        }
+
+        assertThat(orderService.findExpiredUnpaidOnlineOrder(expired.getId())).containsSame(expired);
+        assertThat(orderService.findExpiredUnpaidOnlineOrder(notDue.getId())).isEmpty();
+        assertThat(orderService.findExpiredUnpaidOnlineOrder(paid.getId())).isEmpty();
+        assertThat(orderService.findExpiredUnpaidOnlineOrder(UUID.randomUUID())).isEmpty();
     }
 
     private Order existingOrder(OrderStatus status) {

@@ -3,6 +3,7 @@ package com.vetclinic.order.controller;
 import com.vetclinic.order.domain.OrderStatus;
 import com.vetclinic.order.dto.CancelOrderRequest;
 import com.vetclinic.order.dto.CheckoutRequest;
+import com.vetclinic.order.dto.CounterInvoiceRequest;
 import com.vetclinic.order.dto.OrderResponse;
 import com.vetclinic.order.dto.OrderStatusHistoryResponse;
 import com.vetclinic.order.dto.OrderSummaryResponse;
@@ -71,6 +72,15 @@ public class OrderController {
     @GetMapping("/manage/{id}")
     public OrderResponse getOrderAsStaff(@PathVariable UUID id) {
         return orderService.getOrderAsStaff(id);
+    }
+
+    /** Lập và thu hoá đơn gộp (khám + sản phẩm) tại quầy. Token nhân viên dùng để trừ kho và đọc khoản khám. */
+    @PostMapping("/manage/counter")
+    @ResponseStatus(HttpStatus.CREATED)
+    public OrderResponse createCounterInvoice(@Valid @RequestBody CounterInvoiceRequest request,
+                                              @RequestHeader("Authorization") String bearerToken,
+                                              Authentication authentication) {
+        return orderService.createCounterInvoice(userId(authentication), request, bearerToken);
     }
 
     @PostMapping("/manage/{id}/confirm")

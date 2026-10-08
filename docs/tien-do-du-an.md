@@ -115,7 +115,7 @@ Ba endpoint, chỉ `STAFF` / `ADMIN`: xem danh sách đơn thuốc chờ thu ti�
 xác nhận đã thu tiền mặt.
 
 Đây là thanh toán **tại quầy cho đơn thuốc**, thuộc luồng khám bệnh — không phải thanh
-toán trực tuyến cho đơn hàng thương mại điện tử (CN-34 vẫn chưa làm).
+toán trực tuyến cho đơn hàng thương mại điện tử (CN-34), phần đó do `order-service` làm.
 
 ### 3.7. `notification-service` — gửi email
 
@@ -260,7 +260,7 @@ chạy local ngoài Docker vẫn sẽ đụng cổng.
 
 | Mã | Chức năng | Vì sao chưa có |
 |---|---|---|
-| CN-34 | Thanh toán trực tuyến | Mới có COD; cần tài khoản merchant và URL công khai nhận IPN |
+| CN-34 (một phần) | Thanh toán trực tuyến | Đã viết xong cổng VNPAY và cổng giả lập, nhưng chưa chạy thử với sandbox thật (cần tài khoản sandbox và URL công khai nhận IPN). Hoàn tiền tự động chưa có, đang làm thủ công |
 | CN-20 (một phần) | Đổi lịch hẹn | Mới có huỷ; đổi lịch phải huỷ rồi đặt lại |
 | CN-26 | Nhắc tái khám, tiêm phòng | Cần lịch nhắc và một scheduler riêng |
 | CN-44, 45 | Thông báo đơn hàng / nhắc tái khám | `notification-service` mới làm email xác minh và xác nhận đặt lịch |

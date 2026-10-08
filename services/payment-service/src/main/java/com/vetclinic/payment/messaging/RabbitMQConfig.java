@@ -30,6 +30,27 @@ public class RabbitMQConfig {
     // ở đây vì payment-service chỉ publish, không tự nghe lại message của chính mình.
     public static final String PAYMENT_EVENTS_EXCHANGE = "payment.events";
 
+    // order-service là chủ khai báo gốc của exchange này — khai y hệt (true, false). Hoá đơn tại quầy
+    // gộp khoản khám phát order.invoice-paid ở đây khi đã thu tiền.
+    public static final String ORDER_EVENTS_EXCHANGE = "order.events";
+    public static final String INVOICE_PAID_QUEUE = "payment.order-invoice-paid";
+    private static final String ROUTING_KEY_INVOICE_PAID = "order.invoice-paid";
+
+    @Bean
+    public TopicExchange orderEventsExchange() {
+        return new TopicExchange(ORDER_EVENTS_EXCHANGE, true, false);
+    }
+
+    @Bean
+    public Queue invoicePaidQueue() {
+        return new Queue(INVOICE_PAID_QUEUE, true);
+    }
+
+    @Bean
+    public Binding invoicePaidBinding(Queue invoicePaidQueue, TopicExchange orderEventsExchange) {
+        return BindingBuilder.bind(invoicePaidQueue).to(orderEventsExchange).with(ROUTING_KEY_INVOICE_PAID);
+    }
+
     @Bean
     public TopicExchange petEventsExchange() {
         return new TopicExchange(PET_EVENTS_EXCHANGE, true, false);

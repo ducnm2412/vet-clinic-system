@@ -97,7 +97,7 @@ Chú thích trạng thái: ✅ Đã hiện thực · ⚠️ Hiện thực một 
 |---|---|---|---|---|
 | CN-32 | Quản lý giỏ hàng | AC-01 | Thêm / sửa số lượng / xoá sản phẩm khỏi giỏ; giá và tồn kho lấy trực tiếp từ product-service | ✅ |
 | CN-33 | Đặt hàng (checkout) | AC-01 | Nhập người nhận + địa chỉ, tạo đơn từ giỏ, chốt cứng giá tại thời điểm đặt | ✅ |
-| CN-34 | Thanh toán trực tuyến | AC-01, AC-05 | Tích hợp VNPay/Momo, xử lý callback IPN | ⏳ Mới có COD; cần tài khoản merchant và URL công khai để nhận IPN |
+| CN-34 | Thanh toán trực tuyến | AC-01, AC-05 | Tích hợp VNPay/Momo, xử lý callback IPN | ✅ COD, VNPAY sandbox (IPN, trang trả về, hỏi lại giao dịch) và cổng giả lập; chưa chạy thử với sandbox thật. Xem `docs/huong-dan-thanh-toan-vnpay.md` |
 | CN-35 | Theo dõi trạng thái đơn hàng | AC-01 | Luồng: Chờ xác nhận → Đã xác nhận → Đang giao → Hoàn tất / Đã huỷ, kèm lịch sử chuyển trạng thái | ✅ |
 | CN-36 | Xử lý đơn hàng | AC-03, AC-04 | Nhân viên xác nhận, giao hàng, hoàn tất, huỷ đơn | ✅ |
 | CN-37 | Phát sự kiện đơn hàng | Hệ thống | Publish `order.completed` (trừ kho) và `order.cancelled` (hoàn kho) lên RabbitMQ | ✅ |

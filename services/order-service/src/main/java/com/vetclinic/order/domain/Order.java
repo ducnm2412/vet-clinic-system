@@ -41,7 +41,8 @@ public class Order {
     @Column(name = "order_code", nullable = false, unique = true, length = 20)
     private String orderCode;
 
-    @Column(name = "user_id", nullable = false)
+    // NULL với hoá đơn tại quầy của khách lẻ không có tài khoản.
+    @Column(name = "user_id")
     private UUID userId;
 
     @Enumerated(EnumType.STRING)
@@ -49,7 +50,13 @@ public class Order {
     private OrderStatus status;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "payment_method", nullable = false, length = 20)
+    @Column(nullable = false, length = 20)
+    @Builder.Default
+    private OrderChannel channel = OrderChannel.ONLINE;
+
+    // Đơn online có ngay lúc đặt (COD); hoá đơn tại quầy được lập cùng lúc thu tiền.
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_method", length = 20)
     private PaymentMethod paymentMethod;
 
     @Column(name = "recipient_name", nullable = false, length = 200)
@@ -70,8 +77,40 @@ public class Order {
     @Column(name = "shipping_fee", nullable = false, precision = 14, scale = 2)
     private BigDecimal shippingFee;
 
+    // Khoản khám/thuốc ở payment-service được gộp vào hoá đơn này. exam_amount nằm trong total
+    // nhưng không tính vào doanh thu đơn hàng (payment-service đã tính khoản khám).
+    @Column(name = "exam_payment_id")
+    private UUID examPaymentId;
+
+    @Column(name = "exam_amount", nullable = false, precision = 14, scale = 2)
+    @Builder.Default
+    private BigDecimal examAmount = BigDecimal.ZERO;
+
     @Column(nullable = false, precision = 14, scale = 2)
     private BigDecimal total;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_status", nullable = false, length = 20)
+    @Builder.Default
+    private PaymentStatus paymentStatus = PaymentStatus.UNPAID;
+
+    @Column(name = "paid_at")
+    private Instant paidAt;
+
+    @Column(name = "transfer_reference", length = 100)
+    private String transferReference;
+
+    // Chỉ có với đơn ONLINE chưa trả: quá hạn này thì đơn bị tự huỷ.
+    @Column(name = "payment_expires_at")
+    private Instant paymentExpiresAt;
+
+    // Mã giao dịch phía cổng thanh toán, ghi khi cổng báo kết quả.
+    @Column(name = "gateway_txn_ref", length = 64)
+    private String gatewayTxnRef;
+
+    // Lúc cấp link thanh toán hiện tại; cổng thật cần đúng mốc này khi hỏi lại trạng thái giao dịch.
+    @Column(name = "gateway_txn_created_at")
+    private Instant gatewayTxnCreatedAt;
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default

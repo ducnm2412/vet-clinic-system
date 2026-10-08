@@ -14,6 +14,7 @@ import {
   PawPrint,
   Syringe,
   Receipt,
+  ReceiptText,
   Stethoscope,
   UserRound,
   Users,
@@ -96,6 +97,7 @@ export const NAV: Record<Role, NavSection[]> = {
       items: [
         { href: "/staff/appointments", label: "Lịch khám", icon: CalendarDays },
         { href: "/staff/walk-in", label: "Đặt lịch tại quầy", icon: CalendarPlus },
+        { href: "/staff/counter", label: "Hoá đơn tại quầy", icon: ReceiptText },
         { href: "/staff/payments", label: "Thu tiền thuốc", icon: CreditCard },
         { href: "/staff/orders", label: "Đơn hàng", icon: Receipt },
       ],

@@ -219,3 +219,24 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/*
+  In hoá đơn tại quầy: chỉ phần .print-area được in, thanh bên và các nút thì ẩn. Dùng
+  visibility thay vì display để giữ nguyên bố cục của phần cần in.
+*/
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-area,
+  .print-area * {
+    visibility: visible;
+  }
+  .print-area {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    border: none;
+  }
+}

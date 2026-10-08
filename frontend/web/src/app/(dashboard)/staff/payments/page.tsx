@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError, paymentApi } from "@/lib/api";
 import { PAYMENT_STATUS } from "@/lib/utils/status";
@@ -105,6 +106,7 @@ export default function StaffPaymentsPage() {
 function PaymentDialog({ payment, onClose }: { payment: Payment | null; onClose: () => void }) {
   const qc = useQueryClient();
   const toast = useToast();
+  const router = useRouter();
   const [amount, setAmount] = useState("");
 
   const setAmountMutation = useMutation({
@@ -159,6 +161,13 @@ function PaymentDialog({ payment, onClose }: { payment: Payment | null; onClose:
           <>
             <Button variant="secondary" onClick={onClose}>
               Đóng
+            </Button>
+            {/* Khách còn mua thêm đồ thì gộp chung một hoá đơn, không thu tiền khám riêng. */}
+            <Button
+              variant="secondary"
+              onClick={() => router.push(`/staff/counter?payment=${payment.id}`)}
+            >
+              Gộp với sản phẩm
             </Button>
             <Button loading={confirmMutation.isPending} onClick={() => confirmMutation.mutate()}>
               Đã nhận tiền

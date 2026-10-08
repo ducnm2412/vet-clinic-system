@@ -9,7 +9,7 @@ import { formatDateTime, formatPrice } from "@/lib/utils/format";
 import type { OrderSummary } from "@/types";
 import { ButtonLink, Container, SiteButton } from "@/components/site/primitives";
 import { CustomerOnly } from "@/components/site/CustomerOnly";
-import { ORDER_LOOK, StatusPill } from "@/components/site/StatusPill";
+import { orderLook, StatusPill } from "@/components/site/StatusPill";
 
 const PAGE_SIZE = 10;
 
@@ -137,15 +137,19 @@ function OrderCard({ order }: { order: OrderSummary }) {
         <p className="font-[family-name:var(--font-brand)] text-[19px] font-semibold">
           {order.orderCode}
         </p>
-        <p className="mt-1 text-[15px] text-stone">Đặt lúc {formatDateTime(order.createdAt)}</p>
+        <p className="mt-1 text-[15px] text-stone">
+          {order.channel === "COUNTER" ? "Lập tại quầy lúc" : "Đặt lúc"} {formatDateTime(order.createdAt)}
+        </p>
       </div>
 
-      <p className="tnum min-w-24 text-stone">{order.totalItems} món</p>
+      <p className="tnum min-w-24 text-stone">
+        {order.totalItems > 0 ? `${order.totalItems} món` : "Tiền khám / thuốc"}
+      </p>
 
       <p className="tnum min-w-32 text-[19px] font-semibold">{formatPrice(order.total)}</p>
 
       <div className="ml-auto">
-        <StatusPill look={ORDER_LOOK[order.status]} />
+        <StatusPill look={orderLook(order)} />
       </div>
     </Link>
   );

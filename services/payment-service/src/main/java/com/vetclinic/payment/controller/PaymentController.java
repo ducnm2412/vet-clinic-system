@@ -33,6 +33,13 @@ public class PaymentController {
         return paymentService.listPending();
     }
 
+    // Sau /pending: đường dẫn cố định luôn được ưu tiên hơn {id}, nên "pending" không bị bắt nhầm thành UUID.
+    @GetMapping("/payment/payments/{id}")
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
+    public PaymentResponse get(@PathVariable UUID id) {
+        return paymentService.get(id);
+    }
+
     @PutMapping("/payment/payments/{id}/amount")
     @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
     public PaymentResponse setAmount(@PathVariable UUID id, @Valid @RequestBody SetAmountRequest request) {

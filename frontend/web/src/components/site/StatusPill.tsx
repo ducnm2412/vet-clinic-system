@@ -1,5 +1,12 @@
 import { cn } from "@/lib/utils/cn";
-import type { AppointmentStatus, OrderStatus, PrescriptionStatus } from "@/types";
+import type {
+  AppointmentStatus,
+  OrderChannel,
+  OrderPaymentMethod,
+  OrderPaymentStatus,
+  OrderStatus,
+  PrescriptionStatus,
+} from "@/types";
 
 /*
   Nhãn trạng thái nói bằng lời của khách hàng, không bằng lời của hệ thống.
@@ -35,6 +42,32 @@ export const ORDER_LOOK: Record<OrderStatus, Look> = {
   COMPLETED: { label: "Đã giao xong", dot: "bg-pine", skin: DONE },
   CANCELLED: { label: "Đã huỷ", dot: "bg-coral", skin: STOPPED },
 };
+
+/** Hoá đơn lập và thu ngay tại quầy: không có chặng chờ xác nhận hay giao hàng để kể. */
+export const COUNTER_LOOK: Look = { label: "Đã thanh toán tại quầy", dot: "bg-pine", skin: DONE };
+
+const ONLINE_UNPAID_LOOK: Look = { label: "Chờ bạn thanh toán", dot: "bg-[#f2a93b]", skin: WAIT };
+const ONLINE_PAID_LOOK: Look = { label: "Đã thanh toán, chờ xác nhận", dot: "bg-teal", skin: GOING };
+const REFUND_LOOK: Look = { label: "Đã huỷ, chờ hoàn tiền", dot: "bg-coral", skin: STOPPED };
+
+/**
+ * Nhãn của đơn theo cả trạng thái lẫn chuyện tiền nong: đơn online đang chờ khách trả phải khác
+ * đơn đã trả, và đơn huỷ sau khi trả phải nói rõ tiền sẽ được hoàn.
+ */
+export function orderLook(o: {
+  status: OrderStatus;
+  channel: OrderChannel;
+  paymentMethod: OrderPaymentMethod | null;
+  paymentStatus: OrderPaymentStatus;
+  refundRequired: boolean;
+}): Look {
+  if (o.channel === "COUNTER") return COUNTER_LOOK;
+  if (o.refundRequired) return REFUND_LOOK;
+  if (o.status === "PENDING" && o.paymentMethod === "ONLINE") {
+    return o.paymentStatus === "PAID" ? ONLINE_PAID_LOOK : ONLINE_UNPAID_LOOK;
+  }
+  return ORDER_LOOK[o.status];
+}
 
 export const PRESCRIPTION_LOOK: Record<PrescriptionStatus, Look> = {
   PENDING: { label: "Chờ bạn trả tiền tại quầy", dot: "bg-[#f2a93b]", skin: WAIT },

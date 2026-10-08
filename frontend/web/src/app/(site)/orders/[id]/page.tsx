@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, ChevronLeft } from "lucide-react";
 import { ApiError, orderApi } from "@/lib/api";
 import { formatDateTime, formatPrice } from "@/lib/utils/format";
+import { ORDER_PAYMENT_METHOD } from "@/lib/utils/status";
+import { goToPaymentUrl } from "@/lib/utils/payment";
 import { cn } from "@/lib/utils/cn";
 import { useToast } from "@/components/ui";
 import { CLINIC } from "@/config/clinic";
@@ -15,7 +17,7 @@ import { ButtonLink, Container, SiteButton } from "@/components/site/primitives"
 import { CustomerOnly } from "@/components/site/CustomerOnly";
 import { SiteDialog } from "@/components/site/SiteDialog";
 import { SiteTextarea } from "@/components/site/fields";
-import { ORDER_LOOK, StatusPill } from "@/components/site/StatusPill";
+import { orderLook, StatusPill } from "@/components/site/StatusPill";
 
 export default function OrderDetailPage() {
   return (
@@ -28,7 +30,12 @@ export default function OrderDetailPage() {
 function OrderDetailBody() {
   const { id } = useParams<{ id: string }>();
 
-  const order = useQuery({ queryKey: ["orders", id], queryFn: () => orderApi.byId(id) });
+  const order = useQuery({
+    queryKey: ["orders", id],
+    queryFn: () => orderApi.byId(id),
+    // Đơn online đang chờ trả: kiểm lại thưa thớt để thấy ngay khi đã thanh toán hoặc bị tự huỷ quá hạn.
+    refetchInterval: (q) => (isAwaitingPayment(q.state.data) ? 15_000 : false),
+  });
 
   if (order.isLoading) {
     return (
@@ -57,7 +64,19 @@ function OrderDetailBody() {
   return <OrderBody order={order.data} />;
 }
 
+/** Đơn thanh toán online mà khách chưa trả và còn trong hạn xử lý. */
+function isAwaitingPayment(order: Order | undefined): boolean {
+  return (
+    order !== undefined &&
+    order.paymentMethod === "ONLINE" &&
+    order.paymentStatus === "UNPAID" &&
+    order.status === "PENDING"
+  );
+}
+
 function OrderBody({ order }: { order: Order }) {
+  const counter = order.channel === "COUNTER";
+
   return (
     <>
       <div className="bg-mint">
@@ -72,13 +91,22 @@ function OrderBody({ order }: { order: Order }) {
         </Container>
 
         <Container className="py-10 md:py-14">
-          <StatusPill look={ORDER_LOOK[order.status]} />
-          <h1 className="t-h2 mt-4">Đơn {order.orderCode}</h1>
-          <p className="mt-3 text-stone">Đặt lúc {formatDateTime(order.createdAt)}</p>
+          <StatusPill look={orderLook(order)} />
+          <h1 className="t-h2 mt-4">{counter ? "Hoá đơn" : "Đơn"} {order.orderCode}</h1>
+          <p className="mt-3 text-stone">
+            {counter ? "Lập tại quầy lúc" : "Đặt lúc"} {formatDateTime(order.createdAt)}
+          </p>
 
           {order.status === "CANCELLED" && order.cancelReason && (
             <p className="measure mt-6 rounded-[var(--radius-card)] bg-white px-5 py-4 text-coral-deep">
               Lý do huỷ: {order.cancelReason}
+            </p>
+          )}
+
+          {order.refundRequired && (
+            <p className="measure mt-4 rounded-[var(--radius-card)] bg-white px-5 py-4 text-pine">
+              Đơn này bạn đã thanh toán trước khi bị huỷ. Phòng khám sẽ hoàn tiền lại cho bạn; gọi{" "}
+              {CLINIC.phone} nếu cần biết thêm.
             </p>
           )}
         </Container>
@@ -86,11 +114,19 @@ function OrderBody({ order }: { order: Order }) {
 
       <Container className="grid gap-12 py-14 lg:grid-cols-[1fr_21rem] lg:gap-16 md:py-20">
         <div className="min-w-0 space-y-14">
-          <Timeline order={order} />
+          {/* Hoá đơn tại quầy được thu ngay nên không có chặng xác nhận và giao hàng để kể. */}
+          {!counter && <Timeline order={order} />}
+
 
           <section>
-            <h2 className="t-h3">Món trong đơn</h2>
+            <h2 className="t-h3">{counter ? "Nội dung hoá đơn" : "Món trong đơn"}</h2>
             <ul className="mt-5 divide-y divide-mist border-y border-mist">
+              {order.examAmount > 0 && (
+                <li className="flex flex-wrap items-baseline gap-x-6 gap-y-2 py-4">
+                  <p className="min-w-52 flex-1 font-medium">Tiền khám / thuốc</p>
+                  <p className="tnum font-semibold">{formatPrice(order.examAmount)}</p>
+                </li>
+              )}
               {order.items.map((item) => (
                 <li key={item.productId} className="flex flex-wrap items-baseline gap-x-6 gap-y-2 py-4">
                   <div className="min-w-52 flex-1">
@@ -110,8 +146,9 @@ function OrderBody({ order }: { order: Order }) {
             </ul>
 
             <dl className="mt-6 ml-auto max-w-sm space-y-2">
-              <Money label="Tạm tính" value={order.subtotal} />
-              <Money label="Phí giao hàng" value={order.shippingFee} />
+              {order.items.length > 0 && <Money label="Tiền hàng" value={order.subtotal} />}
+              {order.examAmount > 0 && <Money label="Tiền khám / thuốc" value={order.examAmount} />}
+              {!counter && <Money label="Phí giao hàng" value={order.shippingFee} />}
               <div className="flex justify-between border-t border-mist pt-3">
                 <dt className="font-medium">Tổng cộng</dt>
                 <dd className="tnum text-[21px] font-semibold">{formatPrice(order.total)}</dd>
@@ -121,6 +158,43 @@ function OrderBody({ order }: { order: Order }) {
         </div>
 
         <aside className="space-y-6 lg:sticky lg:top-24 lg:self-start">
+          {isAwaitingPayment(order) && <PayNowPanel order={order} />}
+
+          {counter ? (
+            <div className="rounded-[var(--radius-card)] bg-mint p-6">
+              <h2 className="t-h3">Thanh toán tại quầy</h2>
+              <dl className="mt-4 space-y-3 text-[15px]">
+                <div>
+                  <dt className="text-stone">Khách hàng</dt>
+                  <dd className="font-medium">{order.recipientName}</dd>
+                </div>
+                <div>
+                  <dt className="text-stone">Hình thức</dt>
+                  <dd className="font-medium">
+                    {order.paymentMethod ? ORDER_PAYMENT_METHOD[order.paymentMethod] : "—"}
+                  </dd>
+                </div>
+                {order.transferReference && (
+                  <div>
+                    <dt className="text-stone">Mã giao dịch</dt>
+                    <dd className="font-medium">{order.transferReference}</dd>
+                  </div>
+                )}
+                {order.paidAt && (
+                  <div>
+                    <dt className="text-stone">Đã thu lúc</dt>
+                    <dd className="tnum font-medium">{formatDateTime(order.paidAt)}</dd>
+                  </div>
+                )}
+                {order.note && (
+                  <div>
+                    <dt className="text-stone">Ghi chú</dt>
+                    <dd>{order.note}</dd>
+                  </div>
+                )}
+              </dl>
+            </div>
+          ) : (
           <div className="rounded-[var(--radius-card)] bg-mint p-6">
             <h2 className="t-h3">Giao tới</h2>
             <dl className="mt-4 space-y-3 text-[15px]">
@@ -144,15 +218,102 @@ function OrderBody({ order }: { order: Order }) {
               )}
               <div>
                 <dt className="text-stone">Thanh toán</dt>
-                <dd className="font-medium">Tiền mặt khi nhận hàng</dd>
+                <dd className="font-medium">
+                  {order.paymentMethod ? ORDER_PAYMENT_METHOD[order.paymentMethod] : "—"}
+                  {order.paymentMethod === "ONLINE" && (
+                    <span className="ml-2 text-[15px] font-normal text-stone">
+                      · {order.paymentStatus === "PAID" ? "đã thanh toán" : "chưa thanh toán"}
+                    </span>
+                  )}
+                </dd>
               </div>
+              {order.paymentStatus === "PAID" && order.paidAt && order.paymentMethod === "ONLINE" && (
+                <div>
+                  <dt className="text-stone">Đã thanh toán lúc</dt>
+                  <dd className="tnum font-medium">{formatDateTime(order.paidAt)}</dd>
+                </div>
+              )}
             </dl>
           </div>
+          )}
 
-          <CancelPanel order={order} />
+          {counter ? (
+            <div className="rounded-[var(--radius-card)] border border-mist p-6">
+              <p className="text-stone">
+                Hoá đơn này đã thanh toán xong tại quầy. Gọi {CLINIC.phone} nếu bạn cần phòng khám
+                hỗ trợ.
+              </p>
+            </div>
+          ) : (
+            <CancelPanel order={order} />
+          )}
         </aside>
       </Container>
     </>
+  );
+}
+
+/** Giây còn lại tới hạn; null khi không có hạn. Chạy mỗi giây để đồng hồ đếm ngược. */
+function useSecondsLeft(iso: string | null): number | null {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!iso) return;
+    const t = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(t);
+  }, [iso]);
+  if (!iso) return null;
+  return Math.max(0, Math.floor((new Date(iso).getTime() - now) / 1000));
+}
+
+function formatCountdown(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+function PayNowPanel({ order }: { order: Order }) {
+  const router = useRouter();
+  const toast = useToast();
+  const left = useSecondsLeft(order.paymentExpiresAt);
+  const expired = left !== null && left <= 0;
+
+  const pay = useMutation({
+    mutationFn: () => orderApi.startPayment(order.id),
+    onSuccess: (init) => goToPaymentUrl(router, init.paymentUrl),
+    onError: (err) =>
+      toast.error(err instanceof ApiError ? err.message : "Chưa mở được trang thanh toán."),
+  });
+
+  return (
+    <div className="rounded-[var(--radius-card)] border border-teal bg-white p-6">
+      <h2 className="t-h3">Thanh toán đơn này</h2>
+      <p className="tnum mt-3 text-[21px] font-semibold">{formatPrice(order.total)}</p>
+      {expired ? (
+        <p className="mt-3 text-coral-deep">
+          Đơn đã hết hạn thanh toán và sẽ được huỷ tự động trong ít phút.
+        </p>
+      ) : (
+        <>
+          <p className="mt-3 text-stone">
+            Phòng khám xử lý đơn sau khi nhận được tiền.
+            {left !== null && (
+              <>
+                {" "}Còn <span className="tnum font-medium text-pine">{formatCountdown(left)}</span> để
+                thanh toán, quá hạn đơn sẽ tự huỷ.
+              </>
+            )}
+          </p>
+          <SiteButton
+            size="lg"
+            className="mt-5 w-full"
+            loading={pay.isPending}
+            onClick={() => pay.mutate()}
+          >
+            Thanh toán ngay
+          </SiteButton>
+        </>
+      )}
+    </div>
   );
 }
 
@@ -171,6 +332,14 @@ const FLOW: Array<{ status: OrderStatus; label: string; note: string }> = [
   { status: "SHIPPING", label: "Đang giao", note: "Hàng đang trên đường tới bạn." },
   { status: "COMPLETED", label: "Đã giao xong", note: "Bạn đã nhận và trả tiền." },
 ];
+
+/** Ở chặng đầu, đơn online cần nói rõ đang chờ tiền hay đã có tiền. */
+function pendingNote(order: Order): string {
+  if (order.paymentMethod !== "ONLINE") return FLOW[0].note;
+  return order.paymentStatus === "PAID"
+    ? "Phòng khám đã nhận được tiền, đang chờ xác nhận đơn."
+    : "Đơn được giữ chờ bạn thanh toán online.";
+}
 
 /**
  * Đường đi của đơn. Mốc thời gian lấy từ GET /orders/{id}/history — chỉ hiện giờ cho
@@ -217,6 +386,7 @@ function Timeline({ order }: { order: Order }) {
           const done = i <= current;
           const isNow = i === current;
           const time = at.get(stage.status);
+          const note = stage.status === "PENDING" ? pendingNote(order) : stage.note;
 
           return (
             <li key={stage.status} className="flex gap-5">
@@ -243,7 +413,7 @@ function Timeline({ order }: { order: Order }) {
                   {stage.label}
                   {isNow && <span className="ml-2 text-[15px] text-teal-deep">đang ở đây</span>}
                 </p>
-                <p className="text-[15px] text-stone">{stage.note}</p>
+                <p className="text-[15px] text-stone">{note}</p>
                 {time && done && (
                   <p className="tnum mt-1 text-[15px] text-stone">{formatDateTime(time)}</p>
                 )}
@@ -289,6 +459,9 @@ function CancelPanel({ order }: { order: Order }) {
       <h2 className="t-h3">Đổi ý?</h2>
       <p className="mt-3 text-stone">
         Đơn chưa được xác nhận nên bạn vẫn huỷ được. Sau khi phòng khám gom hàng thì không.
+        {order.paymentMethod === "ONLINE" && order.paymentStatus === "PAID" && (
+          <> Đơn đã thanh toán nên nếu huỷ, phòng khám sẽ hoàn tiền lại cho bạn.</>
+        )}
       </p>
       <SiteButton variant="outline" className="mt-6 w-full" onClick={() => setOpen(true)}>
         Huỷ đơn này

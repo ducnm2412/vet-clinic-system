@@ -372,6 +372,18 @@ services:
       RABBITMQ_USERNAME: ${RABBITMQ_USER:-guest}
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
       ORDER_SHIPPING_FEE: ${ORDER_SHIPPING_FEE:-30000}
+      ORDER_ONLINE_PAYMENT_TIMEOUT_MINUTES: ${ORDER_ONLINE_PAYMENT_TIMEOUT_MINUTES:-30}
+      # Cong thanh toan gia lap: chi danh cho dev/demo, KHONG bat o moi truong that.
+      ORDER_MOCK_GATEWAY_ENABLED: ${ORDER_MOCK_GATEWAY_ENABLED:-true}
+      ORDER_MOCK_GATEWAY_SECRET: ${ORDER_MOCK_GATEWAY_SECRET:-dev-only-mock-gateway-secret}
+      # Cong VNPAY (thay cho cong gia lap): bat thi PHAI tat ORDER_MOCK_GATEWAY_ENABLED, chi duoc bat mot cong.
+      ORDER_VNPAY_ENABLED: ${ORDER_VNPAY_ENABLED:-false}
+      ORDER_VNPAY_TMN_CODE: ${ORDER_VNPAY_TMN_CODE:-}
+      ORDER_VNPAY_HASH_SECRET: ${ORDER_VNPAY_HASH_SECRET:-}
+      ORDER_VNPAY_PAY_URL: ${ORDER_VNPAY_PAY_URL:-https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}
+      ORDER_VNPAY_RETURN_URL: ${ORDER_VNPAY_RETURN_URL:-}
+      ORDER_VNPAY_QUERY_URL: ${ORDER_VNPAY_QUERY_URL:-https://sandbox.vnpayment.vn/merchant_webapi/api/transaction}
+      ORDER_VNPAY_SERVER_IP: ${ORDER_VNPAY_SERVER_IP:-127.0.0.1}
     depends_on:
       order-db:
         condition: service_healthy

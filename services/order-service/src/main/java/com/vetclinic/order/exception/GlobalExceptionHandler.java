@@ -1,5 +1,7 @@
 package com.vetclinic.order.exception;
 
+import com.vetclinic.order.payment.GatewayUnavailableException;
+import com.vetclinic.order.payment.InvalidGatewaySignatureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -26,9 +28,16 @@ public class GlobalExceptionHandler {
     }
 
     // 503: product-service không trả lời, nhân viên bấm lại sau là được (VD-14).
-    @ExceptionHandler(StockServiceUnavailableException.class)
-    public ResponseEntity<ErrorResponse> handleStockServiceDown(StockServiceUnavailableException ex) {
+    @ExceptionHandler({StockServiceUnavailableException.class, PaymentServiceUnavailableException.class,
+            GatewayUnavailableException.class})
+    public ResponseEntity<ErrorResponse> handleStockServiceDown(RuntimeException ex) {
         return build(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage());
+    }
+
+    // Kết quả thanh toán sai chữ ký: không tiết lộ chi tiết cho phía gọi.
+    @ExceptionHandler(InvalidGatewaySignatureException.class)
+    public ResponseEntity<ErrorResponse> handleBadSignature(InvalidGatewaySignatureException ex) {
+        return build(HttpStatus.BAD_REQUEST, "Dữ liệu thanh toán không hợp lệ");
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

@@ -102,13 +102,17 @@ Kiểm chứng trên hệ thống thật: hai đơn cùng mua món cuối cùng,
 **Còn lại:** vẫn chưa giữ chỗ lúc khách đặt hàng (VD-04) — hai khách vẫn đặt được cùng món cuối,
 chỉ là người thứ hai bị từ chối lúc nhân viên xác nhận thay vì lúc đặt.
 
-### 🟡 VD-15. CN-34 mới dừng ở COD
+### 🟡 VD-15. CN-34: đã viết xong, chưa chạy thử với VNPAY sandbox
 
-`PaymentMethod` chỉ có `COD`. Tích hợp VNPay/Momo cần tài khoản merchant và một URL công khai
-để cổng thanh toán gọi ngược lại (IPN callback) — `localhost` thì họ không gọi tới được.
+Đã có `OnlinePaymentGateway` với `VnpayGateway` (link thanh toán, IPN, trang trả về, hỏi lại giao dịch) và
+`MockPaymentGateway` (demo). Đơn online không thêm trạng thái mới: `PENDING` + `UNPAID` có hạn trả, quá hạn
+thì tự huỷ sau khi hỏi lại cổng. Chi tiết: `docs/huong-dan-thanh-toan-vnpay.md`.
 
-Khi làm: thêm bảng `payments`, tách một lớp adapter cho từng cổng, và thêm trạng thái chờ
-thanh toán vào đầu luồng.
+**Còn lại:**
+- Chạy thử với tài khoản sandbox thật. Chữ ký và định dạng mới được test với cài đặt độc lập theo tài liệu
+  VNPAY, chưa đối chiếu giao dịch thật; số tiền trong phản hồi `querydr` đang giả định nhân 100 như IPN.
+- Hoàn tiền (đơn đã trả mà bị huỷ) làm thủ công, hệ thống chỉ đánh dấu `refundRequired`.
+- Momo và các cổng khác chưa có; thêm bằng cách cài đặt thêm `OnlinePaymentGateway`.
 
 ### ⚪ Khác
 

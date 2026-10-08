@@ -11,6 +11,7 @@ import { Minus, Plus, Trash2 } from "lucide-react";
 import { ApiError, cartApi, customerApi, orderApi } from "@/lib/api";
 import { useCart } from "@/lib/useCart";
 import { formatAddress, formatPrice } from "@/lib/utils/format";
+import { goToPaymentUrl } from "@/lib/utils/payment";
 import { useToast } from "@/components/ui";
 import type { CartItem } from "@/types";
 import { ArchPlaceholder, ButtonLink, Container, SiteButton } from "@/components/site/primitives";
@@ -25,6 +26,17 @@ const schema = z.object({
 });
 
 type FormValues = z.infer<typeof schema>;
+
+type PayMethod = "COD" | "ONLINE";
+
+const PAY_OPTIONS: Array<{ value: PayMethod; label: string; note: string }> = [
+  { value: "COD", label: "Thanh toán khi nhận hàng", note: "Trả tiền mặt cho người giao." },
+  {
+    value: "ONLINE",
+    label: "Thanh toán online",
+    note: "Trả ngay sau khi đặt. Đơn được giữ trong thời gian ngắn, quá hạn chưa trả sẽ tự huỷ.",
+  },
+];
 
 export default function CartPage() {
   return (
@@ -226,14 +238,37 @@ function CheckoutPanel({ subtotal, checkoutable }: { subtotal: number; checkouta
   const addresses = useQuery({ queryKey: ["addresses"], queryFn: customerApi.addresses });
   const saved = addresses.data ?? [];
 
+  const [method, setMethod] = useState<PayMethod>("COD");
+
   const checkout = useMutation({
-    mutationFn: (values: FormValues) =>
-      orderApi.checkout({ ...values, note: values.note || undefined, paymentMethod: "COD" }),
-    onSuccess: (order) => {
+    mutationFn: async (values: FormValues) => {
+      const order = await orderApi.checkout({
+        ...values,
+        note: values.note || undefined,
+        paymentMethod: method,
+      });
+      if (method !== "ONLINE") return { order, paymentUrl: null };
+      // Đơn đã tạo xong rồi mới xin link trả tiền. Xin hỏng thì khách vẫn có đơn và bấm "Thanh toán
+      // ngay" được ở trang đơn, nên không coi cả lần đặt là thất bại.
+      try {
+        const init = await orderApi.startPayment(order.id);
+        return { order, paymentUrl: init.paymentUrl };
+      } catch {
+        return { order, paymentUrl: null };
+      }
+    },
+    onSuccess: ({ order, paymentUrl }) => {
       qc.invalidateQueries({ queryKey: ["cart"] });
       qc.invalidateQueries({ queryKey: ["orders"] });
       toast.success(`Đã đặt đơn ${order.orderCode}`);
-      router.push(`/orders/${order.id}`);
+      if (paymentUrl) {
+        goToPaymentUrl(router, paymentUrl);
+      } else {
+        if (method === "ONLINE") {
+          toast.error("Chưa mở được trang thanh toán. Bạn bấm \"Thanh toán ngay\" ở trang đơn nhé.");
+        }
+        router.push(`/orders/${order.id}`);
+      }
     },
     onError: (err) => {
       if (err instanceof ApiError && err.fieldErrors) {
@@ -311,6 +346,33 @@ function CheckoutPanel({ subtotal, checkoutable }: { subtotal: number; checkouta
           />
         </div>
 
+        <fieldset className="mt-6 border-t border-mist pt-5">
+          <legend className="mb-3 text-[15px] font-medium">Cách thanh toán</legend>
+          <div className="space-y-2">
+            {PAY_OPTIONS.map((o) => (
+              <label
+                key={o.value}
+                className={`flex cursor-pointer gap-3 rounded-[var(--radius-card)] border bg-white p-4 transition-colors ${
+                  method === o.value ? "border-teal" : "border-mist hover:border-teal"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value={o.value}
+                  checked={method === o.value}
+                  onChange={() => setMethod(o.value)}
+                  className="mt-1 size-4 accent-teal"
+                />
+                <span>
+                  <span className="block font-medium">{o.label}</span>
+                  <span className="block text-[15px] text-stone">{o.note}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+
         <dl className="mt-6 space-y-2 border-t border-mist pt-5">
           <div className="flex justify-between">
             <dt className="text-stone">Tạm tính</dt>
@@ -339,11 +401,13 @@ function CheckoutPanel({ subtotal, checkoutable }: { subtotal: number; checkouta
           disabled={!checkoutable}
           loading={checkout.isPending}
         >
-          Đặt hàng
+          {method === "ONLINE" ? "Đặt hàng và thanh toán" : "Đặt hàng"}
         </SiteButton>
 
         <p className="mt-4 text-center text-[15px] text-stone">
-          Thanh toán tiền mặt khi nhận hàng.
+          {method === "ONLINE"
+            ? "Sau khi đặt, bạn được chuyển sang trang thanh toán."
+            : "Thanh toán tiền mặt khi nhận hàng."}
         </p>
       </form>
     </aside>
