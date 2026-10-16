@@ -43,8 +43,12 @@ export const ORDER_LOOK: Record<OrderStatus, Look> = {
   CANCELLED: { label: "Đã huỷ", dot: "bg-coral", skin: STOPPED },
 };
 
-/** Hoá đơn lập và thu ngay tại quầy: không có chặng chờ xác nhận hay giao hàng để kể. */
+/**
+ * Hoá đơn tại quầy không có chặng chờ xác nhận hay giao hàng: hoặc đang chờ khách ghé quầy trả tiền,
+ * hoặc đã thu xong, hoặc đã bị huỷ.
+ */
 export const COUNTER_LOOK: Look = { label: "Đã thanh toán tại quầy", dot: "bg-pine", skin: DONE };
+const COUNTER_WAITING_LOOK: Look = { label: "Chờ thanh toán tại quầy", dot: "bg-[#f2a93b]", skin: WAIT };
 
 const ONLINE_UNPAID_LOOK: Look = { label: "Chờ bạn thanh toán", dot: "bg-[#f2a93b]", skin: WAIT };
 const ONLINE_PAID_LOOK: Look = { label: "Đã thanh toán, chờ xác nhận", dot: "bg-teal", skin: GOING };
@@ -61,7 +65,10 @@ export function orderLook(o: {
   paymentStatus: OrderPaymentStatus;
   refundRequired: boolean;
 }): Look {
-  if (o.channel === "COUNTER") return COUNTER_LOOK;
+  if (o.channel === "COUNTER") {
+    if (o.status === "CANCELLED") return ORDER_LOOK.CANCELLED;
+    return o.paymentStatus === "PAID" ? COUNTER_LOOK : COUNTER_WAITING_LOOK;
+  }
   if (o.refundRequired) return REFUND_LOOK;
   if (o.status === "PENDING" && o.paymentMethod === "ONLINE") {
     return o.paymentStatus === "PAID" ? ONLINE_PAID_LOOK : ONLINE_UNPAID_LOOK;

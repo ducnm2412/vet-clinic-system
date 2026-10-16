@@ -40,7 +40,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/profile/photos/**").authenticated()
                         // Staff/Admin tra cứu 1 khách hàng cụ thể — path "by-id" tách biệt hẳn khỏi
                         // "me" nên không lo bị rule /profile/customer/** phía dưới nuốt mất.
-                        .requestMatchers(HttpMethod.GET, "/profile/customer/by-id/**").hasAnyRole("STAFF", "ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/profile/customer/by-id/**", "/profile/customer/by-user/**").hasAnyRole("STAFF", "ADMIN")
                         // Trang Khách hàng của admin tra hồ sơ nhiều khách một lượt. "customers" số
                         // nhiều nên không trùng rule /profile/customer/** của chính khách.
                         .requestMatchers(HttpMethod.GET, "/profile/customers/summary").hasRole("ADMIN")

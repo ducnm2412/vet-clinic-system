@@ -132,4 +132,39 @@ class CustomerProfileControllerTest {
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isNotFound());
     }
+
+    @Test
+    void getByUser_withStaffToken_returnsThatCustomersPhone() throws Exception {
+        UUID userId = UUID.randomUUID();
+        String ownerToken = TestJwtSupport.token(jwtSecret, userId, List.of("CUSTOMER"));
+        mockMvc.perform(put("/profile/customer/me")
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"phone\":\"0909111222\"}"))
+                .andExpect(status().isOk());
+
+        String staffToken = TestJwtSupport.token(jwtSecret, UUID.randomUUID(), List.of("STAFF"));
+        mockMvc.perform(get("/profile/customer/by-user/" + userId).header("Authorization", "Bearer " + staffToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.phone").value("0909111222"))
+                .andExpect(jsonPath("$.userId").value(userId.toString()));
+    }
+
+    @Test
+    void getByUser_doesNotCreateAProfileForACustomerWhoHasNone() throws Exception {
+        String staffToken = TestJwtSupport.token(jwtSecret, UUID.randomUUID(), List.of("STAFF"));
+
+        mockMvc.perform(get("/profile/customer/by-user/" + UUID.randomUUID())
+                        .header("Authorization", "Bearer " + staffToken))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void getByUser_isClosedToCustomersAndAnonymous() throws Exception {
+        mockMvc.perform(get("/profile/customer/by-user/" + UUID.randomUUID())
+                        .header("Authorization", "Bearer " + customerToken()))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/profile/customer/by-user/" + UUID.randomUUID()))
+                .andExpect(status().isUnauthorized());
+    }
 }

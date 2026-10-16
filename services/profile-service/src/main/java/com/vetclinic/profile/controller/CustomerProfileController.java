@@ -79,4 +79,10 @@ public class CustomerProfileController {
     public CustomerProfileResponse getProfileById(@PathVariable UUID customerProfileId) {
         return customerProfileService.getProfileById(customerProfileId);
     }
+
+    // Staff/Admin tra hồ sơ theo mã tài khoản — path "by-user" tách khỏi "me" như "by-id".
+    @GetMapping("/profile/customer/by-user/{userId}")
+    public CustomerProfileResponse getProfileByUserId(@PathVariable UUID userId) {
+        return customerProfileService.getProfileByUserId(userId);
+    }
 }

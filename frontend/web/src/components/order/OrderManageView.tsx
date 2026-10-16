@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError, nextActions, orderManageApi } from "@/lib/api";
 import { ORDER_PAYMENT_METHOD, ORDER_PAYMENT_STATUS, ORDER_STATUS } from "@/lib/utils/status";
@@ -153,6 +154,7 @@ export function OrderManageView() {
 function OrderDetailDialog({ orderId, onClose }: { orderId: string | null; onClose: () => void }) {
   const qc = useQueryClient();
   const toast = useToast();
+  const router = useRouter();
   const [cancelling, setCancelling] = useState(false);
   const [reason, setReason] = useState("");
 
@@ -197,8 +199,15 @@ function OrderDetailDialog({ orderId, onClose }: { orderId: string | null; onClo
     data.status === "PENDING" &&
     data.paymentMethod === "ONLINE" &&
     data.paymentStatus === "UNPAID";
+  const unpaidCounter =
+    data !== undefined && data.channel === "COUNTER" && data.paymentStatus === "UNPAID";
   const actions = data
-    ? nextActions(data.status).filter((a) => !(awaitingPayment && a === "confirm"))
+    ? nextActions(data.status).filter((a) => {
+        if (awaitingPayment && a === "confirm") return false;
+        // Hoá đơn quầy chờ thu không đi bước xác nhận/giao của đơn online; nhân viên chỉ huỷ được.
+        if (unpaidCounter && a !== "cancel") return false;
+        return true;
+      })
     : [];
 
   return (
@@ -210,6 +219,11 @@ function OrderDetailDialog({ orderId, onClose }: { orderId: string | null; onClo
       footer={
         data && actions.length > 0 ? (
           <>
+            {unpaidCounter && data.examPaymentId && (
+              <Button onClick={() => router.push(`/staff/counter?payment=${data.examPaymentId}`)}>
+                Mở hoá đơn để thu
+              </Button>
+            )}
             {actions
               .filter((a) => a !== "cancel")
               .map((a) => (
@@ -250,6 +264,13 @@ function OrderDetailDialog({ orderId, onClose }: { orderId: string | null; onClo
               Khách chọn thanh toán online và chưa trả
               {data.paymentExpiresAt ? ` (hạn ${formatDateTime(data.paymentExpiresAt)})` : ""}. Chưa xác nhận
               được đơn này; quá hạn hệ thống tự huỷ.
+            </p>
+          )}
+
+          {unpaidCounter && (
+            <p className="rounded-[var(--radius-control)] bg-amber-wash px-3 py-2 text-sm">
+              Hoá đơn tại quầy đang chờ thu. Không xác nhận hay giao hàng; bấm Mở hoá đơn để thu để thêm
+              sản phẩm và thu tiền, hoặc huỷ nếu khách không lấy.
             </p>
           )}
 

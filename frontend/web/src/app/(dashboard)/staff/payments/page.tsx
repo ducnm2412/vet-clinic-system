@@ -23,10 +23,8 @@ import {
 } from "@/components/ui";
 
 /**
- * Thu tiền mặt cho đơn thuốc tại quầy. Luồng: bác sĩ kê đơn → payment-service tạo phiếu
- * (chưa có số tiền) → nhân viên nhập số tiền → khách trả → xác nhận đã thu, lúc đó
- * payment-service phát `payment.completed` để booking-service đánh dấu đơn thuốc RECEIVED
- * luôn (thu tiền và giao thuốc là cùng một lượt ở quầy, không có bước tiếp nhận riêng).
+ * Phiếu thu đơn thuốc tại quầy. Bác sĩ kê đơn → nhân viên nhập số tiền → mở hoá đơn để
+ * thêm sản phẩm (nếu có) rồi thu một lần. Không thu tiền mặt ngay trên phiếu này.
  */
 export default function StaffPaymentsPage() {
   const [selected, setSelected] = useState<Payment | null>(null);
@@ -66,7 +64,7 @@ export default function StaffPaymentsPage() {
     <>
       <PageHeader
         title="Thu tiền đơn thuốc"
-        description="Nhập số tiền theo đơn bác sĩ kê, rồi xác nhận khi khách đã trả."
+        description="Nhập số tiền theo đơn bác sĩ kê, rồi mở hoá đơn để thu tại quầy."
       />
 
       <TableFrame title="Phiếu chờ xử lý" count={payments.data?.length}>
@@ -120,17 +118,6 @@ function PaymentDialog({ payment, onClose }: { payment: Payment | null; onClose:
     onError: (err) => toast.error(err instanceof ApiError ? err.message : "Không lưu được số tiền."),
   });
 
-  const confirmMutation = useMutation({
-    mutationFn: () => paymentApi.confirmCash(payment!.id),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["payments"] });
-      qc.invalidateQueries({ queryKey: ["medical-records"] });
-      toast.success("Đã thu tiền và phát thuốc cho khách");
-      onClose();
-    },
-    onError: (err) => toast.error(err instanceof ApiError ? err.message : "Không xác nhận được."),
-  });
-
   if (!payment) return null;
 
   const needsAmount = payment.status === "PENDING_AMOUNT";
@@ -162,15 +149,8 @@ function PaymentDialog({ payment, onClose }: { payment: Payment | null; onClose:
             <Button variant="secondary" onClick={onClose}>
               Đóng
             </Button>
-            {/* Khách còn mua thêm đồ thì gộp chung một hoá đơn, không thu tiền khám riêng. */}
-            <Button
-              variant="secondary"
-              onClick={() => router.push(`/staff/counter?payment=${payment.id}`)}
-            >
-              Gộp với sản phẩm
-            </Button>
-            <Button loading={confirmMutation.isPending} onClick={() => confirmMutation.mutate()}>
-              Đã nhận tiền
+            <Button onClick={() => router.push(`/staff/counter?payment=${payment.id}`)}>
+              Mở hoá đơn / thêm sản phẩm
             </Button>
           </>
         ) : (

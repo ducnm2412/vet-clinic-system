@@ -57,6 +57,15 @@ public class CustomerProfileService {
         return toProfileResponse(profile);
     }
 
+    // Staff tra theo mã tài khoản (order-service điền số điện thoại vào hoá đơn quầy). Khác getMyProfile:
+    // không tự tạo hồ sơ hộ người khác, khách chưa có hồ sơ thì báo không tìm thấy.
+    @Transactional(readOnly = true)
+    public CustomerProfileResponse getProfileByUserId(UUID userId) {
+        CustomerProfile profile = customerProfileRepository.findByUserId(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Customer profile not found for user: " + userId));
+        return toProfileResponse(profile);
+    }
+
     @Transactional
     public CustomerProfileResponse updateMyProfile(UUID userId, CustomerProfileRequest request) {
         CustomerProfile profile = getOrCreateProfile(userId);

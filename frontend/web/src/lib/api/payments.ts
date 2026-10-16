@@ -13,6 +13,9 @@ export const paymentApi = {
   setAmount: (id: string, body: SetAmountRequest) =>
     http.put<Payment>(`/payment/payments/${id}/amount`, body),
 
-  /** Xác nhận đã nhận tiền mặt — phát `payment.completed` để booking mở đơn thuốc. */
+  /**
+   * API vẫn giữ: thu tiền mặt trực tiếp, không qua hoá đơn quầy. Giao diện không còn nút này;
+   * gọi sẽ hoàn tất khoản khám và order-service huỷ hoá đơn chờ của khoản đó.
+   */
   confirmCash: (id: string) => http.put<Payment>(`/payment/payments/${id}/confirm-cash`),
 };

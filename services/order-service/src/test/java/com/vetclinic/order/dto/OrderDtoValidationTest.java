@@ -126,6 +126,26 @@ class OrderDtoValidationTest {
     }
 
     @Test
+    void replaceCounterItems_nullItemsRejected_emptyListAllowed() {
+        assertThat(paths(new ReplaceCounterItemsRequest(null))).contains("items");
+        assertThat(validator.validate(new ReplaceCounterItemsRequest(List.of()))).isEmpty();
+        assertThat(validator.validate(new ReplaceCounterItemsRequest(
+                List.of(new CounterInvoiceRequest.Line(UUID.randomUUID(), 2))))).isEmpty();
+    }
+
+    @Test
+    void collectCounterInvoice_onlyCashOrBankTransfer() {
+        assertThat(paths(new CollectCounterInvoiceRequest(PaymentMethod.ONLINE, null, null, null, null)))
+                .contains("counterPaymentMethod");
+        assertThat(paths(new CollectCounterInvoiceRequest(PaymentMethod.COD, null, null, null, null)))
+                .contains("counterPaymentMethod");
+        assertThat(validator.validate(new CollectCounterInvoiceRequest(
+                PaymentMethod.CASH, "Chị Lan", "0901234567", null, null))).isEmpty();
+        assertThat(validator.validate(new CollectCounterInvoiceRequest(
+                PaymentMethod.BANK_TRANSFER, null, "", "FT1", null))).isEmpty();
+    }
+
+    @Test
     void addToCart_quantityMustBeAtLeastOne() {
         assertThat(paths(new AddToCartRequest(UUID.randomUUID(), 0))).contains("quantity");
         assertThat(paths(new AddToCartRequest(UUID.randomUUID(), -3))).contains("quantity");

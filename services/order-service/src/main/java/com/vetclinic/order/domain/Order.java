@@ -54,7 +54,7 @@ public class Order {
     @Builder.Default
     private OrderChannel channel = OrderChannel.ONLINE;
 
-    // Đơn online có ngay lúc đặt (COD); hoá đơn tại quầy được lập cùng lúc thu tiền.
+    // Đơn online có ngay lúc đặt. Hoá đơn quầy của khoản khám chưa thu thì để trống, ghi lúc collect.
     @Enumerated(EnumType.STRING)
     @Column(name = "payment_method", length = 20)
     private PaymentMethod paymentMethod;

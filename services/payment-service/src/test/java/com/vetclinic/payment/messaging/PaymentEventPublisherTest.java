@@ -77,6 +77,33 @@ class PaymentEventPublisherTest {
     }
 
     @Test
+    void setAmount_afterCommit_publishesAmountSetEventToRabbitMQ() {
+        Queue queue = new Queue(TEST_QUEUE, false, false, false);
+        TopicExchange exchange = new TopicExchange(RabbitMQConfig.PAYMENT_EVENTS_EXCHANGE, true, false);
+        amqpAdmin.declareQueue(queue);
+        amqpAdmin.declareBinding(BindingBuilder.bind(queue).to(exchange).with("payment.amount-set"));
+
+        UUID customerUserId = UUID.randomUUID();
+        Payment payment = paymentRepository.saveAndFlush(Payment.builder()
+                .medicalRecordId(UUID.randomUUID())
+                .appointmentId(UUID.randomUUID())
+                .customerUserId(customerUserId)
+                .status(PaymentStatus.PENDING_AMOUNT)
+                .build());
+
+        paymentService.setAmount(payment.getId(), new BigDecimal("150000"));
+
+        PaymentAmountSetEvent event = (PaymentAmountSetEvent) rabbitTemplate.receiveAndConvert(TEST_QUEUE, 5000);
+
+        assertThat(event).isNotNull();
+        assertThat(event.paymentId()).isEqualTo(payment.getId());
+        assertThat(event.customerUserId()).isEqualTo(customerUserId);
+        assertThat(event.amount()).isEqualByComparingTo("150000");
+        // Chỉ một sự kiện cho mỗi lần chốt số tiền.
+        assertThat(rabbitTemplate.receiveAndConvert(TEST_QUEUE, 1000)).isNull();
+    }
+
+    @Test
     void confirmCash_calledAgainWhenAlreadyCompleted_doesNotPublishDuplicateEvent() {
         // autoDelete=false: test thứ 2 gọi receiveAndConvert 2 lần trên cùng 1 queue — nếu
         // autoDelete=true, Rabbit sẽ tự xoá queue ngay sau lần receive đầu tiên (consumer tạm

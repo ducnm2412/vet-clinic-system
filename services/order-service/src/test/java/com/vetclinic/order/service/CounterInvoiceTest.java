@@ -83,7 +83,6 @@ class CounterInvoiceTest {
         ReflectionTestUtils.setField(orderService, "shippingFee", new BigDecimal("30000"));
 
         when(orderRepository.existsByOrderCode(any())).thenReturn(false);
-        when(orderRepository.existsByExamPaymentId(any())).thenReturn(false);
         // Hibernate gán id lúc persist; mock thì phải tự gán để trừ kho có orderId mà kiểm tra.
         when(orderRepository.saveAndFlush(any(Order.class))).thenAnswer(inv -> {
             Order o = inv.getArgument(0);
@@ -224,7 +223,10 @@ class CounterInvoiceTest {
 
     @Test
     void examAlreadyInAnotherInvoice_isRejectedWithoutCallingPaymentService() {
-        when(orderRepository.existsByExamPaymentId(examPaymentId)).thenReturn(true);
+        Order paid = Order.builder().id(UUID.randomUUID()).channel(OrderChannel.COUNTER)
+                .status(OrderStatus.COMPLETED).paymentStatus(PaymentStatus.PAID).examPaymentId(examPaymentId).build();
+        when(orderRepository.findByExamPaymentId(examPaymentId)).thenReturn(java.util.Optional.of(paid));
+        when(orderRepository.findByIdForUpdate(paid.getId())).thenReturn(java.util.Optional.of(paid));
 
         assertThatThrownBy(() -> orderService.createCounterInvoice(staffId,
                 request(examPaymentId, List.of(line(productId, 1)), PaymentMethod.CASH, null), TOKEN))

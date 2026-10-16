@@ -47,7 +47,20 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
     /** Một khoản khám chỉ được nằm trong một hoá đơn. */
     boolean existsByExamPaymentId(UUID examPaymentId);
 
-    Page<Order> findByUserIdOrderByCreatedAtDesc(UUID userId, Pageable pageable);
+    Optional<Order> findByExamPaymentId(UUID examPaymentId);
+
+    /**
+     * Đơn của khách. Hoá đơn quầy bị huỷ khi chưa thu (nhân viên huỷ, hoặc thay bằng hoá đơn thu ngay)
+     * không phải một đơn thật của khách nên không hiện trong danh sách; mở thẳng theo id vẫn được.
+     */
+    @Query("""
+            select o from Order o
+            where o.userId = :userId
+              and not (o.channel = com.vetclinic.order.domain.OrderChannel.COUNTER
+                       and o.status = com.vetclinic.order.domain.OrderStatus.CANCELLED
+                       and o.paymentStatus = com.vetclinic.order.domain.PaymentStatus.UNPAID)
+            order by o.createdAt desc""")
+    Page<Order> findByUserIdOrderByCreatedAtDesc(@Param("userId") UUID userId, Pageable pageable);
 
     /** CN-36: nhân viên xem toàn bộ đơn, lọc theo trạng thái (null = tất cả). */
     @Query("select o from Order o where (:status is null or o.status = :status) order by o.createdAt desc")
@@ -57,9 +70,17 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
     // Gộp theo NGÀY GIỜ VIỆT NAM, không theo UTC: đơn giao lúc 6 giờ sáng phải rơi vào hôm đó.
     // Mỗi dòng: [ngày, số đơn] hoặc [ngày, số đơn, tổng tiền]. Ngày không có đơn thì không có dòng.
 
+    /**
+     * Đơn online tính từ lúc đặt. Hoá đơn tại quầy tính từ lúc thu tiền: hoá đơn chờ thanh toán
+     * chưa phải một lần bán (paid_at còn trống nên không lọt vào), và hoá đơn chờ bị huỷ cũng không
+     * được tính là đơn đã tạo.
+     */
     @Query(value = """
-            SELECT CAST(created_at AT TIME ZONE 'Asia/Ho_Chi_Minh' AS date) AS day, COUNT(*)
-            FROM orders WHERE created_at >= :start AND created_at < :end
+            SELECT CAST((CASE WHEN channel = 'COUNTER' THEN paid_at ELSE created_at END) AT TIME ZONE 'Asia/Ho_Chi_Minh' AS date) AS day,
+                   COUNT(*)
+            FROM orders
+            WHERE (channel = 'ONLINE' AND created_at >= :start AND created_at < :end)
+               OR (channel = 'COUNTER' AND paid_at >= :start AND paid_at < :end)
             GROUP BY day""", nativeQuery = true)
     List<Object[]> countCreatedPerDay(@Param("start") Instant start, @Param("end") Instant end);
 
@@ -77,6 +98,7 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
     @Query(value = """
             SELECT CAST(cancelled_at AT TIME ZONE 'Asia/Ho_Chi_Minh' AS date) AS day, COUNT(*)
             FROM orders WHERE status = 'CANCELLED' AND cancelled_at >= :start AND cancelled_at < :end
+              AND NOT (channel = 'COUNTER' AND paid_at IS NULL)
             GROUP BY day""", nativeQuery = true)
     List<Object[]> countCancelledPerDay(@Param("start") Instant start, @Param("end") Instant end);
 }

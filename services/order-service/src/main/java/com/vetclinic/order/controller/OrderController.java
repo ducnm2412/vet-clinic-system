@@ -3,13 +3,16 @@ package com.vetclinic.order.controller;
 import com.vetclinic.order.domain.OrderStatus;
 import com.vetclinic.order.dto.CancelOrderRequest;
 import com.vetclinic.order.dto.CheckoutRequest;
+import com.vetclinic.order.dto.CollectCounterInvoiceRequest;
 import com.vetclinic.order.dto.CounterInvoiceRequest;
+import com.vetclinic.order.dto.ReplaceCounterItemsRequest;
 import com.vetclinic.order.dto.OrderResponse;
 import com.vetclinic.order.dto.OrderStatusHistoryResponse;
 import com.vetclinic.order.dto.OrderSummaryResponse;
 import com.vetclinic.order.dto.PageResponse;
 import com.vetclinic.order.dto.UpdateStatusRequest;
 import com.vetclinic.order.security.jwt.AuthenticatedUser;
+import com.vetclinic.order.service.ExamInvoiceService;
 import com.vetclinic.order.service.OrderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +23,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -42,6 +46,7 @@ import java.util.UUID;
 public class OrderController {
 
     private final OrderService orderService;
+    private final ExamInvoiceService examInvoiceService;
 
     // ---------- CN-33, CN-35: khách hàng ----------
 
@@ -81,6 +86,32 @@ public class OrderController {
                                               @RequestHeader("Authorization") String bearerToken,
                                               Authentication authentication) {
         return orderService.createCounterInvoice(userId(authentication), request, bearerToken);
+    }
+
+    /**
+     * Mở hoá đơn chờ thanh toán của một khoản khám, chưa có thì lập bù (khoản khám cũ hoặc sự kiện bị lỡ).
+     * Lặp lại bao nhiêu lần cũng trả về cùng một hoá đơn.
+     */
+    @PostMapping("/manage/exam-invoice/{paymentId}")
+    public OrderResponse openExamInvoice(@PathVariable UUID paymentId,
+                                         @RequestHeader("Authorization") String bearerToken) {
+        return examInvoiceService.getOrCreate(paymentId, bearerToken);
+    }
+
+    /** Thay sản phẩm trên hoá đơn quầy đang chờ thu. Giá và kho lấy từ product-service, chưa trừ kho. */
+    @PutMapping("/manage/{id}/items")
+    public OrderResponse replaceCounterItems(@PathVariable UUID id,
+                                             @Valid @RequestBody ReplaceCounterItemsRequest request) {
+        return orderService.replaceCounterItems(id, request.items());
+    }
+
+    /** Thu tiền hoá đơn quầy đang chờ: kiểm lại giá/kho, trừ kho, chốt hoá đơn, hoàn tất khoản khám. */
+    @PostMapping("/manage/{id}/collect")
+    public OrderResponse collectCounterInvoice(@PathVariable UUID id,
+                                               @Valid @RequestBody CollectCounterInvoiceRequest request,
+                                               @RequestHeader("Authorization") String bearerToken,
+                                               Authentication authentication) {
+        return orderService.collectCounterInvoice(id, userId(authentication), request, bearerToken);
     }
 
     @PostMapping("/manage/{id}/confirm")

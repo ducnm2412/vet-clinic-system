@@ -84,4 +84,44 @@ class OrderStatsQueryTest {
         assertThat(row.ordersCompleted()).isEqualTo(1);
         assertThat(row.ordersCancelled()).isEqualTo(1);
     }
+
+    private void insertCounter(String code, String status, Instant createdAt, Instant paidAt, Instant cancelledAt) {
+        jdbc.update("""
+                INSERT INTO orders (id, order_code, status, channel, payment_status, recipient_name, recipient_phone,
+                                    shipping_address, subtotal, shipping_fee, exam_amount, total, created_at,
+                                    paid_at, completed_at, cancelled_at)
+                VALUES (?, ?, ?, 'COUNTER', ?, 'Test', '', 'x', 0, 0, 200000, 200000, ?, ?, ?, ?)""",
+                UUID.randomUUID(), code, status, paidAt == null ? "UNPAID" : "PAID",
+                Timestamp.from(createdAt),
+                paidAt == null ? null : Timestamp.from(paidAt),
+                paidAt == null || !"COMPLETED".equals(status) ? null : Timestamp.from(paidAt),
+                cancelledAt == null ? null : Timestamp.from(cancelledAt));
+    }
+
+    @Test
+    void unpaidCounterInvoice_isNotCountedAsAnOrderUntilItIsPaid() {
+        Instant created = Instant.parse("2026-10-05T03:00:00Z");
+        Instant paid = Instant.parse("2026-10-07T03:00:00Z");
+        insertCounter("T-WAIT", "PENDING", created, null, null);
+        insertCounter("T-PAID", "COMPLETED", created, paid, null);
+
+        List<OrderDailyStatsResponse> rows = stats.daily(LocalDate.of(2026, 10, 5), LocalDate.of(2026, 10, 7));
+
+        // Hoá đơn chờ chưa phải lần bán nào; hoá đơn đã thu tính vào ngày thu, không phải ngày lập.
+        assertThat(rows).extracting(OrderDailyStatsResponse::date).containsExactly(LocalDate.of(2026, 10, 7));
+        assertThat(day(rows, LocalDate.of(2026, 10, 7)).ordersCreated()).isEqualTo(1);
+    }
+
+    @Test
+    void cancelledUnpaidCounterInvoice_isNotCountedAsCancelledOrder() {
+        Instant t = Instant.parse("2026-10-05T03:00:00Z");
+        insertCounter("T-WAIT-CANCEL", "CANCELLED", t, null, t);
+        insert("T-ONLINE-CANCEL", "CANCELLED", "ONLINE", "100000", "0", t, null, t);
+
+        OrderDailyStatsResponse row = day(
+                stats.daily(LocalDate.of(2026, 10, 5), LocalDate.of(2026, 10, 5)), LocalDate.of(2026, 10, 5));
+
+        assertThat(row.ordersCancelled()).isEqualTo(1);
+        assertThat(row.ordersCreated()).isEqualTo(1);
+    }
 }

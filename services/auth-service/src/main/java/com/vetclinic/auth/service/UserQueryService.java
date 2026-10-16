@@ -5,6 +5,7 @@ import com.vetclinic.auth.domain.User;
 import com.vetclinic.auth.domain.UserStatus;
 import com.vetclinic.auth.dto.PageResponse;
 import com.vetclinic.auth.dto.UserResponse;
+import com.vetclinic.auth.exception.UserNotFoundException;
 import com.vetclinic.auth.repository.UserRepository;
 import jakarta.persistence.criteria.JoinType;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +39,21 @@ public class UserQueryService {
                 Sort.by(Sort.Direction.DESC, "createdAt").and(Sort.by("id")));
 
         return PageResponse.of(userRepository.findAll(spec, pageable), UserQueryService::toResponse);
+    }
+
+    /**
+     * Một khách hàng theo mã tài khoản, cho nhân viên điền thông tin vào hoá đơn. Tài khoản không phải
+     * khách hàng (bác sĩ, nhân viên, quản trị) trả như không tồn tại: đường này không để lộ họ tên và
+     * email của người trong phòng khám.
+     */
+    @Transactional(readOnly = true)
+    public UserResponse getCustomer(UUID userId) {
+        User user = userRepository.findById(userId).orElseThrow(() -> new UserNotFoundException(userId));
+        boolean isCustomer = user.getRoles().stream().anyMatch(r -> r.getName() == RoleName.CUSTOMER);
+        if (!isCustomer) {
+            throw new UserNotFoundException(userId);
+        }
+        return toResponse(user);
     }
 
     private static Specification<User> hasRole(RoleName role) {

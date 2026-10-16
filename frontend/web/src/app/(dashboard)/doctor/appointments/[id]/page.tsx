@@ -3,13 +3,14 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { TriangleAlert } from "lucide-react";
+import { History, TriangleAlert } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError, bookingApi, medicalRecordApi } from "@/lib/api";
 import { APPOINTMENT_STATUS, PRESCRIPTION_STATUS, speciesStripe } from "@/lib/utils/status";
 import { formatAge, formatDate, formatTime } from "@/lib/utils/format";
 import { cn } from "@/lib/utils/cn";
 import { PrescriptionEditor } from "@/components/medical/PrescriptionEditor";
+import { PetHistoryDialog } from "@/components/pet/PetHistory";
 import { Button, ErrorState, Spinner, StatusTag, TextAreaField, useToast } from "@/components/ui";
 import type { AppointmentDetail, MedicalRecord, PrescriptionItemRequest } from "@/types";
 
@@ -89,6 +90,7 @@ function PatientPanel({
   confirming: boolean;
 }) {
   const pet = a.pet;
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   return (
     <aside className="space-y-4 lg:sticky lg:top-6 lg:self-start">
@@ -98,7 +100,19 @@ function PatientPanel({
           <span aria-hidden className={cn("w-1.5 shrink-0", speciesStripe(pet?.species))} />
           <div className="min-w-0 flex-1 p-4">
             <h1 className="font-[family-name:var(--font-display)] text-[20px] text-ink">
-              {pet?.name ?? "Không rõ thú cưng"}
+              {pet ? (
+                <button
+                  type="button"
+                  onClick={() => setHistoryOpen(true)}
+                  aria-label={`Xem hồ sơ bệnh án của ${pet.name}`}
+                  className="inline-flex items-center gap-2 text-left underline decoration-line-strong decoration-dotted underline-offset-4 hover:text-moss hover:decoration-moss"
+                >
+                  {pet.name}
+                  <History aria-hidden className="size-4 shrink-0 text-bark" />
+                </button>
+              ) : (
+                "Không rõ thú cưng"
+              )}
             </h1>
             {pet && (
               <>
@@ -188,6 +202,14 @@ function PatientPanel({
                 : "Khách đã nhận thuốc."}
           </p>
         </section>
+      )}
+      {pet && (
+        <PetHistoryDialog
+          pet={pet}
+          open={historyOpen}
+          onClose={() => setHistoryOpen(false)}
+          currentAppointmentId={a.id}
+        />
       )}
     </aside>
   );

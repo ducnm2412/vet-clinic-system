@@ -1,16 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Minus, Plus, Printer, Search, Trash2 } from "lucide-react";
 import { ApiError, orderManageApi, paymentApi, productApi } from "@/lib/api";
 import { ORDER_PAYMENT_METHOD } from "@/lib/utils/status";
 import { formatDateTime, formatPrice } from "@/lib/utils/format";
-import type { CounterInvoiceRequest, Order, Product } from "@/types";
+import type { CounterInvoiceRequest, Order, OrderItem, Product } from "@/types";
 import {
   Button,
   EmptyState,
+  ErrorState,
   IconButton,
   Spinner,
   TextAreaField,
@@ -31,17 +33,18 @@ const METHODS: Array<{ value: CounterMethod; label: string; hint: string }> = [
 ];
 
 /**
- * Hoá đơn gộp tại quầy: một khách có thể vừa trả tiền khám/thuốc vừa mua đồ trong cùng một lần.
- *
- * Lập và thu trong một lần bấm — không có trạng thái "đã lập, chưa thu". Mọi con số (giá hàng,
- * tồn kho, tiền khám, chủ khoản khám) do server tự lấy; màn hình này chỉ chọn "khoản nào, món
- * nào, bao nhiêu" và hiện tổng để nhân viên đọc cho khách, nên tổng ở đây chỉ là tạm tính.
+ * Hai lối vào: khách lẻ (lập và thu một lần) và hoá đơn chờ của khoản khám (mở sẵn, thêm sản phẩm,
+ * rồi thu). `?payment=` từ phiếu thu thuốc đi vào lối thứ hai.
  */
 export function CounterInvoiceView({ initialPaymentId }: { initialPaymentId?: string }) {
   const qc = useQueryClient();
   const toast = useToast();
+  const router = useRouter();
+  const syncGen = useRef(0);
+  const appliedInvoice = useRef<string | null>(null);
 
   const [examId, setExamId] = useState(initialPaymentId ?? "");
+  const [draft, setDraft] = useState<Order | null>(null);
   const [lines, setLines] = useState<Line[]>([]);
   const [keyword, setKeyword] = useState("");
   const [customerName, setCustomerName] = useState("");
@@ -54,8 +57,16 @@ export function CounterInvoiceView({ initialPaymentId }: { initialPaymentId?: st
   const pending = useQuery({ queryKey: ["payments", "pending"], queryFn: paymentApi.pending });
   const payable = (pending.data ?? []).filter((p) => p.status === "PENDING_PAYMENT" && p.amount !== null);
   const awaitingAmount = (pending.data ?? []).filter((p) => p.status === "PENDING_AMOUNT").length;
-  // Id từ đường dẫn có thể đã được thu rồi hoặc không còn trong hàng đợi: coi như chưa chọn.
   const exam = payable.find((p) => p.id === examId) ?? null;
+  const fromPaymentLink = Boolean(initialPaymentId);
+
+  const opened = useQuery({
+    queryKey: ["exam-invoice", initialPaymentId],
+    queryFn: () => orderManageApi.openExamInvoice(initialPaymentId!),
+    enabled: Boolean(initialPaymentId) && receipt === null,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
 
   const debounced = useDebounced(keyword.trim(), 300);
   const found = useQuery({
@@ -63,58 +74,141 @@ export function CounterInvoiceView({ initialPaymentId }: { initialPaymentId?: st
     queryFn: () => productApi.search({ keyword: debounced, size: 8 }),
     enabled: debounced.length >= 2,
   });
-  // Tìm kiếm công khai có thể trả cả hàng đã ẩn; ở quầy chỉ bán hàng đang bán.
   const results = (found.data?.content ?? []).filter((p) => p.active);
 
-  const examAmount = exam?.amount ?? 0;
+  const examAmount = draft?.examAmount ?? exam?.amount ?? 0;
   const productsTotal = lines.reduce((sum, l) => sum + l.product.price * l.quantity, 0);
   const total = examAmount + productsTotal;
 
   const phoneValid = /^(0\d{9})?$/.test(customerPhone.trim());
-  const canSubmit = (exam !== null || lines.length > 0) && phoneValid;
+  const canSubmit = (draft !== null || exam !== null || lines.length > 0) && phoneValid;
 
-  const submit = useMutation({
-    mutationFn: () =>
-      orderManageApi.createCounterInvoice({
-        examPaymentId: exam?.id,
+  async function hydrateLines(order: Order): Promise<Line[]> {
+    return Promise.all(order.items.map(async (it) => {
+      try {
+        const product = await productApi.byId(it.productId);
+        return { product, quantity: it.quantity };
+      } catch {
+        return { product: productFromItem(it), quantity: it.quantity };
+      }
+    }));
+  }
+
+  async function applyInvoice(order: Order, opts: { keepLocalLines: boolean }) {
+    if (order.paymentStatus === "PAID" || order.status === "COMPLETED") {
+      setReceipt(order);
+      setDraft(null);
+      return;
+    }
+    setDraft(order);
+    setExamId(order.examPaymentId ?? examId);
+    if (order.recipientName && order.recipientName !== "Khách hàng") {
+      setCustomerName(order.recipientName);
+    }
+    if (order.recipientPhone) setCustomerPhone(order.recipientPhone);
+    if (order.note) setNote(order.note);
+    if (opts.keepLocalLines) {
+      await syncItems(order.id, lines);
+    } else {
+      setLines(await hydrateLines(order));
+    }
+  }
+
+  // Chỉ nạp lại khi hoá đơn từ server đổi (id/trạng thái); applyInvoice đọc state hiện tại nên
+  // không đưa vào deps, kẻo mỗi lần gõ phím lại nạp đè sản phẩm đang chọn.
+  useEffect(() => {
+    const order = opened.data;
+    if (!order) return;
+    const stamp = `${order.id}:${order.status}:${order.paymentStatus}`;
+    if (appliedInvoice.current === stamp) return;
+    appliedInvoice.current = stamp;
+    void applyInvoice(order, { keepLocalLines: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [opened.data]);
+
+  async function syncItems(orderId: string, next: Line[]) {
+    const n = ++syncGen.current;
+    try {
+      const updated = await orderManageApi.replaceCounterItems(
+        orderId,
+        next.map((l) => ({ productId: l.product.id, quantity: l.quantity })),
+      );
+      if (n === syncGen.current) setDraft(updated);
+    } catch (err) {
+      if (n !== syncGen.current) return;
+      toast.error(err instanceof ApiError ? err.message : "Không lưu được sản phẩm trên hoá đơn.");
+    }
+  }
+
+  function commitLines(next: Line[]) {
+    setLines(next);
+    if (draft?.status === "PENDING") void syncItems(draft.id, next);
+  }
+
+  const pickExam = useMutation({
+    mutationFn: (id: string) => orderManageApi.openExamInvoice(id),
+    onSuccess: (order) => {
+      void applyInvoice(order, { keepLocalLines: lines.length > 0 && order.items.length === 0 });
+    },
+    onError: (err) =>
+      toast.error(err instanceof ApiError ? err.message : "Không mở được hoá đơn của khoản khám."),
+  });
+
+  const collect = useMutation({
+    mutationFn: async () => {
+      const payload = {
+        paymentMethod: method,
         customerName: customerName.trim() || undefined,
         customerPhone: customerPhone.trim() || undefined,
-        items: lines.map((l) => ({ productId: l.product.id, quantity: l.quantity })),
-        paymentMethod: method,
         transferReference: method === "BANK_TRANSFER" ? reference.trim() || undefined : undefined,
         note: note.trim() || undefined,
-      }),
+      };
+      if (draft) {
+        await orderManageApi.replaceCounterItems(
+          draft.id,
+          lines.map((l) => ({ productId: l.product.id, quantity: l.quantity })),
+        );
+        return orderManageApi.collectCounterInvoice(draft.id, payload);
+      }
+      return orderManageApi.createCounterInvoice({
+        examPaymentId: exam?.id,
+        items: lines.map((l) => ({ productId: l.product.id, quantity: l.quantity })),
+        ...payload,
+      });
+    },
     onSuccess: (order) => {
       setReceipt(order);
+      setDraft(null);
       qc.invalidateQueries({ queryKey: ["payments"] });
       qc.invalidateQueries({ queryKey: ["orders"] });
-      // Bán hàng trừ kho; thu khoản khám làm bệnh án chuyển sang đã nhận thuốc.
       qc.invalidateQueries({ queryKey: ["products"] });
       qc.invalidateQueries({ queryKey: ["medical-records"] });
+      // Hoá đơn đã thu: bản lưu cũ (còn chờ) không được dùng lại nếu mở lại đúng đường dẫn này.
+      qc.removeQueries({ queryKey: ["exam-invoice"] });
       toast.success("Đã thu tiền và lập hoá đơn");
     },
     onError: (err) => {
-      // Thiếu hàng, khoản khám đã nằm trong hoá đơn khác… backend trả lời bằng câu đọc được.
-      toast.error(err instanceof ApiError ? err.message : "Không lập được hoá đơn.");
+      toast.error(err instanceof ApiError ? err.message : "Không thu được hoá đơn.");
       qc.invalidateQueries({ queryKey: ["payments"] });
+      qc.invalidateQueries({ queryKey: ["products"] });
     },
   });
 
   function addProduct(product: Product) {
-    setLines((current) => {
-      const existing = current.find((l) => l.product.id === product.id);
-      if (!existing) return [...current, { product, quantity: 1 }];
-      return current.map((l) =>
+    commitLines((() => {
+      const existing = lines.find((l) => l.product.id === product.id);
+      if (!existing) return [...lines, { product, quantity: 1 }];
+      return lines.map((l) =>
         l.product.id === product.id
           ? { ...l, quantity: Math.min(l.quantity + 1, product.stockQuantity) }
           : l,
       );
-    });
+    })());
   }
 
   function setQuantity(productId: string, quantity: number) {
-    setLines((current) =>
-      current.map((l) =>
+    commitLines(
+      lines.map((l) =>
         l.product.id === productId
           ? { ...l, quantity: Math.max(1, Math.min(Math.floor(quantity) || 1, l.product.stockQuantity)) }
           : l,
@@ -124,6 +218,7 @@ export function CounterInvoiceView({ initialPaymentId }: { initialPaymentId?: st
 
   function reset() {
     setExamId("");
+    setDraft(null);
     setLines([]);
     setKeyword("");
     setCustomerName("");
@@ -132,6 +227,26 @@ export function CounterInvoiceView({ initialPaymentId }: { initialPaymentId?: st
     setReference("");
     setNote("");
     setReceipt(null);
+    appliedInvoice.current = null;
+    qc.removeQueries({ queryKey: ["exam-invoice"] });
+    if (fromPaymentLink) router.replace("/staff/counter");
+  }
+
+  if (fromPaymentLink && opened.isLoading) {
+    return <Spinner />;
+  }
+
+  if (fromPaymentLink && opened.isError) {
+    return (
+      <ErrorState
+        message={
+          opened.error instanceof ApiError
+            ? opened.error.message
+            : "Không mở được hoá đơn của khoản khám này."
+        }
+        onRetry={() => opened.refetch()}
+      />
+    );
   }
 
   if (receipt) {
@@ -141,8 +256,27 @@ export function CounterInvoiceView({ initialPaymentId }: { initialPaymentId?: st
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_22rem]">
       <div className="min-w-0 space-y-6">
-        <Section title="1. Tiền khám / thuốc" description="Chọn khoản đang chờ thu nếu khách vừa khám xong.">
-          {pending.isLoading ? (
+        <Section
+          title="1. Tiền khám / thuốc"
+          description={
+            draft
+              ? `Hoá đơn ${draft.orderCode} đang chờ thu.`
+              : "Chọn khoản đang chờ thu nếu khách vừa khám xong."
+          }
+        >
+          {draft && fromPaymentLink ? (
+            <div className="rounded-[var(--radius-control)] border border-moss bg-moss-wash px-3 py-2.5 text-sm">
+              <p className="font-medium text-ink">
+                {exam?.items.length
+                  ? exam.items.map((i) => i.medicationName).join(", ")
+                  : "Tiền khám / thuốc"}
+              </p>
+              <p className="mt-0.5 text-bark">
+                {formatPrice(examAmount)}
+                {exam ? ` · kê lúc ${formatDateTime(exam.createdAt)}` : ""}
+              </p>
+            </div>
+          ) : pending.isLoading || pickExam.isPending ? (
             <Spinner />
           ) : payable.length === 0 ? (
             <p className="text-sm text-bark">
@@ -161,13 +295,25 @@ export function CounterInvoiceView({ initialPaymentId }: { initialPaymentId?: st
           ) : (
             <ul className="space-y-2" role="radiogroup" aria-label="Khoản khám cần thu">
               <li>
-                <RadioCard checked={exam === null} onSelect={() => setExamId("")}>
+                <RadioCard
+                  checked={exam === null && draft === null}
+                  onSelect={() => {
+                    setExamId("");
+                    setDraft(null);
+                  }}
+                >
                   <span className="text-sm text-ink">Không gộp tiền khám (khách chỉ mua đồ)</span>
                 </RadioCard>
               </li>
               {payable.map((p) => (
                 <li key={p.id}>
-                  <RadioCard checked={exam?.id === p.id} onSelect={() => setExamId(p.id)}>
+                  <RadioCard
+                    checked={(draft?.examPaymentId ?? examId) === p.id}
+                    onSelect={() => {
+                      setExamId(p.id);
+                      pickExam.mutate(p.id);
+                    }}
+                  >
                     <span className="flex flex-wrap items-baseline justify-between gap-x-4">
                       <span className="min-w-0 text-sm text-ink">
                         {p.items.length > 0
@@ -184,7 +330,7 @@ export function CounterInvoiceView({ initialPaymentId }: { initialPaymentId?: st
           )}
         </Section>
 
-        <Section title="2. Sản phẩm khách mua thêm" description="Giá và tồn kho lấy từ kho thật.">
+        <Section title="2. Sản phẩm khách mua thêm" description="Giá và tồn kho lấy từ kho thật. Chưa trừ kho cho đến lúc thu.">
           <div className="relative">
             <Search aria-hidden className="pointer-events-none absolute top-[2.15rem] left-3 size-4 text-bark" />
             <TextField
@@ -277,7 +423,7 @@ export function CounterInvoiceView({ initialPaymentId }: { initialPaymentId?: st
                       label={`Bỏ ${l.product.name}`}
                       size="sm"
                       variant="ghost"
-                      onClick={() => setLines((c) => c.filter((x) => x.product.id !== l.product.id))}
+                      onClick={() => commitLines(lines.filter((x) => x.product.id !== l.product.id))}
                     >
                       <Trash2 aria-hidden className="size-4" />
                     </IconButton>
@@ -290,7 +436,11 @@ export function CounterInvoiceView({ initialPaymentId }: { initialPaymentId?: st
 
         <Section
           title="3. Thông tin in trên hoá đơn"
-          description="Không bắt buộc. Khách có tài khoản được gắn theo khoản khám nên hoá đơn tự hiện trong lịch sử đơn của họ."
+          description={
+            draft?.userId
+              ? "Tên và số điện thoại được lấy từ hồ sơ khách; sửa nếu khách muốn in thông tin khác. Hoá đơn đã hiện trong lịch sử đơn của khách."
+              : "Không bắt buộc. Khách lẻ không có tài khoản thì nhập tên và số điện thoại nếu muốn in trên hoá đơn."
+          }
         >
           <div className="grid gap-4 sm:grid-cols-2">
             <TextField
@@ -369,18 +519,38 @@ export function CounterInvoiceView({ initialPaymentId }: { initialPaymentId?: st
             size="lg"
             className="mt-5 w-full"
             disabled={!canSubmit}
-            loading={submit.isPending}
-            onClick={() => submit.mutate()}
+            loading={collect.isPending}
+            onClick={() => collect.mutate()}
           >
             Thu {formatPrice(total)}
           </Button>
-          {!canSubmit && (
+          {!canSubmit && !draft && (
             <p className="mt-2 text-xs text-bark">Chọn khoản khám hoặc thêm ít nhất một sản phẩm.</p>
           )}
         </div>
       </aside>
     </div>
   );
+}
+
+function productFromItem(it: OrderItem): Product {
+  return {
+    id: it.productId,
+    categoryId: "",
+    categoryName: "",
+    sku: it.sku,
+    name: it.productName,
+    description: null,
+    price: it.unitPrice,
+    unit: "sp",
+    imageUrl: null,
+    stockQuantity: it.quantity,
+    lowStockThreshold: null,
+    lowStock: false,
+    active: true,
+    createdAt: "",
+    updatedAt: "",
+  };
 }
 
 function Section({
@@ -401,7 +571,6 @@ function Section({
   );
 }
 
-/** Thẻ chọn một trong nhiều — dùng radio thật bên trong để bàn phím và trình đọc màn hình hoạt động. */
 function RadioCard({
   checked,
   onSelect,
@@ -423,7 +592,6 @@ function RadioCard({
   );
 }
 
-/** Hoá đơn vừa lập. Phần `print-area` là phần duy nhất được in (xem globals.css). */
 function Receipt({ order, onNew }: { order: Order; onNew: () => void }) {
   return (
     <div className="mx-auto max-w-xl">
@@ -448,7 +616,7 @@ function Receipt({ order, onNew }: { order: Order; onNew: () => void }) {
           {order.transferReference && (
             <>
               <dt className="text-bark">Mã giao dịch</dt>
-              <dd className="text-right">{order.transferReference}</dd>
+              <dd className="tnum text-right">{order.transferReference}</dd>
             </>
           )}
         </dl>

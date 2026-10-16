@@ -6,6 +6,7 @@ import com.vetclinic.payment.domain.PaymentStatus;
 import com.vetclinic.payment.dto.PaymentResponse;
 import com.vetclinic.payment.exception.InvalidPaymentStateException;
 import com.vetclinic.payment.exception.ResourceNotFoundException;
+import com.vetclinic.payment.messaging.PaymentAmountSetEvent;
 import com.vetclinic.payment.messaging.PaymentCompletedEvent;
 import com.vetclinic.payment.repository.PaymentRepository;
 import org.junit.jupiter.api.Test;
@@ -61,6 +62,29 @@ class PaymentServiceTest {
 
         assertThat(updated.status()).isEqualTo(PaymentStatus.PENDING_PAYMENT);
         assertThat(updated.amount()).isEqualByComparingTo("150000");
+    }
+
+    @Test
+    void setAmount_publishesAmountSetEventWithCustomerAndAmount() {
+        Payment payment = seedPayment(PaymentStatus.PENDING_AMOUNT, null);
+
+        paymentService.setAmount(payment.getId(), new BigDecimal("150000"));
+
+        assertThat(events.stream(PaymentAmountSetEvent.class)).singleElement().satisfies(event -> {
+            assertThat(event.paymentId()).isEqualTo(payment.getId());
+            assertThat(event.customerUserId()).isEqualTo(payment.getCustomerUserId());
+            assertThat(event.amount()).isEqualByComparingTo("150000");
+        });
+    }
+
+    @Test
+    void setAmount_rejected_publishesNoEvent() {
+        Payment payment = seedPayment(PaymentStatus.PENDING_PAYMENT, new BigDecimal("100000"));
+
+        assertThatThrownBy(() -> paymentService.setAmount(payment.getId(), new BigDecimal("200000")))
+                .isInstanceOf(InvalidPaymentStateException.class);
+
+        assertThat(events.stream(PaymentAmountSetEvent.class)).isEmpty();
     }
 
     @Test

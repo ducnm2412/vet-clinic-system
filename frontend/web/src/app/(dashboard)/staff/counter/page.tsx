@@ -7,8 +7,8 @@ import { CounterInvoiceView } from "@/components/counter/CounterInvoiceView";
 import { Spinner } from "@/components/ui";
 
 /**
- * Hoá đơn gộp tại quầy. `?payment=<id>` chọn sẵn khoản khám — trang thu tiền thuốc dẫn sang đây
- * khi nhân viên muốn gộp thêm sản phẩm khách mua.
+ * Hoá đơn tại quầy. `?payment=<id>` mở hoá đơn chờ của khoản khám (thêm sản phẩm rồi thu).
+ * Không có tham số thì lập hoá đơn khách lẻ như trước.
  */
 function CounterBody() {
   const payment = useSearchParams().get("payment") ?? undefined;
@@ -21,7 +21,7 @@ export default function StaffCounterPage() {
       <div className="print:hidden">
         <PageHeader
           title="Hoá đơn tại quầy"
-          description="Gộp tiền khám/thuốc và sản phẩm khách mua thành một hoá đơn, thu một lần."
+          description="Mở hoá đơn chờ của khoản khám để thêm sản phẩm rồi thu, hoặc lập hoá đơn khách lẻ."
         />
       </div>
       <Suspense fallback={<Spinner />}>

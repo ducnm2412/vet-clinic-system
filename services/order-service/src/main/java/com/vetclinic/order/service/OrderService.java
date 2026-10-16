@@ -15,6 +15,7 @@ import com.vetclinic.order.domain.OrderStatusHistory;
 import com.vetclinic.order.domain.PaymentMethod;
 import com.vetclinic.order.domain.PaymentStatus;
 import com.vetclinic.order.dto.CheckoutRequest;
+import com.vetclinic.order.dto.CollectCounterInvoiceRequest;
 import com.vetclinic.order.dto.CounterInvoiceRequest;
 import com.vetclinic.order.dto.OrderItemResponse;
 import com.vetclinic.order.dto.OrderResponse;
@@ -170,8 +171,8 @@ public class OrderService {
 
     /**
      * Nhân viên lập và thu hoá đơn tại quầy trong một lần: tiền khám/thuốc (nếu có) cộng các sản
-     * phẩm khách mua, thu bằng tiền mặt hoặc chuyển khoản. Không có trạng thái "đã lập, chưa thu":
-     * hoá đơn ra đời là COMPLETED và PAID, nên không phải lo huỷ hay hoàn kho cho hoá đơn dở dang.
+     * phẩm khách mua, thu bằng tiền mặt hoặc chuyển khoản. Dùng cho khách lẻ không khám, hoặc thay
+     * hoá đơn chờ còn trống của cùng khoản khám. Hoá đơn ra đời là COMPLETED và PAID.
      *
      * Mọi con số lấy từ server: giá và tồn kho từ product-service, số tiền khám và chủ khoản khám từ
      * payment-service. Request chỉ chọn "khoản nào, sản phẩm nào, bao nhiêu".
@@ -212,37 +213,7 @@ public class OrderService {
                 .paidAt(now)
                 .build();
 
-        BigDecimal subtotal = BigDecimal.ZERO;
-        List<OrderItem> items = new ArrayList<>();
-        for (Map.Entry<UUID, Integer> line : mergeLines(request.items()).entrySet()) {
-            ProductClient.ProductView p = cartService.fetchProduct(line.getKey());
-            int quantity = line.getValue();
-
-            if (Boolean.FALSE.equals(p.active())) {
-                throw new ProductUnavailableException("Sản phẩm đã ngừng bán: " + p.name());
-            }
-            if (p.stockQuantity() < quantity) {
-                throw new ProductUnavailableException(
-                        "Sản phẩm \"" + p.name() + "\" chỉ còn " + p.stockQuantity() + " " + p.unit()
-                                + ", không đủ " + quantity);
-            }
-
-            BigDecimal lineTotal = p.price().multiply(BigDecimal.valueOf(quantity));
-            subtotal = subtotal.add(lineTotal);
-            items.add(OrderItem.builder()
-                    .order(order)
-                    .productId(p.id())
-                    .sku(p.sku())
-                    .productName(p.name())
-                    .unitPrice(p.price())
-                    .quantity(quantity)
-                    .lineTotal(lineTotal)
-                    .build());
-        }
-
-        order.setItems(items);
-        order.setSubtotal(subtotal);
-        order.setTotal(subtotal.add(examAmount));
+        replaceLines(order, request.items());
 
         try {
             orderRepository.saveAndFlush(order);
@@ -256,9 +227,9 @@ public class OrderService {
                 "Đã thu tiền: " + request.paymentMethod());
         orderRepository.flush();
 
-        if (!items.isEmpty()) {
+        if (!order.getItems().isEmpty()) {
             deductStock(order, bearerToken);
-            eventPublisher.publishEvent(new OrderCompletedEvent(order.getId(), items.stream()
+            eventPublisher.publishEvent(new OrderCompletedEvent(order.getId(), order.getItems().stream()
                     .map(i -> new OrderCompletedEvent.Line(i.getProductId(), i.getQuantity()))
                     .toList()));
         }
@@ -268,17 +239,23 @@ public class OrderService {
         }
 
         log.info("Hoá đơn tại quầy {}: {} dòng hàng, tiền khám {}, tổng {}, thu bằng {}",
-                order.getOrderCode(), items.size(), examAmount, order.getTotal(), request.paymentMethod());
+                order.getOrderCode(), order.getItems().size(), examAmount, order.getTotal(), request.paymentMethod());
 
         return toResponse(order);
     }
 
     /** Khoản khám phải có thật, đã có số tiền, đang chờ thu và chưa nằm trong hoá đơn nào. */
     private PaymentClient.PaymentView loadPayableExam(UUID examPaymentId, String bearerToken) {
-        if (orderRepository.existsByExamPaymentId(examPaymentId)) {
-            throw new InvalidOrderStateException("Khoản khám này đã nằm trong một hoá đơn khác");
+        Optional<Order> existing = orderRepository.findByExamPaymentId(examPaymentId);
+        if (existing.isPresent()) {
+            // Hoá đơn chờ thanh toán còn trống (chưa thêm sản phẩm) được thay bằng hoá đơn thu ngay
+            // này; mọi trường hợp khác là khoản khám đã nằm trong một hoá đơn thật.
+            supersedeEmptyPendingInvoice(existing.get());
         }
+        return fetchPayableExam(examPaymentId, bearerToken);
+    }
 
+    private PaymentClient.PaymentView fetchPayableExam(UUID examPaymentId, String bearerToken) {
         PaymentClient.PaymentView payment;
         try {
             payment = paymentClient.getPayment(examPaymentId, bearerToken);
@@ -298,6 +275,273 @@ public class OrderService {
         return payment;
     }
 
+    private void supersedeEmptyPendingInvoice(Order candidate) {
+        Order invoice = orderRepository.findByIdForUpdate(candidate.getId()).orElse(null);
+        if (invoice == null || !isPendingCounterInvoice(invoice) || !invoice.getItems().isEmpty()) {
+            throw new InvalidOrderStateException("Khoản khám này đã nằm trong một hoá đơn khác");
+        }
+        closePendingCounterInvoice(invoice, null, "Thay bằng hoá đơn thu ngay tại quầy", true);
+        orderRepository.flush();
+    }
+
+    // ---------- Hoá đơn chờ thanh toán của khoản khám ----------
+
+    /**
+     * Lập hoá đơn chờ thanh toán (PENDING/UNPAID, kênh COUNTER) cho một khoản khám vừa có số tiền.
+     * Chưa có sản phẩm nào: nhân viên mở ra thêm hàng rồi thu tiền sau. Idempotent theo khoản khám —
+     * sự kiện giao lại hay nhân viên mở trước khi sự kiện tới đều chỉ cho ra một hoá đơn.
+     *
+     * Ràng buộc UNIQUE trên exam_payment_id là chốt chặn cuối: khi hai luồng cùng tạo, người đến sau nhận
+     * DataIntegrityViolationException (để ExamInvoiceService đọc lại hoá đơn đã có).
+     *
+     * @return hoá đơn của khoản khám này (mới tạo hoặc đã có từ trước)
+     */
+    @Transactional
+    public Order createExamInvoiceIfAbsent(UUID examPaymentId, UUID customerUserId, BigDecimal amount) {
+        Optional<Order> existing = orderRepository.findByExamPaymentId(examPaymentId);
+        if (existing.isPresent()) {
+            return existing.get();
+        }
+
+        Order order = Order.builder()
+                .orderCode(generateOrderCode())
+                .userId(customerUserId)
+                .status(OrderStatus.PENDING)
+                .channel(OrderChannel.COUNTER)
+                .paymentStatus(PaymentStatus.UNPAID)
+                .recipientName(counterCustomerName(null, customerUserId))
+                .recipientPhone("")
+                .shippingAddress("Nhận tại quầy")
+                .subtotal(BigDecimal.ZERO)
+                .shippingFee(BigDecimal.ZERO)
+                .examPaymentId(examPaymentId)
+                .examAmount(amount)
+                .total(amount)
+                .build();
+        orderRepository.saveAndFlush(order);
+        recordHistory(order, null, OrderStatus.PENDING, null, "Lập hoá đơn chờ thanh toán cho khoản khám");
+
+        log.info("Đã lập hoá đơn chờ {} cho khoản khám {} — {}", order.getOrderCode(), examPaymentId, amount);
+        return order;
+    }
+
+    /** Hoá đơn của khoản khám; chưa có (sự kiện bị lỡ, khoản khám cũ) thì lập bù từ số liệu của payment-service. */
+    @Transactional
+    public OrderResponse getOrCreateExamInvoice(UUID examPaymentId, String bearerToken) {
+        Optional<Order> existing = orderRepository.findByExamPaymentId(examPaymentId);
+        if (existing.isPresent()) {
+            return toResponse(existing.get());
+        }
+
+        PaymentClient.PaymentView payment = fetchPayableExam(examPaymentId, bearerToken);
+        return toResponse(createExamInvoiceIfAbsent(examPaymentId, payment.customerUserId(), payment.amount()));
+    }
+
+    /**
+     * Điền tên và số điện thoại của khách vào hoá đơn chờ. Chỉ điền vào chỗ còn trống/tên tạm: thứ nhân
+     * viên đã gõ không bị ghi đè, và hoá đơn đã thu hay đã huỷ thì giữ nguyên.
+     */
+    @Transactional
+    public OrderResponse applyCustomerInfo(UUID orderId, String name, String phone) {
+        Order order = orderRepository.findByIdForUpdate(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng: " + orderId));
+        if (isPendingCounterInvoice(order)) {
+            if (blankToNull(name) != null && DEFAULT_CUSTOMER_NAME.equals(order.getRecipientName())) {
+                order.setRecipientName(name.strip());
+            }
+            if (blankToNull(phone) != null && blankToNull(order.getRecipientPhone()) == null) {
+                order.setRecipientPhone(phone.strip());
+            }
+        }
+        return toResponse(order);
+    }
+
+    private static boolean isPendingCounterInvoice(Order o) {
+        return o.getChannel() == OrderChannel.COUNTER
+                && o.getStatus() == OrderStatus.PENDING
+                && o.getPaymentStatus() == PaymentStatus.UNPAID;
+    }
+
+    /**
+     * Thay danh sách sản phẩm trên hoá đơn chờ. Chưa trừ kho: kho chỉ bị trừ lúc thu.
+     * Khoá dòng để hai nhân viên không ghi đè lẫn nhau.
+     */
+    @Transactional
+    public OrderResponse replaceCounterItems(UUID orderId, List<CounterInvoiceRequest.Line> lines) {
+        Order order = requirePendingUnpaidCounter(orderId);
+        replaceLines(order, lines);
+        return toResponse(order);
+    }
+
+    /**
+     * Thu tiền hoá đơn chờ: kiểm lại giá và kho, trừ kho, chốt PAID/COMPLETED, phát sự kiện đã có
+     * (trừ kho + hoàn tất khoản khám). Giá hoặc kho đã đổi thì trả lỗi để nhân viên nạp lại.
+     */
+    @Transactional
+    public OrderResponse collectCounterInvoice(UUID orderId, UUID staffId,
+                                               CollectCounterInvoiceRequest request, String bearerToken) {
+        Order order = requirePendingUnpaidCounter(orderId);
+        requireCurrentPricesAndStock(order);
+        if (order.getExamPaymentId() != null) {
+            // Khoản khám có thể đã được thu theo đường khác (confirm-cash) từ lúc hoá đơn được lập.
+            // Hỏi lại payment-service để không thu và trừ kho cho một khoản đã xong.
+            fetchPayableExam(order.getExamPaymentId(), bearerToken);
+        }
+
+        Instant now = Instant.now();
+        order.setStatus(OrderStatus.COMPLETED);
+        order.setPaymentMethod(request.paymentMethod());
+        order.setPaymentStatus(PaymentStatus.PAID);
+        order.setPaidAt(now);
+        order.setConfirmedAt(now);
+        order.setCompletedAt(now);
+        order.setTransferReference(request.paymentMethod() == PaymentMethod.BANK_TRANSFER
+                ? blankToNull(request.transferReference()) : null);
+        if (blankToNull(request.customerName()) != null) {
+            order.setRecipientName(request.customerName().strip());
+        }
+        if (request.customerPhone() != null) {
+            order.setRecipientPhone(request.customerPhone());
+        }
+        if (request.note() != null) {
+            order.setNote(blankToNull(request.note()));
+        }
+
+        recordHistory(order, OrderStatus.PENDING, OrderStatus.CONFIRMED, staffId, "Thu tiền tại quầy");
+        recordHistory(order, OrderStatus.CONFIRMED, OrderStatus.COMPLETED, staffId,
+                "Đã thu tiền: " + request.paymentMethod());
+        orderRepository.flush();
+
+        if (!order.getItems().isEmpty()) {
+            deductStock(order, bearerToken);
+            eventPublisher.publishEvent(new OrderCompletedEvent(order.getId(), order.getItems().stream()
+                    .map(i -> new OrderCompletedEvent.Line(i.getProductId(), i.getQuantity()))
+                    .toList()));
+        }
+        if (order.getExamPaymentId() != null) {
+            eventPublisher.publishEvent(new InvoicePaidEvent(
+                    order.getId(), order.getExamPaymentId(), request.paymentMethod().name()));
+        }
+
+        log.info("Đã thu hoá đơn quầy {}: {} dòng hàng, tiền khám {}, tổng {}, thu bằng {}",
+                order.getOrderCode(), order.getItems().size(), order.getExamAmount(), order.getTotal(),
+                request.paymentMethod());
+        return toResponse(order);
+    }
+
+    private Order requirePendingUnpaidCounter(UUID orderId) {
+        Order order = orderRepository.findByIdForUpdate(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng: " + orderId));
+        if (!isPendingCounterInvoice(order)) {
+            throw new InvalidOrderStateException(
+                    "Chỉ sửa hoặc thu được hoá đơn tại quầy đang chờ thanh toán");
+        }
+        return order;
+    }
+
+    /** Chụp giá hiện tại từ product-service vào hoá đơn. Chưa trừ kho. */
+    private void replaceLines(Order order, List<CounterInvoiceRequest.Line> lines) {
+        List<OrderItem> items = new ArrayList<>();
+        BigDecimal subtotal = BigDecimal.ZERO;
+        for (Map.Entry<UUID, Integer> line : mergeLines(lines).entrySet()) {
+            ProductClient.ProductView p = cartService.fetchProduct(line.getKey());
+            int quantity = line.getValue();
+            requireSellable(p, quantity);
+
+            BigDecimal lineTotal = p.price().multiply(BigDecimal.valueOf(quantity));
+            subtotal = subtotal.add(lineTotal);
+            items.add(OrderItem.builder()
+                    .order(order)
+                    .productId(p.id())
+                    .sku(p.sku())
+                    .productName(p.name())
+                    .unitPrice(p.price())
+                    .quantity(quantity)
+                    .lineTotal(lineTotal)
+                    .build());
+        }
+        if (order.getItems() == null) {
+            order.setItems(new ArrayList<>());
+        }
+        order.getItems().clear();
+        order.getItems().addAll(items);
+        order.setSubtotal(subtotal);
+        BigDecimal exam = order.getExamAmount() == null ? BigDecimal.ZERO : order.getExamAmount();
+        order.setTotal(subtotal.add(exam));
+    }
+
+    private void requireCurrentPricesAndStock(Order order) {
+        for (OrderItem item : order.getItems()) {
+            ProductClient.ProductView p = cartService.fetchProduct(item.getProductId());
+            requireSellable(p, item.getQuantity());
+            if (p.price().compareTo(item.getUnitPrice()) != 0) {
+                throw new ProductUnavailableException(
+                        "Giá \"" + p.name() + "\" đã đổi, hãy nạp lại hoá đơn");
+            }
+        }
+    }
+
+    private static void requireSellable(ProductClient.ProductView p, int quantity) {
+        if (Boolean.FALSE.equals(p.active())) {
+            throw new ProductUnavailableException("Sản phẩm đã ngừng bán: " + p.name());
+        }
+        int stock = p.stockQuantity() == null ? 0 : p.stockQuantity();
+        if (stock < quantity) {
+            throw new ProductUnavailableException(
+                    "Sản phẩm \"" + p.name() + "\" chỉ còn " + stock + " " + p.unit()
+                            + ", không đủ " + quantity);
+        }
+    }
+
+    /**
+     * confirm-cash thu khoản khám mà không đi qua hoá đơn quầy: huỷ hoá đơn chờ của khoản đó.
+     * Thu đúng luồng collect thì hoá đơn đã COMPLETED/PAID — bỏ qua, không huỷ đơn vừa thu.
+     * Dữ liệu lạ chỉ ghi log.
+     */
+    @Transactional
+    public void cancelPendingExamInvoiceAfterDirectPayment(UUID examPaymentId) {
+        if (examPaymentId == null) {
+            log.warn("Bỏ qua payment.completed thiếu paymentId");
+            return;
+        }
+
+        Optional<Order> existing = orderRepository.findByExamPaymentId(examPaymentId);
+        if (existing.isEmpty()) {
+            return;
+        }
+
+        Order invoice = orderRepository.findByIdForUpdate(existing.get().getId()).orElse(null);
+        if (invoice == null || !isPendingCounterInvoice(invoice)) {
+            return;
+        }
+
+        int productLines = invoice.getItems() == null ? 0 : invoice.getItems().size();
+        if (productLines > 0) {
+            log.warn("Huỷ hoá đơn chờ {} vì khoản khám {} đã thu qua confirm-cash trong khi hoá đơn còn {} sản phẩm (chưa trừ kho)",
+                    invoice.getOrderCode(), examPaymentId, productLines);
+        } else {
+            log.info("Huỷ hoá đơn chờ {} vì khoản khám {} đã thu qua confirm-cash",
+                    invoice.getOrderCode(), examPaymentId);
+        }
+        closePendingCounterInvoice(invoice, null, "Khoản khám đã được thu tiền mặt trực tiếp", false);
+    }
+
+    /**
+     * Huỷ hoá đơn chờ thanh toán. Nhả luôn khoản khám khỏi hoá đơn: UNIQUE chỉ cho một hoá đơn mỗi
+     * khoản khám, không nhả thì khoản khám đó không bao giờ lập lại được hoá đơn nữa.
+     * Chưa trừ kho nên không có gì để hoàn.
+     */
+    private void closePendingCounterInvoice(Order invoice, UUID actorId, String reason, boolean reopenExam) {
+        UUID examPaymentId = invoice.getExamPaymentId();
+        invoice.setStatus(OrderStatus.CANCELLED);
+        invoice.setCancelledAt(Instant.now());
+        invoice.setCancelReason(reason);
+        invoice.setExamPaymentId(null);
+        recordHistory(invoice, OrderStatus.PENDING, OrderStatus.CANCELLED, actorId,
+                examPaymentId == null || !reopenExam ? reason
+                        : reason + " (khoản khám " + examPaymentId + " được mở lại)");
+    }
+
     /** Gộp các dòng cùng sản phẩm thành một dòng, giữ thứ tự nhân viên nhập. */
     private static Map<UUID, Integer> mergeLines(List<CounterInvoiceRequest.Line> lines) {
         Map<UUID, Integer> merged = new LinkedHashMap<>();
@@ -309,12 +553,15 @@ public class OrderService {
         return merged;
     }
 
+    /** Tên tạm của hoá đơn gắn với khách có tài khoản khi chưa biết tên thật. */
+    static final String DEFAULT_CUSTOMER_NAME = "Khách hàng";
+
     private static String counterCustomerName(String typedName, UUID customerUserId) {
         String name = blankToNull(typedName);
         if (name != null) {
             return name;
         }
-        return customerUserId == null ? "Khách lẻ" : "Khách hàng";
+        return customerUserId == null ? "Khách lẻ" : DEFAULT_CUSTOMER_NAME;
     }
 
     private static String blankToNull(String value) {
@@ -473,6 +720,10 @@ public class OrderService {
             if (!requesterId.equals(order.getUserId())) {
                 throw new ResourceNotFoundException("Không tìm thấy đơn hàng: " + orderId);
             }
+            if (order.getChannel() == OrderChannel.COUNTER) {
+                throw new InvalidOrderStateException(
+                        "Hoá đơn tại quầy do nhân viên xử lý, vui lòng liên hệ nhân viên để huỷ");
+            }
             if (order.getStatus() != OrderStatus.PENDING) {
                 throw new InvalidOrderStateException(
                         "Đơn đã được xác nhận, vui lòng liên hệ nhân viên để huỷ");
@@ -485,6 +736,11 @@ public class OrderService {
         if (!from.canTransitionTo(OrderStatus.CANCELLED)) {
             throw new InvalidOrderStateException(
                     "Không thể huỷ đơn đang ở trạng thái " + from);
+        }
+
+        if (isPendingCounterInvoice(order)) {
+            closePendingCounterInvoice(order, requesterId, reason, true);
+            return toResponse(order);
         }
 
         order.setStatus(OrderStatus.CANCELLED);
@@ -551,6 +807,11 @@ public class OrderService {
         Order order = findOrThrow(orderId);
         OrderStatus from = order.getStatus();
 
+        // Hoá đơn tại quầy không có bước xác nhận/giao: chờ thu tiền rồi hoàn tất một lần (collect).
+        if (order.getChannel() == OrderChannel.COUNTER) {
+            throw new InvalidOrderStateException(
+                    "Hoá đơn tại quầy không xác nhận hay giao hàng, hãy thu tiền hoặc huỷ hoá đơn");
+        }
         if (!from.canTransitionTo(target)) {
             throw new InvalidOrderStateException(
                     "Không thể chuyển đơn từ " + from + " sang " + target);

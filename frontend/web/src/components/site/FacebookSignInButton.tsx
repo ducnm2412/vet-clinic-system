@@ -99,21 +99,27 @@ export function FacebookSignInButton() {
     setError(null);
     setLoading(true);
 
-    fbRef.current.login(async (response) => {
+    // Callback của FB.login BẮT BUỘC là hàm thường — SDK ném lỗi "Expression is of type
+    // asyncfunction, not function" nếu truyền hàm async. Nên tách phần async ra riêng.
+    fbRef.current.login((response) => {
       if (!response.authResponse) {
         // Người dùng đóng hộp thoại hoặc bấm huỷ — không phải lỗi, im lặng thôi.
         setLoading(false);
         return;
       }
-      try {
-        const roles = await signInWithFacebook(response.authResponse.accessToken);
-        const target = next && isNextAllowedForRoles(next, roles) ? next : homeFor(roles);
-        router.replace(target);
-      } catch {
-        setError("Không đăng nhập được bằng Facebook. Thử lại sau.");
-        setLoading(false);
-      }
+      void completeSignIn(response.authResponse.accessToken);
     }, { scope: "email" });
+  }
+
+  async function completeSignIn(accessToken: string) {
+    try {
+      const roles = await signInWithFacebook(accessToken);
+      const target = next && isNextAllowedForRoles(next, roles) ? next : homeFor(roles);
+      router.replace(target);
+    } catch {
+      setError("Không đăng nhập được bằng Facebook. Thử lại sau.");
+      setLoading(false);
+    }
   }
 
   return (

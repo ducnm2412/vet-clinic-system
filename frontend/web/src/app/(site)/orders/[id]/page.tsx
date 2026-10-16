@@ -33,8 +33,12 @@ function OrderDetailBody() {
   const order = useQuery({
     queryKey: ["orders", id],
     queryFn: () => orderApi.byId(id),
-    // Đơn online đang chờ trả: kiểm lại thưa thớt để thấy ngay khi đã thanh toán hoặc bị tự huỷ quá hạn.
-    refetchInterval: (q) => (isAwaitingPayment(q.state.data) ? 15_000 : false),
+    // Đơn đang chờ trả: kiểm lại thưa thớt để thấy ngay khi đã thanh toán, bị tự huỷ quá hạn, hoặc
+    // nhân viên đã thêm sản phẩm vào hoá đơn quầy.
+    refetchInterval: (q) => {
+      if (isAwaitingPayment(q.state.data)) return 15_000;
+      return isAwaitingCounter(q.state.data) ? 30_000 : false;
+    },
   });
 
   if (order.isLoading) {
@@ -74,8 +78,19 @@ function isAwaitingPayment(order: Order | undefined): boolean {
   );
 }
 
+/** Hoá đơn quầy nhân viên đã lập, khách chưa ghé trả. Khách không tự trả hay huỷ được. */
+function isAwaitingCounter(order: Order | undefined): boolean {
+  return (
+    order !== undefined &&
+    order.channel === "COUNTER" &&
+    order.paymentStatus === "UNPAID" &&
+    order.status === "PENDING"
+  );
+}
+
 function OrderBody({ order }: { order: Order }) {
   const counter = order.channel === "COUNTER";
+  const awaitingCounter = isAwaitingCounter(order);
 
   return (
     <>
@@ -96,6 +111,14 @@ function OrderBody({ order }: { order: Order }) {
           <p className="mt-3 text-stone">
             {counter ? "Lập tại quầy lúc" : "Đặt lúc"} {formatDateTime(order.createdAt)}
           </p>
+
+          {awaitingCounter && (
+            <p className="measure mt-6 rounded-[var(--radius-card)] bg-white px-5 py-4 text-pine">
+              Phòng khám đã lập hoá đơn này sau buổi khám của bạn. Bạn ghé quầy để thanh toán; nếu muốn
+              mua thêm sản phẩm, nhân viên sẽ thêm vào hoá đơn giúp bạn. Số tiền cuối cùng được chốt khi
+              thanh toán.
+            </p>
+          )}
 
           {order.status === "CANCELLED" && order.cancelReason && (
             <p className="measure mt-6 rounded-[var(--radius-card)] bg-white px-5 py-4 text-coral-deep">
@@ -150,7 +173,7 @@ function OrderBody({ order }: { order: Order }) {
               {order.examAmount > 0 && <Money label="Tiền khám / thuốc" value={order.examAmount} />}
               {!counter && <Money label="Phí giao hàng" value={order.shippingFee} />}
               <div className="flex justify-between border-t border-mist pt-3">
-                <dt className="font-medium">Tổng cộng</dt>
+                <dt className="font-medium">{awaitingCounter ? "Cần thanh toán" : "Tổng cộng"}</dt>
                 <dd className="tnum text-[21px] font-semibold">{formatPrice(order.total)}</dd>
               </div>
             </dl>
@@ -162,18 +185,18 @@ function OrderBody({ order }: { order: Order }) {
 
           {counter ? (
             <div className="rounded-[var(--radius-card)] bg-mint p-6">
-              <h2 className="t-h3">Thanh toán tại quầy</h2>
+              <h2 className="t-h3">{awaitingCounter ? "Chờ thanh toán tại quầy" : "Thanh toán tại quầy"}</h2>
               <dl className="mt-4 space-y-3 text-[15px]">
                 <div>
                   <dt className="text-stone">Khách hàng</dt>
                   <dd className="font-medium">{order.recipientName}</dd>
                 </div>
-                <div>
-                  <dt className="text-stone">Hình thức</dt>
-                  <dd className="font-medium">
-                    {order.paymentMethod ? ORDER_PAYMENT_METHOD[order.paymentMethod] : "—"}
-                  </dd>
-                </div>
+                {order.paymentMethod && (
+                  <div>
+                    <dt className="text-stone">Hình thức</dt>
+                    <dd className="font-medium">{ORDER_PAYMENT_METHOD[order.paymentMethod]}</dd>
+                  </div>
+                )}
                 {order.transferReference && (
                   <div>
                     <dt className="text-stone">Mã giao dịch</dt>
@@ -240,8 +263,12 @@ function OrderBody({ order }: { order: Order }) {
           {counter ? (
             <div className="rounded-[var(--radius-card)] border border-mist p-6">
               <p className="text-stone">
-                Hoá đơn này đã thanh toán xong tại quầy. Gọi {CLINIC.phone} nếu bạn cần phòng khám
-                hỗ trợ.
+                {awaitingCounter
+                  ? "Hoá đơn này do nhân viên xử lý tại quầy nên bạn không tự thanh toán hay huỷ trên web được."
+                  : order.status === "CANCELLED"
+                    ? "Hoá đơn này đã được phòng khám huỷ."
+                    : "Hoá đơn này đã thanh toán xong tại quầy."}{" "}
+                Gọi {CLINIC.phone} nếu bạn cần phòng khám hỗ trợ.
               </p>
             </div>
           ) : (

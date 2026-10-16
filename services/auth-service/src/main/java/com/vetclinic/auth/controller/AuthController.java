@@ -1,5 +1,6 @@
 package com.vetclinic.auth.controller;
 
+import java.util.UUID;
 import com.vetclinic.auth.dto.AccessTokenResponse;
 import com.vetclinic.auth.dto.AuthResponse;
 import com.vetclinic.auth.dto.CreateCustomerAccountRequest;
@@ -26,6 +27,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -75,6 +77,12 @@ public class AuthController {
                                                       @RequestParam(defaultValue = "0") int page,
                                                       @RequestParam(defaultValue = "20") int size) {
         return userQueryService.search(RoleName.CUSTOMER, null, keyword, page, size);
+    }
+
+    /** Nhân viên lấy họ tên của một khách theo mã tài khoản (order-service điền vào hoá đơn quầy). */
+    @GetMapping("/customers/{userId}")
+    public UserResponse getCustomer(@PathVariable UUID userId) {
+        return userQueryService.getCustomer(userId);
     }
 
     @GetMapping("/verify-email")

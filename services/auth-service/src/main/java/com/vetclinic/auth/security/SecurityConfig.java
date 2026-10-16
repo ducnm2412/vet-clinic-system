@@ -41,7 +41,7 @@ public class SecurityConfig {
                         // auth-service: service này chưa bật @EnableMethodSecurity nên annotation đó
                         // im lặng không có tác dụng — mọi rule quyền ở đây phải khai bằng matcher.
                         .requestMatchers(HttpMethod.POST, "/auth/customers").hasAnyRole("STAFF", "ADMIN")
-                        .requestMatchers(HttpMethod.GET, "/auth/customers").hasAnyRole("STAFF", "ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/auth/customers", "/auth/customers/*").hasAnyRole("STAFF", "ADMIN")
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated())
                 .exceptionHandling(ex -> ex.authenticationEntryPoint((request, response, authException) ->

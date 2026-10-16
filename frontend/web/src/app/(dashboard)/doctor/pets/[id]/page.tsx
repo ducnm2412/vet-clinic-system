@@ -1,15 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { ApiError, petLookupApi } from "@/lib/api";
-import { PRESCRIPTION_STATUS, speciesStripe } from "@/lib/utils/status";
-import { formatAge, formatDate, formatDateTime } from "@/lib/utils/format";
+import { speciesStripe } from "@/lib/utils/status";
+import { formatAge, formatDate } from "@/lib/utils/format";
 import { cn } from "@/lib/utils/cn";
 import type { MedicalRecord } from "@/types";
+import { MedicalRecordList } from "@/components/pet/PetHistory";
 import { PetThumb } from "@/components/pet/PetThumb";
-import { Button, EmptyState, ErrorState, Spinner, StatusTag } from "@/components/ui";
+import { EmptyState, ErrorState, Spinner } from "@/components/ui";
 
 /**
  * Lịch sử khám của 1 thú cưng — mở từ thẻ thú cưng ở trang "Thú cưng". Gộp mọi bệnh án
@@ -17,7 +18,6 @@ import { Button, EmptyState, ErrorState, Spinner, StatusTag } from "@/components
  */
 export default function DoctorPetRecordsPage() {
   const { id } = useParams<{ id: string }>();
-  const router = useRouter();
 
   const pet = useQuery({ queryKey: ["pets", id], queryFn: () => petLookupApi.byId(id) });
   const records = useQuery({
@@ -98,41 +98,7 @@ export default function DoctorPetRecordsPage() {
               />
             </div>
           ) : (
-            <ul className="space-y-3">
-              {(records.data as MedicalRecord[]).map((r) => (
-                <li
-                  key={r.id}
-                  className="rounded-[var(--radius-control)] border border-line bg-surface p-4"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <StatusTag status={PRESCRIPTION_STATUS[r.status]} />
-                    <span className="text-sm text-bark">{formatDateTime(r.createdAt)}</span>
-                  </div>
-                  <p className="mt-2 text-sm font-medium text-ink">{r.diagnosis}</p>
-                  {r.treatment && <p className="mt-1 text-sm text-bark">Điều trị: {r.treatment}</p>}
-                  {r.notes && <p className="mt-1 text-sm text-bark">Dặn dò: {r.notes}</p>}
-                  {r.prescriptionItems.length > 0 && (
-                    <ul className="mt-2 space-y-1 text-sm text-bark">
-                      {r.prescriptionItems.map((item) => (
-                        <li key={item.id}>
-                          {item.medicationName} · {item.dosage} · {item.frequency}
-                          {item.durationDays ? ` · ${item.durationDays} ngày` : ""}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                  <div className="mt-3 flex justify-end">
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => router.push(`/doctor/appointments/${r.appointmentId}`)}
-                    >
-                      Mở hồ sơ ca khám
-                    </Button>
-                  </div>
-                </li>
-              ))}
-            </ul>
+            <MedicalRecordList records={records.data as MedicalRecord[]} />
           )}
         </section>
       </div>

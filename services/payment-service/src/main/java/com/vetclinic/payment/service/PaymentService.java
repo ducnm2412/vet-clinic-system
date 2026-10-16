@@ -8,6 +8,7 @@ import com.vetclinic.payment.dto.PaymentItemResponse;
 import com.vetclinic.payment.dto.PaymentResponse;
 import com.vetclinic.payment.exception.InvalidPaymentStateException;
 import com.vetclinic.payment.exception.ResourceNotFoundException;
+import com.vetclinic.payment.messaging.PaymentAmountSetEvent;
 import com.vetclinic.payment.messaging.PaymentCompletedEvent;
 import com.vetclinic.payment.repository.PaymentRepository;
 import lombok.RequiredArgsConstructor;
@@ -53,6 +54,11 @@ public class PaymentService {
         payment.setAmount(amount);
         payment.setStatus(PaymentStatus.PENDING_PAYMENT);
         paymentRepository.saveAndFlush(payment);
+
+        // Số tiền chốt rồi thì order-service dựng hoá đơn chờ để khách thấy và nhân viên thêm sản phẩm.
+        // Publish RabbitMQ thật sự xảy ra sau khi transaction commit (PaymentEventPublisher).
+        applicationEventPublisher.publishEvent(
+                new PaymentAmountSetEvent(payment.getId(), payment.getCustomerUserId(), amount));
         return toResponse(payment);
     }
 

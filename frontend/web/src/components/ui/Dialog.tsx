@@ -15,6 +15,7 @@ export function Dialog({
   description,
   children,
   footer,
+  wide = false,
 }: {
   open: boolean;
   onClose: () => void;
@@ -22,6 +23,8 @@ export function Dialog({
   description?: string;
   children: ReactNode;
   footer?: ReactNode;
+  /** Nội dung dài như danh sách bệnh án: rộng hơn và cuộn bên trong, không kéo dài cả trang. */
+  wide?: boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
 
@@ -50,7 +53,9 @@ export function Dialog({
         if (e.target === ref.current) onClose();
       }}
       aria-labelledby="dialog-title"
-      className="m-auto w-[min(32rem,calc(100vw-2rem))] rounded-[var(--radius-overlay)] border border-line bg-surface p-0 text-ink shadow-[var(--shadow-dialog)] backdrop:bg-ink/30"
+      className={`m-auto ${
+        wide ? "w-[min(44rem,calc(100vw-2rem))]" : "w-[min(32rem,calc(100vw-2rem))]"
+      } rounded-[var(--radius-overlay)] border border-line bg-surface p-0 text-ink shadow-[var(--shadow-dialog)] backdrop:bg-ink/30`}
     >
       <div className="flex items-start gap-4 border-b border-line px-5 py-4">
         <div className="min-w-0 flex-1">
@@ -64,7 +69,7 @@ export function Dialog({
         </IconButton>
       </div>
 
-      <div className="px-5 py-4">{children}</div>
+      <div className={wide ? "max-h-[65vh] overflow-y-auto px-5 py-4" : "px-5 py-4"}>{children}</div>
 
       {footer && (
         <div className="flex justify-end gap-2 border-t border-line bg-paper px-5 py-3">

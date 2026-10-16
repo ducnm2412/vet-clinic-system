@@ -18,6 +18,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -76,6 +77,13 @@ class ManageEndpointsSecurityTest {
     }
 
     @Test
+    void examInvoice_rejectsAnonymousAndCustomer() throws Exception {
+        String path = "/orders/manage/exam-invoice/" + UUID.randomUUID();
+        assertThat(send(post(path))).isEqualTo(401);
+        assertThat(send(post(path).header("Authorization", token("CUSTOMER")))).isEqualTo(403);
+    }
+
+    @Test
     void orderProcessingSteps_areStaffOnly() throws Exception {
         String id = UUID.randomUUID().toString();
         for (String step : List.of("confirm", "ship", "complete")) {
@@ -83,6 +91,10 @@ class ManageEndpointsSecurityTest {
                     .as(step).isEqualTo(403);
         }
         assertThat(send(post("/orders/manage/" + id + "/cancel").content("{}")
+                .header("Authorization", token("CUSTOMER")))).isEqualTo(403);
+        assertThat(send(put("/orders/manage/" + id + "/items").content("{\"items\":[]}")
+                .header("Authorization", token("CUSTOMER")))).isEqualTo(403);
+        assertThat(send(post("/orders/manage/" + id + "/collect").content("{}")
                 .header("Authorization", token("CUSTOMER")))).isEqualTo(403);
     }
 

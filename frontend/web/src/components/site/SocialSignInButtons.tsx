@@ -1,12 +1,14 @@
 "use client";
 
 import { GoogleSignInButton } from "@/components/site/GoogleSignInButton";
-import { FacebookSignInButton } from "@/components/site/FacebookSignInButton";
 
 /**
  * Dải đăng nhập mạng xã hội dùng chung cho trang đăng nhập/đăng ký — một divider "hoặc" rồi
- * hai nút icon Google/Facebook xếp cạnh nhau. FacebookSignInButton cố tình luôn hiện (App ID
- * sẽ bổ sung sau) nên dải này luôn hiện; chỉ GoogleSignInButton tự ẩn khi thiếu client ID.
+ * nút icon Google (tự ẩn khi thiếu client ID).
+ *
+ * Nút Facebook (FacebookSignInButton) đang TẠM ẨN: FB.login() bị Facebook chặn trên trang http
+ * (kể cả localhost) nên cần origin https mới chạy được. Muốn bật lại: import lại
+ * FacebookSignInButton, đặt cạnh GoogleSignInButton, và đặt FACEBOOK_APP_ID/SECRET trong .env.
  */
 export function SocialSignInButtons() {
   return (
@@ -18,7 +20,6 @@ export function SocialSignInButtons() {
       </div>
       <div className="flex justify-center gap-4">
         <GoogleSignInButton />
-        <FacebookSignInButton />
       </div>
     </div>
   );

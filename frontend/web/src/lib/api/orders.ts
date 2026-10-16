@@ -62,6 +62,26 @@ export const orderManageApi = {
   createCounterInvoice: (body: CounterInvoiceRequest) =>
     http.post<Order>("/orders/manage/counter", body),
 
+  /** Lấy hoá đơn chờ của khoản khám; chưa có (khoản cũ / mất sự kiện) thì lập bù. */
+  openExamInvoice: (paymentId: string) =>
+    http.post<Order>(`/orders/manage/exam-invoice/${paymentId}`),
+
+  /** Thay danh sách sản phẩm trên hoá đơn quầy đang chờ thu. Chưa trừ kho. */
+  replaceCounterItems: (id: string, items: CounterInvoiceRequest["items"]) =>
+    http.put<Order>(`/orders/manage/${id}/items`, { items: items ?? [] }),
+
+  /** Thu tiền hoá đơn quầy đang chờ: kiểm lại giá/kho, trừ kho, chốt hoá đơn. */
+  collectCounterInvoice: (
+    id: string,
+    body: {
+      paymentMethod: CounterInvoiceRequest["paymentMethod"];
+      customerName?: string;
+      customerPhone?: string;
+      transferReference?: string;
+      note?: string;
+    },
+  ) => http.post<Order>(`/orders/manage/${id}/collect`, body),
+
   /**
    * Xác nhận là bước phát `order.completed` để product-service trừ kho.
    * Huỷ đơn đã xác nhận phát `order.cancelled` để hoàn kho.

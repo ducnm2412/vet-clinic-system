@@ -13,6 +13,7 @@ import org.springframework.transaction.event.TransactionalEventListener;
 public class PaymentEventPublisher {
 
     private static final String ROUTING_KEY_PAYMENT_COMPLETED = "payment.completed";
+    private static final String ROUTING_KEY_AMOUNT_SET = "payment.amount-set";
 
     private final RabbitTemplate rabbitTemplate;
 
@@ -24,5 +25,12 @@ public class PaymentEventPublisher {
         rabbitTemplate.convertAndSend(RabbitMQConfig.PAYMENT_EVENTS_EXCHANGE, ROUTING_KEY_PAYMENT_COMPLETED, event);
         log.info("Published payment.completed event for paymentId={}, medicalRecordId={}",
                 event.paymentId(), event.medicalRecordId());
+    }
+
+    // AFTER_COMMIT vì cùng lý do: chỉ báo order-service dựng hoá đơn chờ khi số tiền đã thật sự được lưu.
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onAmountSet(PaymentAmountSetEvent event) {
+        rabbitTemplate.convertAndSend(RabbitMQConfig.PAYMENT_EVENTS_EXCHANGE, ROUTING_KEY_AMOUNT_SET, event);
+        log.info("Published payment.amount-set event for paymentId={}, amount={}", event.paymentId(), event.amount());
     }
 }
