@@ -87,6 +87,12 @@ export const orderManageApi = {
    * Huỷ đơn đã xác nhận phát `order.cancelled` để hoàn kho.
    */
   confirm: (id: string) => http.post<Order>(`/orders/manage/${id}/confirm`),
+  /**
+   * Nhân viên xác nhận đã nhận đủ tiền chuyển khoản QR của đơn online. Chỉ dùng được khi hệ thống bật
+   * cổng chuyển khoản QR; cổng khác tự báo kết quả về nên backend từ chối.
+   */
+  confirmTransferReceived: (id: string) =>
+    http.post<PaymentResult>(`/orders/manage/${id}/confirm-payment`),
   ship: (id: string) => http.post<Order>(`/orders/manage/${id}/ship`),
   complete: (id: string) => http.post<Order>(`/orders/manage/${id}/complete`),
   cancel: (id: string, reason: string) =>

@@ -15,6 +15,7 @@ import com.vetclinic.order.payment.GatewayResult;
 import com.vetclinic.order.payment.GatewayUnavailableException;
 import com.vetclinic.order.payment.MockPaymentGateway;
 import com.vetclinic.order.payment.OnlinePaymentGateway;
+import com.vetclinic.order.payment.QrTransferGateway;
 import com.vetclinic.order.repository.OrderRepository;
 import com.vetclinic.order.repository.OrderStatusHistoryRepository;
 import lombok.RequiredArgsConstructor;
@@ -67,6 +68,58 @@ public class OnlinePaymentService {
             throw new InvalidOrderStateException("Đơn đã quá hạn thanh toán");
         }
 
+        String txnRef = issueTxnRef(order);
+
+        return new PaymentInitResponse(order.getId(), gateway.buildPaymentUrl(order, txnRef, clientIp),
+                order.getPaymentExpiresAt());
+    }
+
+    /**
+     * Nhân viên xác nhận đã nhận đủ tiền chuyển khoản QR cho một đơn online. Chỉ dùng được khi cổng QR đang
+     * bật (các cổng khác tự báo kết quả về, không ai được ghi tay). Đi qua {@link #recordGatewayResult} nên
+     * bấm lặp lại không ghi hai lần, và đơn đã huỷ không bị tự sống lại.
+     */
+    @Transactional
+    public PaymentResultResponse confirmTransferReceived(UUID staffId, UUID orderId) {
+        if (!(gatewayProvider.getIfAvailable() instanceof QrTransferGateway)) {
+            throw new InvalidOrderStateException(
+                    "Cổng chuyển khoản QR chưa được bật, đơn online này không xác nhận tay được");
+        }
+
+        Order order = orderRepository.findByIdForUpdate(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng: " + orderId));
+
+        if (order.getPaymentMethod() != PaymentMethod.ONLINE) {
+            throw new InvalidOrderStateException("Đơn này không thanh toán online");
+        }
+        if (order.getPaymentStatus() == PaymentStatus.PAID) {
+            return respond(Outcome.ALREADY_PAID, order);
+        }
+        if (order.getStatus() != OrderStatus.PENDING) {
+            throw new InvalidOrderStateException("Đơn đã " + (order.getStatus() == OrderStatus.CANCELLED
+                    ? "bị huỷ" : "được xử lý") + ", không ghi nhận thanh toán được");
+        }
+
+        // Khách chưa mở trang QR thì đơn chưa có mã giao dịch; cấp luôn để ghi nhận được.
+        String txnRef = order.getGatewayTxnRef() != null ? order.getGatewayTxnRef() : issueTxnRef(order);
+        PaymentResultResponse result = recordGatewayResult(new GatewayResult(
+                txnRef, order.getTotal().setScale(0, RoundingMode.HALF_UP), true, "QR-" + order.getOrderCode()));
+
+        if (result.outcome() == Outcome.PAID) {
+            // Ghi rõ nhân viên nào đã xác nhận để sau này đối soát.
+            historyRepository.save(OrderStatusHistory.builder()
+                    .order(order)
+                    .fromStatus(order.getStatus())
+                    .toStatus(order.getStatus())
+                    .changedBy(staffId)
+                    .note("Nhân viên xác nhận đã nhận tiền chuyển khoản QR")
+                    .build());
+        }
+        return result;
+    }
+
+    /** Cấp mã giao dịch mới cho đơn và lưu lại; mã cũ (nếu có) hết hiệu lực. */
+    private String issueTxnRef(Order order) {
         // Chỉ chữ và số: cổng thật (VNPAY) yêu cầu mã giao dịch dạng alphanumeric.
         String txnRef = order.getOrderCode().replace("-", "")
                 + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
@@ -74,9 +127,7 @@ public class OnlinePaymentService {
         // Cắt về giây: cổng ghi thời điểm này theo giây, lưu lẻ hơn thì hỏi lại sẽ lệch.
         order.setGatewayTxnCreatedAt(Instant.now().truncatedTo(ChronoUnit.SECONDS));
         orderRepository.save(order);
-
-        return new PaymentInitResponse(order.getId(), gateway.buildPaymentUrl(order, txnRef, clientIp),
-                order.getPaymentExpiresAt());
+        return txnRef;
     }
 
     /**

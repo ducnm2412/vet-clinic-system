@@ -46,6 +46,12 @@ order:
     secret: ${ORDER_MOCK_GATEWAY_SECRET:}
     # Trang giả lập cổng nằm ở frontend; đường dẫn tương đối nên đi cùng domain với web.
     page-url: ${ORDER_MOCK_GATEWAY_PAGE_URL:/pay/mock}
+  # Cổng chuyển khoản qua mã QR: khách quét mã rồi chuyển, nhân viên đối chiếu tiền vào tài khoản và xác nhận
+  # trên trang quản lý. Không bật cùng cổng khác. Tài khoản nhận tiền cấu hình ở frontend (TRANSFER_QR_TEMPLATE).
+  qr-gateway:
+    enabled: ${ORDER_QR_GATEWAY_ENABLED:false}
+    # Trang hiện mã QR nằm ở frontend; đường dẫn tương đối nên đi cùng domain với web.
+    page-url: ${ORDER_QR_GATEWAY_PAGE_URL:/pay/qr}
   # Cổng VNPAY. Không bật cùng lúc với cổng giả lập ở trên. Bật thì phải đặt đủ tmn-code, hash-secret
   # (do VNPAY cấp) và return-url (trang web khách được đưa về sau khi trả tiền).
   vnpay:

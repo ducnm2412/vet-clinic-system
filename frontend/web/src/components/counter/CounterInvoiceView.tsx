@@ -19,6 +19,7 @@ import {
   TextField,
   useToast,
 } from "@/components/ui";
+import { TransferQr } from "@/components/payment/TransferQr";
 
 type CounterMethod = CounterInvoiceRequest["paymentMethod"];
 
@@ -512,6 +513,8 @@ export function CounterInvoiceView({ initialPaymentId }: { initialPaymentId?: st
                 value={reference}
                 onChange={(e) => setReference(e.target.value)}
               />
+              {/* Hoá đơn chờ đã có mã đơn; khách lẻ chưa có thì ghi nội dung chung. */}
+              <TransferQr amount={total} content={draft?.orderCode ?? "Thanh toan quay"} />
             </div>
           )}
 

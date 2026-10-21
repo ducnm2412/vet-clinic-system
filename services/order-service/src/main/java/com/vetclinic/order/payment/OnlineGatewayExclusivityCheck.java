@@ -15,7 +15,7 @@ public class OnlineGatewayExclusivityCheck {
         if (gateways.size() > 1) {
             throw new IllegalStateException("Chỉ được bật một cổng thanh toán online, đang bật: "
                     + gateways.stream().map(g -> g.getClass().getSimpleName()).toList()
-                    + ". Tắt order.mock-gateway.enabled hoặc order.vnpay.enabled.");
+                    + ". Chỉ để một trong order.mock-gateway.enabled, order.vnpay.enabled, order.qr-gateway.enabled là true.");
         }
     }
 }

@@ -16,12 +16,24 @@ import { SiteInput, SiteSelect, SiteTextarea } from "./fields";
 // Loài phổ biến ở phòng khám thú y Việt Nam; vẫn cho gõ tự do vì danh sách không thể đủ.
 const SPECIES = ["Chó", "Mèo", "Chim", "Thỏ", "Hamster", "Bò sát", "Cá"];
 
+/** Ngày hôm nay theo giờ máy (yyyy-MM-dd), không dùng toISOString vì nó lệch sang giờ UTC. */
+function todayLocal(): string {
+  const d = new Date();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${mm}-${dd}`;
+}
+
 const schema = z.object({
   name: z.string().min(1, "Nhập tên thú cưng").max(100),
   species: z.string().min(1, "Chọn hoặc nhập loài").max(50),
   breed: z.string().max(100).optional(),
   gender: z.enum(["MALE", "FEMALE", "UNKNOWN"]),
-  dateOfBirth: z.string().optional(),
+  // Chuỗi yyyy-MM-dd so sánh theo thứ tự chữ cái cũng đúng thứ tự thời gian.
+  dateOfBirth: z
+    .string()
+    .optional()
+    .refine((v) => !v || v <= todayLocal(), "Ngày sinh không được sau ngày hôm nay"),
   weightKg: z.coerce.number().positive("Cân nặng phải lớn hơn 0").optional(),
   allergies: z.string().max(2000).optional(),
   notes: z.string().max(2000).optional(),
@@ -166,6 +178,7 @@ export function PetFormDialog({
           <SiteInput
             label="Ngày sinh"
             type="date"
+            max={todayLocal()}
             error={errors.dateOfBirth?.message}
             {...register("dateOfBirth")}
           />

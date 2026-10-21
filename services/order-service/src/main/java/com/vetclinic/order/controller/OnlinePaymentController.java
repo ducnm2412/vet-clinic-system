@@ -46,6 +46,12 @@ public class OnlinePaymentController {
         return onlinePaymentService.submitMockPayment(userId(authentication), request);
     }
 
+    /** Nhân viên xác nhận đã nhận đủ tiền chuyển khoản QR của đơn online (chỉ khi cổng QR đang bật). */
+    @PostMapping("/manage/{id}/confirm-payment")
+    public PaymentResultResponse confirmTransferReceived(@PathVariable UUID id, Authentication authentication) {
+        return onlinePaymentService.confirmTransferReceived(userId(authentication), id);
+    }
+
     /** Địa chỉ khách: ưu tiên X-Forwarded-For do gateway thêm, rơi về địa chỉ kết nối. Chỉ để cổng ghi nhận. */
     private static String clientIp(HttpServletRequest request) {
         String forwarded = request.getHeader("X-Forwarded-For");

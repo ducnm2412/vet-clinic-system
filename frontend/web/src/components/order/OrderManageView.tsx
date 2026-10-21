@@ -192,6 +192,26 @@ function OrderDetailDialog({ orderId, onClose }: { orderId: string | null; onClo
       toast.error(err instanceof ApiError ? err.message : "Không thực hiện được thao tác."),
   });
 
+  // Chỉ dùng khi hệ thống bật cổng chuyển khoản QR; cổng khác thì backend từ chối và toast báo lý do.
+  const confirmTransfer = useMutation({
+    mutationFn: () => {
+      if (!orderId) throw new Error("Chưa chọn đơn");
+      return orderManageApi.confirmTransferReceived(orderId);
+    },
+    onSuccess: (result) => {
+      qc.invalidateQueries({ queryKey: ["orders"] });
+      if (result.outcome === "PAID") {
+        toast.success("Đã ghi nhận khách chuyển khoản. Bạn có thể xác nhận đơn.");
+      } else if (result.outcome === "ALREADY_PAID") {
+        toast.success("Đơn này đã được ghi nhận thanh toán trước đó.");
+      } else {
+        toast.error("Không ghi nhận được thanh toán cho đơn này.");
+      }
+    },
+    onError: (err) =>
+      toast.error(err instanceof ApiError ? err.message : "Không ghi nhận được thanh toán."),
+  });
+
   const data = order.data;
   // Đơn online chưa trả thì chưa xác nhận được (backend cũng chặn); ẩn nút để khỏi bấm rồi nhận lỗi.
   const awaitingPayment =
@@ -222,6 +242,11 @@ function OrderDetailDialog({ orderId, onClose }: { orderId: string | null; onClo
             {unpaidCounter && data.examPaymentId && (
               <Button onClick={() => router.push(`/staff/counter?payment=${data.examPaymentId}`)}>
                 Mở hoá đơn để thu
+              </Button>
+            )}
+            {awaitingPayment && (
+              <Button loading={confirmTransfer.isPending} onClick={() => confirmTransfer.mutate()}>
+                Đã nhận tiền
               </Button>
             )}
             {actions

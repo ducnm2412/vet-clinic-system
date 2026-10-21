@@ -194,6 +194,9 @@ services:
         # Chi App ID (cong khai, chay thang trong JS SDK phia trinh duyet) - KHONG duoc them
         # FACEBOOK_APP_SECRET o day duoi bat ky hinh thuc nao.
         NEXT_PUBLIC_FACEBOOK_APP_ID: ${FACEBOOK_APP_ID:-}
+        NEXT_PUBLIC_TRANSFER_QR_TEMPLATE: ${TRANSFER_QR_TEMPLATE:-}
+        NEXT_PUBLIC_TRANSFER_ACCOUNT_NAME: ${TRANSFER_ACCOUNT_NAME:-}
+        NEXT_PUBLIC_TRANSFER_ACCOUNT_NUMBER: ${TRANSFER_ACCOUNT_NUMBER:-}
     container_name: frontend
     ports:
       - "3000:3000"
@@ -376,6 +379,8 @@ services:
       # Cong thanh toan gia lap: chi danh cho dev/demo, KHONG bat o moi truong that.
       ORDER_MOCK_GATEWAY_ENABLED: ${ORDER_MOCK_GATEWAY_ENABLED:-true}
       ORDER_MOCK_GATEWAY_SECRET: ${ORDER_MOCK_GATEWAY_SECRET:-dev-only-mock-gateway-secret}
+      # Cong chuyen khoan QR: bat thi PHAI tat ORDER_MOCK_GATEWAY_ENABLED (chi duoc bat mot cong).
+      ORDER_QR_GATEWAY_ENABLED: ${ORDER_QR_GATEWAY_ENABLED:-false}
       # Cong VNPAY (thay cho cong gia lap): bat thi PHAI tat ORDER_MOCK_GATEWAY_ENABLED, chi duoc bat mot cong.
       ORDER_VNPAY_ENABLED: ${ORDER_VNPAY_ENABLED:-false}
       ORDER_VNPAY_TMN_CODE: ${ORDER_VNPAY_TMN_CODE:-}
