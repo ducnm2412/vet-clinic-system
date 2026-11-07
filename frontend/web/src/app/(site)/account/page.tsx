@@ -5,13 +5,22 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { MapPin, Pencil, Plus, Trash2 } from "lucide-react";
 import { ApiError, customerApi } from "@/lib/api";
 import { formatAddress, formatDate } from "@/lib/utils/format";
-import type { Address, AddressRequest } from "@/types";
+import type { Address, AddressRequest, CustomerGender } from "@/types";
 import { useAuth } from "@/lib/auth/context";
 import { useToast } from "@/components/ui";
+import { AuthedImage } from "@/components/AuthedImage";
+import { PhotoUploadButton } from "@/components/PhotoUploadButton";
 import { Container, SiteButton } from "@/components/site/primitives";
 import { CustomerOnly } from "@/components/site/CustomerOnly";
+import { DefaultAvatar } from "@/components/site/DefaultAvatar";
 import { SiteDialog } from "@/components/site/SiteDialog";
-import { SiteInput, SiteTextarea } from "@/components/site/fields";
+import { SiteInput, SiteSelect, SiteTextarea } from "@/components/site/fields";
+
+const GENDER_LABEL: Record<CustomerGender, string> = {
+  MALE: "Nam",
+  FEMALE: "Nữ",
+  OTHER: "Khác",
+};
 
 /**
  * CN-09, CN-10: hồ sơ của chính khách và sổ địa chỉ.
@@ -52,7 +61,11 @@ function ProfileSection() {
   const qc = useQueryClient();
   const toast = useToast();
   const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState({ phone: "", dateOfBirth: "" });
+  const [form, setForm] = useState<{ phone: string; dateOfBirth: string; gender: CustomerGender | "" }>({
+    phone: "",
+    dateOfBirth: "",
+    gender: "",
+  });
 
   const profile = useQuery({ queryKey: ["customer-profile"], queryFn: customerApi.me });
 
@@ -61,6 +74,7 @@ function ProfileSection() {
       customerApi.updateMe({
         phone: form.phone || undefined,
         dateOfBirth: form.dateOfBirth || undefined,
+        gender: form.gender || undefined,
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["customer-profile"] });
@@ -74,6 +88,7 @@ function ProfileSection() {
     setForm({
       phone: profile.data?.phone ?? "",
       dateOfBirth: profile.data?.dateOfBirth ?? "",
+      gender: profile.data?.gender ?? "",
     });
     setEditing(true);
   }
@@ -91,11 +106,34 @@ function ProfileSection() {
         <p className="mt-8 text-stone">Không tải được hồ sơ. Thử lại sau.</p>
       ) : (
         <>
+          <div className="mt-8 flex items-center gap-5">
+            <span className="grid size-24 shrink-0 place-items-center overflow-hidden rounded-full bg-mint">
+              <AuthedImage
+                path={profile.data?.photoUrl}
+                alt="Ảnh đại diện của bạn"
+                className="size-full object-cover"
+                fallback={<DefaultAvatar gender={profile.data?.gender} className="size-full" />}
+              />
+            </span>
+            <div>
+              <PhotoUploadButton
+                variant="site"
+                label={profile.data?.photoUrl ? "Đổi ảnh" : "Thêm ảnh"}
+                upload={customerApi.uploadMyPhoto}
+                onUploaded={() => qc.invalidateQueries({ queryKey: ["customer-profile"] })}
+              />
+            </div>
+          </div>
+
           <dl className="mt-8 max-w-md divide-y divide-mist border-y border-mist">
             <Row label="Số điện thoại" value={profile.data?.phone || "Chưa khai"} />
             <Row
               label="Ngày sinh"
               value={profile.data?.dateOfBirth ? formatDate(profile.data.dateOfBirth) : "Chưa khai"}
+            />
+            <Row
+              label="Giới tính"
+              value={profile.data?.gender ? GENDER_LABEL[profile.data.gender] : "Chưa khai"}
             />
           </dl>
 
@@ -138,6 +176,16 @@ function ProfileSection() {
             value={form.dateOfBirth}
             onChange={(e) => setForm({ ...form, dateOfBirth: e.target.value })}
           />
+          <SiteSelect
+            label="Giới tính"
+            value={form.gender}
+            onChange={(e) => setForm({ ...form, gender: e.target.value as CustomerGender | "" })}
+          >
+            <option value="">Chưa chọn</option>
+            <option value="MALE">{GENDER_LABEL.MALE}</option>
+            <option value="FEMALE">{GENDER_LABEL.FEMALE}</option>
+            <option value="OTHER">{GENDER_LABEL.OTHER}</option>
+          </SiteSelect>
         </div>
       </SiteDialog>
     </section>

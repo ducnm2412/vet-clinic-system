@@ -71,6 +71,7 @@ public class CustomerProfileService {
         CustomerProfile profile = getOrCreateProfile(userId);
         profile.setPhone(request.phone());
         profile.setDateOfBirth(request.dateOfBirth());
+        profile.setGender(request.gender());
         // flush ngay để @UpdateTimestamp được Hibernate điền vào object trước khi map ra response.
         customerProfileRepository.saveAndFlush(profile);
         return toProfileResponse(profile);
@@ -170,7 +171,7 @@ public class CustomerProfileService {
 
     private CustomerProfileResponse toProfileResponse(CustomerProfile profile) {
         return new CustomerProfileResponse(profile.getId(), profile.getUserId(), profile.getPhone(),
-                profile.getDateOfBirth(), PhotoUrls.of(PhotoUrls.CUSTOMERS, profile.getId(), profile.getPhotoVersion()),
+                profile.getDateOfBirth(), profile.getGender(), PhotoUrls.of(PhotoUrls.CUSTOMERS, profile.getId(), profile.getPhotoVersion()),
                 profile.getCreatedAt(), profile.getUpdatedAt());
     }
 

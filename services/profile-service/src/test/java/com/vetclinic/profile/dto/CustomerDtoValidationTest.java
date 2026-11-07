@@ -1,5 +1,6 @@
 package com.vetclinic.profile.dto;
 
+import com.vetclinic.profile.domain.Gender;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import org.junit.jupiter.api.Test;
@@ -14,13 +15,13 @@ class CustomerDtoValidationTest {
 
     @Test
     void customerProfileRequest_futureDateOfBirth_violation() {
-        var request = new CustomerProfileRequest("0901234567", LocalDate.now().plusDays(1));
+        var request = new CustomerProfileRequest("0901234567", LocalDate.now().plusDays(1), null);
         assertThat(VALIDATOR.validate(request)).isNotEmpty();
     }
 
     @Test
     void customerProfileRequest_pastDateOfBirth_noViolation() {
-        var request = new CustomerProfileRequest("0901234567", LocalDate.of(1995, 5, 20));
+        var request = new CustomerProfileRequest("0901234567", LocalDate.of(1995, 5, 20), Gender.FEMALE);
         assertThat(VALIDATOR.validate(request)).isEmpty();
     }
 

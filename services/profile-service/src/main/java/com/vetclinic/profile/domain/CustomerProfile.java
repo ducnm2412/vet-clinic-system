@@ -3,6 +3,8 @@ package com.vetclinic.profile.domain;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -44,6 +46,11 @@ public class CustomerProfile {
 
     @Column(name = "date_of_birth")
     private LocalDate dateOfBirth;
+
+    // Null khi khách không khai (hồ sơ cũ, hoặc tài khoản mở tại quầy).
+    @Enumerated(EnumType.STRING)
+    @Column(length = 10)
+    private Gender gender;
 
     @Column(name = "photo_version", nullable = false)
     @Builder.Default

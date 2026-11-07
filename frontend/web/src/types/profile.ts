@@ -31,11 +31,15 @@ export interface PetRequest {
   notes?: string;
 }
 
+/** Giới tính của khách (profile-service: Gender). Khác {@link PetGender}: không có "chưa rõ", khách không khai thì là null. */
+export type CustomerGender = "MALE" | "FEMALE" | "OTHER";
+
 export interface CustomerProfile {
   id: string;
   userId: string;
   phone: string | null;
   dateOfBirth: string | null;
+  gender: CustomerGender | null;
   photoUrl: string | null;
   createdAt: string;
   updatedAt: string;
@@ -44,6 +48,7 @@ export interface CustomerProfile {
 export interface CustomerProfileRequest {
   phone?: string;
   dateOfBirth?: string;
+  gender?: CustomerGender;
 }
 
 /**

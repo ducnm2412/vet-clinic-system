@@ -1,5 +1,6 @@
 package com.vetclinic.profile.service;
 
+import com.vetclinic.profile.domain.Gender;
 import com.vetclinic.profile.dto.AddressRequest;
 import com.vetclinic.profile.dto.AddressResponse;
 import com.vetclinic.profile.dto.CustomerProfileRequest;
@@ -40,10 +41,28 @@ class CustomerProfileServiceTest {
         UUID userId = UUID.randomUUID();
 
         CustomerProfileResponse response = customerProfileService.updateMyProfile(
-                userId, new CustomerProfileRequest("0901234567", LocalDate.of(1995, 5, 20)));
+                userId, new CustomerProfileRequest("0901234567", LocalDate.of(1995, 5, 20), Gender.MALE));
 
         assertThat(response.phone()).isEqualTo("0901234567");
         assertThat(response.dateOfBirth()).isEqualTo(LocalDate.of(1995, 5, 20));
+        assertThat(response.gender()).isEqualTo(Gender.MALE);
+    }
+
+    @Test
+    void updateMyProfile_withoutGender_clearsIt() {
+        UUID userId = UUID.randomUUID();
+        customerProfileService.updateMyProfile(userId,
+                new CustomerProfileRequest("0901234567", null, Gender.FEMALE));
+
+        CustomerProfileResponse response = customerProfileService.updateMyProfile(userId,
+                new CustomerProfileRequest("0901234567", null, null));
+
+        assertThat(response.gender()).isNull();
+    }
+
+    @Test
+    void getMyProfile_newProfile_genderIsNull() {
+        assertThat(customerProfileService.getMyProfile(UUID.randomUUID()).gender()).isNull();
     }
 
     @Test
@@ -90,7 +109,7 @@ class CustomerProfileServiceTest {
     void getProfileById_found_returnsProfile() {
         UUID userId = UUID.randomUUID();
         CustomerProfileResponse created = customerProfileService.updateMyProfile(userId,
-                new CustomerProfileRequest("0909000000", LocalDate.of(1990, 1, 1)));
+                new CustomerProfileRequest("0909000000", LocalDate.of(1990, 1, 1), null));
 
         CustomerProfileResponse found = customerProfileService.getProfileById(created.id());
 

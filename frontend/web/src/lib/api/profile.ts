@@ -23,6 +23,8 @@ export const customerApi = {
   me: () => http.get<CustomerProfile>("/profile/customer/me"),
   updateMe: (body: CustomerProfileRequest) =>
     http.put<CustomerProfile>("/profile/customer/me", body),
+  uploadMyPhoto: (file: File) =>
+    http.postForm<CustomerProfile>("/profile/customer/me/photo", formOf(file)),
 
   addresses: () => http.get<Address[]>("/profile/customer/me/addresses"),
   addAddress: (body: AddressRequest) =>

@@ -60,10 +60,19 @@ class CustomerProfileControllerTest {
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"phone":"0901234567","dateOfBirth":"1995-05-20"}
+                                {"phone":"0901234567","dateOfBirth":"1995-05-20","gender":"FEMALE"}
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.phone").value("0901234567"));
+                .andExpect(jsonPath("$.phone").value("0901234567"))
+                .andExpect(jsonPath("$.gender").value("FEMALE"));
+
+        mockMvc.perform(put("/profile/customer/me")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"phone":"0901234567","gender":"ROBOT"}
+                                """))
+                .andExpect(status().isBadRequest());
 
         mockMvc.perform(post("/profile/customer/me/addresses")
                         .header("Authorization", "Bearer " + token)
