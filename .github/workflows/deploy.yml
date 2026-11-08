@@ -59,11 +59,17 @@ jobs:
         if: steps.detect.outputs.services != ''
         run: |
           cd "$APP_DIR"
-          if [ "${{ steps.detect.outputs.services }}" = "all" ]; then
-            docker compose up -d --build
-          else
-            docker compose up -d --build ${{ steps.detect.outputs.services }}
-          fi
+          SV="${{ steps.detect.outputs.services }}"
+          [ "$SV" = "all" ] && SV=$(docker compose config --services)
+          # May ao it RAM: build TUNG service mot (khong song song), va tam dung frontend
+          # truoc khi build no de nhuong RAM cho "next build" (tranh bi kill vi het bo nho).
+          for s in $SV; do
+            echo "::group::Build $s"
+            [ "$s" = "frontend" ] && docker compose stop frontend
+            docker compose build "$s" || { docker compose up -d "$s"; exit 1; }
+            docker compose up -d "$s"
+            echo "::endgroup::"
+          done
 
       - name: Kiem tra trang thai
         if: always()
