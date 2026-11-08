@@ -1,0 +1,73 @@
+# Tu dong deploy len may ao (VMware) qua self-hosted runner.
+# Push len master -> pull code trong thu muc du an tren may ao -> chi build lai service thay doi.
+# Chay tay: tab Actions -> Deploy -> Run workflow (co the nhap ten service, hoac "all").
+
+name: Deploy
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+    inputs:
+      services:
+        description: 'Service can build lai, cach nhau dau cach (vd: auth-service frontend), hoac "all"'
+        required: false
+        default: ''
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    env:
+      APP_DIR: /home/ngominhduc/Desktop/hkdn/vet-clinic-system
+    steps:
+      - name: Pull code moi
+        id: pull
+        run: |
+          cd "$APP_DIR"
+          OLD=$(git rev-parse HEAD)
+          git fetch origin master
+          git reset --hard origin/master
+          echo "old=$OLD" >> "$GITHUB_OUTPUT"
+
+      - name: Xac dinh service can build
+        id: detect
+        run: |
+          cd "$APP_DIR"
+          if [ -n "${{ github.event.inputs.services }}" ]; then
+            SV="${{ github.event.inputs.services }}"
+          else
+            SV=""
+            for f in $(git diff --name-only ${{ steps.pull.outputs.old }} HEAD); do
+              case "$f" in
+                services/*/*)                SV="$SV $(echo "$f" | cut -d/ -f2)" ;;
+                eureka-server/*)             SV="$SV eureka-server" ;;
+                api-gateway/*)               SV="$SV api-gateway" ;;
+                frontend/*)                  SV="$SV frontend" ;;
+                shared/*|docker-compose.yml) SV="all"; break ;;
+              esac
+            done
+          fi
+          SV=$(echo $SV | tr ' ' '\n' | sort -u | xargs)
+          echo "Service can build: ${SV:-(khong co)}"
+          echo "services=$SV" >> "$GITHUB_OUTPUT"
+
+      - name: Build va khoi dong lai
+        if: steps.detect.outputs.services != ''
+        run: |
+          cd "$APP_DIR"
+          if [ "${{ steps.detect.outputs.services }}" = "all" ]; then
+            docker compose up -d --build
+          else
+            docker compose up -d --build ${{ steps.detect.outputs.services }}
+          fi
+
+      - name: Kiem tra trang thai
+        if: always()
+        run: |
+          cd "$APP_DIR"
+          docker compose ps
+          docker image prune -f
