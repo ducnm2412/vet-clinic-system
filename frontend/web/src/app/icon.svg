@@ -1,0 +1,12 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" role="img">
+  <title>Icon phòng khám thú y</title>
+  <circle cx="100" cy="100" r="96" fill="#0E9B8E"/>
+  <ellipse cx="100" cy="117" rx="40" ry="35" fill="#FFFFFF"/>
+  <circle cx="57" cy="73" r="16" fill="#FFFFFF"/>
+  <circle cx="81" cy="51" r="17" fill="#FFFFFF"/>
+  <circle cx="119" cy="51" r="17" fill="#FFFFFF"/>
+  <circle cx="143" cy="73" r="16" fill="#FFFFFF"/>
+  <circle cx="149" cy="149" r="32" fill="#FF6B5E" stroke="#FFFFFF" stroke-width="7"/>
+  <rect x="140" y="133" width="19" height="32" rx="3.5" fill="#FFFFFF"/>
+  <rect x="133" y="140" width="32" height="19" rx="3.5" fill="#FFFFFF"/>
+</svg>

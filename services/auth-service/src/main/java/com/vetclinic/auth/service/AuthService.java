@@ -2,6 +2,7 @@ package com.vetclinic.auth.service;
 
 import com.vetclinic.auth.domain.Role;
 import com.vetclinic.auth.domain.RoleName;
+import com.vetclinic.auth.exception.AccountStatusChangeException;
 import com.vetclinic.auth.domain.User;
 import com.vetclinic.auth.domain.UserStatus;
 import com.vetclinic.auth.dto.AuthResponse;
@@ -160,6 +161,16 @@ public class AuthService {
     public MessageResponse deleteUser(UUID userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException(userId));
+
+        // Chỉ xoá được Bác sĩ / Nhân viên. Khách hàng gắn với đơn hàng, thú cưng, bệnh án; admin
+        // xoá nhầm là mất quyền quản trị — hai loại này chỉ khoá (CN-08). Admin không mang
+        // DOCTOR/STAFF nên cũng không tự xoá mình được qua nhánh này.
+        boolean staffOnly = !user.getRoles().isEmpty() && user.getRoles().stream()
+                .allMatch(r -> r.getName() == RoleName.DOCTOR || r.getName() == RoleName.STAFF);
+        if (!staffOnly) {
+            throw new AccountStatusChangeException(
+                    "Only DOCTOR or STAFF accounts can be deleted; lock other accounts instead");
+        }
 
         userRepository.delete(user);
         // Publish event nội bộ (Spring, không phải RabbitMQ) — UserEventPublisher sẽ chỉ đẩy lên

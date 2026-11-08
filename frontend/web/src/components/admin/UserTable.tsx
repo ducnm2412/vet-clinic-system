@@ -2,10 +2,11 @@
 
 import { useState, type FormEvent } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { Lock, LockOpen, Search } from "lucide-react";
+import { Lock, LockOpen, Search, Trash2 } from "lucide-react";
 import { ApiError, ROLE_LABEL, authApi, customerLookupApi, petLookupApi } from "@/lib/api";
 import { useAuth } from "@/lib/auth/context";
 import { LockAccountDialog } from "./LockAccountDialog";
+import { DeleteAccountDialog } from "./DeleteAccountDialog";
 import { formatDate } from "@/lib/utils/format";
 import { USER_STATUS } from "@/lib/utils/status";
 import {
@@ -33,7 +34,8 @@ const STATUSES: UserStatus[] = ["ACTIVE", "INACTIVE", "LOCKED"];
  * khoá cứng `role="CUSTOMER"`, ẩn cột vai trò và ghép điện thoại, địa chỉ (profile-service)
  * cùng thú cưng (pet-service) cho đúng các khách đang hiện trên trang — hai service, hai lượt gọi.
  *
- * Không có nút xoá: xoá làm lịch khám và đơn hàng cũ mất người liên quan — dùng Khoá (CN-08).
+ * Nút Xoá chỉ hiện cho Bác sĩ / Nhân viên. Khách hàng và Admin chỉ Khoá (CN-08): xoá khách làm
+ * đơn hàng, thú cưng, bệnh án mất chủ.
  */
 export function UserTable({ role, title, unitLabel }: { role?: Role; title: string; unitLabel: string }) {
   const [draft, setDraft] = useState("");
@@ -53,6 +55,7 @@ export function UserTable({ role, title, unitLabel }: { role?: Role; title: stri
 
   const { userId: myId } = useAuth();
   const [lockTarget, setLockTarget] = useState<CurrentUser | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<CurrentUser | null>(null);
 
   const isCustomerList = role === "CUSTOMER";
   const pageIds = (users.data?.content ?? []).map((u) => u.id);
@@ -156,6 +159,12 @@ export function UserTable({ role, title, unitLabel }: { role?: Role; title: stri
               {u.status === "LOCKED" ? <LockOpen aria-hidden className="size-3.5" /> : <Lock aria-hidden className="size-3.5" />}
               {u.status === "LOCKED" ? "Mở khoá" : "Khoá"}
             </Button>
+            {u.roles.every((r) => r === "DOCTOR" || r === "STAFF") && u.roles.length > 0 && (
+              <Button variant="ghost" size="sm" onClick={() => setDeleteTarget(u)}>
+                <Trash2 aria-hidden className="size-3.5" />
+                Xoá
+              </Button>
+            )}
           </div>
         ),
     },
@@ -285,6 +294,7 @@ export function UserTable({ role, title, unitLabel }: { role?: Role; title: stri
       </TableFrame>
 
       <LockAccountDialog user={lockTarget} onClose={() => setLockTarget(null)} />
+      <DeleteAccountDialog user={deleteTarget} onClose={() => setDeleteTarget(null)} />
     </>
   );
 }
