@@ -1,6 +1,7 @@
 "use client";
 
-import { forwardRef, useId, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
+import { Eye, EyeOff } from "lucide-react";
+import { forwardRef, useId, useState, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
 import { cn } from "@/lib/utils/cn";
 
 /*
@@ -65,19 +66,40 @@ interface Base {
 export const SiteInput = forwardRef<
   HTMLInputElement,
   Base & InputHTMLAttributes<HTMLInputElement>
->(function SiteInput({ label, hint, error, className, id, ...props }, ref) {
+>(function SiteInput({ label, hint, error, className, id, type, ...props }, ref) {
   const auto = useId();
   const fieldId = id ?? auto;
+  const isPassword = type === "password";
+  const [visible, setVisible] = useState(false);
+  const input = (
+    <input
+      ref={ref}
+      id={fieldId}
+      type={isPassword && visible ? "text" : type}
+      aria-invalid={error ? true : undefined}
+      aria-describedby={error ? `${fieldId}-error` : hint ? `${fieldId}-hint` : undefined}
+      className={cn(fieldClass(!!error), "h-12", isPassword && "pr-12", className)}
+      {...props}
+    />
+  );
   return (
     <SiteField label={label} hint={hint} error={error} required={props.required} htmlFor={fieldId}>
-      <input
-        ref={ref}
-        id={fieldId}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={error ? `${fieldId}-error` : hint ? `${fieldId}-hint` : undefined}
-        className={cn(fieldClass(!!error), "h-12", className)}
-        {...props}
-      />
+      {isPassword ? (
+        <div className="relative">
+          {input}
+          <button
+            type="button"
+            onClick={() => setVisible((v) => !v)}
+            aria-label={visible ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+            aria-pressed={visible}
+            className="absolute inset-y-0 right-0 flex w-12 items-center justify-center rounded-r-xl text-stone transition-colors hover:text-pine focus-visible:text-teal focus-visible:outline-none"
+          >
+            {visible ? <EyeOff className="h-5 w-5" aria-hidden /> : <Eye className="h-5 w-5" aria-hidden />}
+          </button>
+        </div>
+      ) : (
+        input
+      )}
     </SiteField>
   );
 });

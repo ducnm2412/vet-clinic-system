@@ -84,11 +84,14 @@ export const authApi = {
 
   /**
    * CN-08: khoá thay cho xoá — lịch sử khám và đơn hàng giữ nguyên. Backend thu hồi mọi phiên và
-   * từ chối (409) khi tự khoá mình hoặc khoá admin cuối cùng. Giao diện không có nút xoá.
+   * từ chối (409) khi tự khoá mình hoặc khoá admin cuối cùng. Xoá chỉ dành cho Bác sĩ / Nhân viên.
    */
   lockUser: (userId: string) => http.put<CurrentUser>(`/admin/users/${userId}/lock`),
 
   unlockUser: (userId: string) => http.put<CurrentUser>(`/admin/users/${userId}/unlock`),
+
+  /** Xoá hẳn — backend chỉ nhận Bác sĩ / Nhân viên (409 với Khách hàng, Admin). */
+  deleteUser: (userId: string) => http.del<{ message: string }>(`/admin/users/${userId}`),
 };
 
 /**
