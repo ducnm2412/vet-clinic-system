@@ -61,15 +61,28 @@ jobs:
           cd "$APP_DIR"
           SV="${{ steps.detect.outputs.services }}"
           [ "$SV" = "all" ] && SV=$(docker compose config --services)
-          # May ao it RAM: build TUNG service mot (khong song song), va tam dung frontend
-          # truoc khi build no de nhuong RAM cho "next build" (tranh bi kill vi het bo nho).
+          # May ao it RAM: build TUNG service mot (khong song song).
+          # Rieng frontend: "next build" can 1-2GB RAM, nen tam dung frontend + cac service Java
+          # (giu lai database, rabbitmq, redis) trong luc build, xong bat lai tat ca.
+          JAVA_APPS=$(docker compose config --services | grep -E -- '-service$|^eureka-server$|^api-gateway$')
+          FAILED=0
           for s in $SV; do
             echo "::group::Build $s"
-            [ "$s" = "frontend" ] && docker compose stop frontend
-            docker compose build "$s" || { docker compose up -d "$s"; exit 1; }
-            docker compose up -d "$s"
+            if [ "$s" = "frontend" ]; then
+              echo "Tam dung frontend va cac service Java de nhuong RAM..."
+              docker compose stop frontend $JAVA_APPS
+              free -h
+            fi
+            if ! docker compose build "$s"; then
+              echo "::error::Build $s that bai"
+              FAILED=1
+            fi
             echo "::endgroup::"
+            [ $FAILED = 1 ] && break
           done
+          # Bat lai toan bo (service build loi se chay lai image cu).
+          docker compose up -d
+          exit $FAILED
 
       - name: Kiem tra trang thai
         if: always()
