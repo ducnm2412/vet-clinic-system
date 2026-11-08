@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { MapPin, Pencil, Plus, Trash2 } from "lucide-react";
+import { Map as MapIcon, MapPin, Pencil, Plus, Trash2 } from "lucide-react";
 import { ApiError, customerApi } from "@/lib/api";
 import { formatAddress, formatDate } from "@/lib/utils/format";
 import type { Address, AddressRequest, CustomerGender } from "@/types";
@@ -14,7 +14,10 @@ import { Container, SiteButton } from "@/components/site/primitives";
 import { CustomerOnly } from "@/components/site/CustomerOnly";
 import { DefaultAvatar } from "@/components/site/DefaultAvatar";
 import { SiteDialog } from "@/components/site/SiteDialog";
-import { SiteInput, SiteSelect, SiteTextarea } from "@/components/site/fields";
+import { SiteCombobox, SiteInput, SiteSelect, SiteTextarea } from "@/components/site/fields";
+import { MapPinPicker } from "@/components/site/MapPinPicker";
+import { reverseGeocode } from "@/lib/geocode";
+import { loadAdminData, matchProvince, matchWard, type AdminData } from "@/lib/vnAdmin";
 
 const GENDER_LABEL: Record<CustomerGender, string> = {
   MALE: "Nam",
@@ -325,6 +328,68 @@ function AddressDialog({
     isDefault: address?.isDefault ?? !hasAny,
   });
 
+  // Danh sách tỉnh/phường nhúng sẵn; tải không được thì form rơi về ô gõ tay như trước.
+  const [admin, setAdmin] = useState<AdminData | null>(null);
+  const [adminFailed, setAdminFailed] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    loadAdminData()
+      .then((data) => !cancelled && setAdmin(data))
+      .catch(() => !cancelled && setAdminFailed(true));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const [showMap, setShowMap] = useState(false);
+  const [mapNote, setMapNote] = useState<string | null>(null);
+  const lookup = useRef<AbortController | null>(null);
+  // Giá trị số nhà mà bản đồ vừa điền: chỉ ghi đè ô này khi khách chưa tự sửa nó.
+  const autoLine1 = useRef("");
+  useEffect(() => () => lookup.current?.abort(), []);
+
+  async function onPinPicked(lat: number, lng: number) {
+    lookup.current?.abort();
+    const ctl = new AbortController();
+    lookup.current = ctl;
+    setMapNote("Đang tra địa chỉ tại điểm này…");
+    try {
+      const found = await reverseGeocode(lat, lng, ctl.signal);
+      if (ctl.signal.aborted) return;
+      if (!found) {
+        setMapNote("Không tra được địa chỉ tại điểm này — bạn nhập tay hoặc chọn Tỉnh/Phường ở trên nhé.");
+        return;
+      }
+      const province = admin ? matchProvince(admin, found.provinceCandidates) : undefined;
+      const ward = admin && province ? matchWard(admin, province, found.wardCandidates) : undefined;
+      setForm((f) => {
+        const next = { ...f };
+        if (province) {
+          next.ward = province === f.city ? (ward ?? f.ward) : (ward ?? "");
+          next.city = province;
+        }
+        if (found.line1 && (!f.line1.trim() || f.line1 === autoLine1.current)) {
+          next.line1 = found.line1;
+          autoLine1.current = found.line1;
+        }
+        return next;
+      });
+      setMapNote(
+        province
+          ? "Đã điền gợi ý theo vị trí ghim. Bạn kiểm tra và sửa lại nếu chưa đúng."
+          : "Chưa khớp được Tỉnh/Phường với danh sách — bạn chọn lại ở ô phía trên.",
+      );
+    } catch {
+      // abort do ghim mới thả đè lên — kết quả của lần mới sẽ tự cập nhật ghi chú.
+    }
+  }
+
+  // Địa chỉ cũ gõ tay có thể không nằm trong danh sách: vẫn giữ làm một lựa chọn để không mất dữ liệu.
+  const provinceNames = admin?.map(([name]) => name) ?? [];
+  const wardNames = admin?.find(([name]) => name === form.city)?.[1] ?? [];
+  const withCurrent = (names: string[], current: string | null | undefined) =>
+    current && !names.includes(current) ? [current, ...names] : names;
+
   const save = useMutation({
     mutationFn: () => {
       const body: AddressRequest = {
@@ -357,7 +422,7 @@ function AddressDialog({
           </SiteButton>
           <SiteButton
             loading={save.isPending}
-            disabled={!form.line1.trim()}
+            disabled={!form.line1.trim() || !form.city?.trim()}
             onClick={() => save.mutate()}
           >
             Lưu địa chỉ
@@ -366,6 +431,39 @@ function AddressDialog({
       }
     >
       <div className="space-y-4">
+        {admin && !adminFailed ? (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <SiteCombobox
+              label="Tỉnh, thành phố"
+              required
+              placeholder="Gõ để tìm tỉnh, thành phố"
+              options={withCurrent(provinceNames, form.city)}
+              value={form.city ?? ""}
+              onChange={(city) => setForm((f) => (f.city === city ? f : { ...f, city, ward: "" }))}
+            />
+            <SiteCombobox
+              label="Phường, xã"
+              disabled={!form.city}
+              placeholder={form.city ? "Gõ để tìm phường, xã" : "Chọn tỉnh trước"}
+              options={withCurrent(wardNames, form.ward)}
+              value={form.ward ?? ""}
+              onChange={(ward) => setForm((f) => ({ ...f, ward }))}
+            />
+          </div>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <SiteInput
+              label="Tỉnh, thành phố"
+              value={form.city ?? ""}
+              onChange={(e) => setForm({ ...form, city: e.target.value })}
+            />
+            <SiteInput
+              label="Phường, xã"
+              value={form.ward ?? ""}
+              onChange={(e) => setForm({ ...form, ward: e.target.value })}
+            />
+          </div>
+        )}
         <SiteTextarea
           label="Số nhà, tên đường"
           required
@@ -373,17 +471,23 @@ function AddressDialog({
           value={form.line1}
           onChange={(e) => setForm({ ...form, line1: e.target.value })}
         />
-        <div className="grid gap-4 sm:grid-cols-2">
-          <SiteInput
-            label="Phường, xã"
-            value={form.ward ?? ""}
-            onChange={(e) => setForm({ ...form, ward: e.target.value })}
-          />
-          <SiteInput
-            label="Tỉnh, thành phố"
-            value={form.city ?? ""}
-            onChange={(e) => setForm({ ...form, city: e.target.value })}
-          />
+        <div>
+          <SiteButton
+            variant="outline"
+            size="sm"
+            type="button"
+            aria-expanded={showMap}
+            onClick={() => setShowMap((v) => !v)}
+          >
+            <MapIcon aria-hidden className="size-4" />
+            {showMap ? "Ẩn bản đồ" : "Chọn vị trí trên bản đồ"}
+          </SiteButton>
+          {showMap && (
+            <div className="mt-3 space-y-2">
+              <MapPinPicker onPick={onPinPicked} />
+              {mapNote && <p className="text-sm text-stone">{mapNote}</p>}
+            </div>
+          )}
         </div>
         <SiteInput
           label="Toà nhà, ghi chú thêm"
