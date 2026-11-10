@@ -9,6 +9,7 @@ import { z } from "zod";
 import { ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { homeFor, isNextAllowedForRoles } from "@/config/nav";
+import { DEMO_ACCOUNTS, DEMO_PASSWORD, MOCK_AUTH_ENABLED } from "@/lib/api/mock-auth"; // MOCK-TẠM
 import { SiteButton } from "@/components/site/primitives";
 import { SiteInput } from "@/components/site/fields";
 import { SocialSignInButtons } from "@/components/site/SocialSignInButtons";
@@ -111,6 +112,28 @@ function LoginForm() {
       </form>
 
       <SocialSignInButtons />
+
+      {/* MOCK-TẠM: đăng nhập nhanh bằng tài khoản demo, chỉ hiện khi chạy dev. */}
+      {MOCK_AUTH_ENABLED && (
+        <div className="mt-6 rounded-2xl border border-dashed border-[#f3c9a1] bg-[#fff8f1] p-4">
+          <p className="text-sm font-semibold text-pine">Tài khoản demo (không cần backend)</p>
+          <p className="mt-1 text-xs text-stone">Mật khẩu chung: {DEMO_PASSWORD}</p>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            {DEMO_ACCOUNTS.map((a) => (
+              <button
+                key={a.email}
+                type="button"
+                disabled={isSubmitting}
+                onClick={() => onSubmit({ email: a.email, password: DEMO_PASSWORD })}
+                className="rounded-xl bg-white px-3 py-2 text-left text-sm shadow-sm transition hover:bg-[#fff1e3]"
+              >
+                <span className="block font-semibold text-pine">{a.label}</span>
+                <span className="block truncate text-xs text-stone">{a.email}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </>
   );
 }

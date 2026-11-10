@@ -1,4 +1,5 @@
 import { ApiError, http, qs } from "./client";
+import { mockServices, withMock } from "./mock-data"; // MOCK-TẠM
 import type {
   Appointment,
   AppointmentDetail,
@@ -77,7 +78,7 @@ export const clinicServiceApi = {
    * Không đánh dấu publicRoute: khách chưa đăng nhập vẫn gọi được (backend cho phép), còn nhân
    * viên và quản trị cần gửi token mới thấy dịch vụ đã ngừng cung cấp.
    */
-  list: () => http.get<ClinicService[]>("/booking/services"),
+  list: () => withMock(http.get<ClinicService[]>("/booking/services"), () => mockServices), // MOCK-TẠM
   create: (body: ClinicServiceRequest) =>
     http.post<ClinicService>("/booking/services", body),
   update: (id: string, body: ClinicServiceRequest) =>

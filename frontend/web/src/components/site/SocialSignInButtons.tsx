@@ -12,8 +12,8 @@ import { GoogleSignInButton } from "@/components/site/GoogleSignInButton";
  */
 export function SocialSignInButtons() {
   return (
-    <div className="mt-6">
-      <div className="relative mb-5 text-center text-[13px] text-stone">
+    <div className="mt-4">
+      <div className="relative mb-3 text-center text-[13px] text-stone">
         <span className="absolute inset-y-1/2 left-0 h-px w-[42%] bg-mist" aria-hidden />
         hoặc
         <span className="absolute inset-y-1/2 right-0 h-px w-[42%] bg-mist" aria-hidden />

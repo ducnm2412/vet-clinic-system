@@ -3,7 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LogOut, Menu, ShoppingBag, User, X } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { ArrowRight, ChevronDown, LogOut, Menu, PawPrint, ShoppingBag, User, X } from "lucide-react";
+import { clinicServiceApi } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useCart } from "@/lib/useCart";
 import { cn } from "@/lib/utils/cn";
@@ -13,8 +15,10 @@ import { ButtonLink } from "./primitives";
 /** Mục nào cần đăng nhập bằng tài khoản khách thì đánh dấu, để không mời người ta vào chỗ 401. */
 const LINKS: Array<{ href: string; label: string; customerOnly?: boolean }> = [
   { href: "/", label: "Trang chủ" },
-  { href: "/#dich-vu", label: "Dịch vụ" },
+  { href: "/about", label: "Giới thiệu" },
+  { href: "/services", label: "Dịch vụ" },
   { href: "/products", label: "Sản phẩm" },
+  { href: "/contact", label: "Liên hệ" },
   { href: "/pets", label: "Thú cưng", customerOnly: true },
   { href: "/appointments", label: "Lịch khám", customerOnly: true },
   { href: "/orders", label: "Đơn hàng", customerOnly: true },
@@ -31,6 +35,12 @@ export function SiteHeader() {
   const [scrolled, setScrolled] = useState(false);
 
   const isCustomer = hasRole("CUSTOMER");
+  // Danh sách dịch vụ cho dropdown "Dịch vụ" — dùng chung cache với trang dịch vụ.
+  const servicesQuery = useQuery({ queryKey: ["clinic-services"], queryFn: clinicServiceApi.list, staleTime: 5 * 60_000 });
+  const services = (servicesQuery.data ?? [])
+    .filter((s) => s.active)
+    .sort((a, b) => a.displayOrder - b.displayOrder)
+    .map((s) => ({ href: `/services/${s.slug}`, label: s.name }));
   const links = LINKS.filter((l) => !l.customerOnly || isCustomer);
 
   // Đầu trang chỉ hiện đường kẻ sau khi người ta bắt đầu cuộn — lúc mới mở, hero liền
@@ -70,22 +80,26 @@ export function SiteHeader() {
 
         <nav aria-label="Điều hướng chính" className="ml-2 hidden xl:block">
           <ul className="flex items-center gap-1">
-            {links.map((l) => (
-              <li key={l.href}>
-                <Link
-                  href={l.href}
-                  aria-current={isActive(l.href) ? "page" : undefined}
-                  className={cn(
-                    "rounded-full px-3.5 py-2 text-[15px] transition-colors",
-                    isActive(l.href)
-                      ? "bg-mint font-medium text-pine"
-                      : "text-stone hover:bg-mint hover:text-pine",
-                  )}
-                >
-                  {l.label}
-                </Link>
-              </li>
-            ))}
+            {links.map((l) =>
+              l.href === "/services" ? (
+                <ServicesDropdown key={l.href} active={isActive(l.href)} items={services} />
+              ) : (
+                <li key={l.href}>
+                  <Link
+                    href={l.href}
+                    aria-current={isActive(l.href) ? "page" : undefined}
+                    className={cn(
+                      "rounded-full px-3.5 py-2 text-[15px] transition-colors",
+                      isActive(l.href)
+                        ? "bg-mint font-medium text-pine"
+                        : "text-stone hover:bg-mint hover:text-pine",
+                    )}
+                  >
+                    {l.label}
+                  </Link>
+                </li>
+              ),
+            )}
           </ul>
         </nav>
 
@@ -203,6 +217,7 @@ export function SiteHeader() {
       {drawerOpen && (
         <MobileDrawer
           links={links}
+          services={services}
           email={email}
           isCustomer={isCustomer}
           onClose={() => setDrawerOpen(false)}
@@ -242,19 +257,78 @@ function AccountItem({
  * Ngăn kéo trên điện thoại: trượt từ phải, mỗi mục cao 56px để ngón tay bấm không trượt.
  * Không phải bản thu nhỏ của thanh điều hướng máy để bàn.
  */
+/**
+ * Dropdown "Dịch vụ" trên máy để bàn: mở khi rê chuột hoặc khi focus bằng bàn phím
+ * (focus-within), không cần state. Bấm chữ "Dịch vụ" vẫn đi tới trang danh sách.
+ */
+function ServicesDropdown({ active, items }: { active: boolean; items: Array<{ href: string; label: string }> }) {
+  return (
+    <li className="group relative">
+      <Link
+        href="/services"
+        aria-current={active ? "page" : undefined}
+        aria-haspopup="true"
+        className={cn(
+          "inline-flex items-center gap-1 rounded-full px-3.5 py-2 text-[15px] transition-colors",
+          active ? "bg-mint font-medium text-pine" : "text-stone hover:bg-mint hover:text-pine",
+        )}
+      >
+        Dịch vụ
+        <ChevronDown aria-hidden className="size-4 transition-transform group-hover:rotate-180 group-focus-within:rotate-180" />
+      </Link>
+
+      {/* pt-3 làm "cầu nối" để chuột đi từ chữ xuống menu không bị mất hover */}
+      <div className="invisible absolute left-1/2 top-full z-30 -translate-x-1/2 pt-3 opacity-0 transition-all duration-200 group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100">
+        <div className="w-[34rem] overflow-hidden rounded-3xl border border-[#f1e6dc] bg-white shadow-[0_20px_50px_-20px_rgba(160,80,20,0.45)]">
+          <div className="flex items-center gap-2 bg-[linear-gradient(100deg,#fff6ee,#ffe6cf)] px-5 py-3">
+            <PawPrint aria-hidden className="size-4 text-[#f57c1f]" />
+            <p className="text-sm font-bold text-[#1f4a3c]">Dịch vụ thú y</p>
+          </div>
+          {items.length === 0 ? (
+            <p className="px-5 py-4 text-sm text-stone">Đang tải danh sách dịch vụ…</p>
+          ) : (
+            <ul className="grid grid-cols-2 gap-x-2 p-3">
+              {items.map((it) => (
+                <li key={it.href}>
+                  <Link
+                    href={it.href}
+                    className="flex items-center gap-2 rounded-xl px-3 py-2 text-[14px] text-[#3b2a20] transition-colors hover:bg-[#fff3e8] hover:text-[#f57c1f]"
+                  >
+                    <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-[#f9a55c]" />
+                    {it.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+          <Link
+            href="/services"
+            className="flex items-center justify-center gap-1.5 border-t border-[#f1e6dc] py-3 text-sm font-semibold text-[#f57c1f] hover:bg-[#fff6ee]"
+          >
+            Xem tất cả dịch vụ <ArrowRight aria-hidden className="size-4" />
+          </Link>
+        </div>
+      </div>
+    </li>
+  );
+}
+
 function MobileDrawer({
   links,
+  services,
   email,
   isCustomer,
   onClose,
   onSignOut,
 }: {
   links: Array<{ href: string; label: string }>;
+  services: Array<{ href: string; label: string }>;
   email: string | null;
   isCustomer: boolean;
   onClose: () => void;
   onSignOut: () => void;
 }) {
+  const [servicesOpen, setServicesOpen] = useState(false);
   return (
     <div className="fixed inset-0 z-50 xl:hidden">
       <button
@@ -278,13 +352,41 @@ function MobileDrawer({
           <ul>
             {links.map((l) => (
               <li key={l.href}>
-                <Link
-                  href={l.href}
-                  onClick={onClose}
-                  className="flex h-14 items-center px-5 text-[17px] text-pine hover:bg-mint"
-                >
-                  {l.label}
-                </Link>
+                <div className="flex items-center">
+                  <Link
+                    href={l.href}
+                    onClick={onClose}
+                    className="flex h-14 flex-1 items-center px-5 text-[17px] text-pine hover:bg-mint"
+                  >
+                    {l.label}
+                  </Link>
+                  {l.href === "/services" && services.length > 0 && (
+                    <button
+                      onClick={() => setServicesOpen((v) => !v)}
+                      aria-expanded={servicesOpen}
+                      aria-label="Mở danh sách dịch vụ"
+                      className="grid size-14 place-items-center text-pine hover:bg-mint"
+                    >
+                      <ChevronDown aria-hidden className={cn("size-5 transition-transform", servicesOpen && "rotate-180")} />
+                    </button>
+                  )}
+                </div>
+                {l.href === "/services" && servicesOpen && (
+                  <ul className="bg-[#fff8f1] py-1">
+                    {services.map((sv) => (
+                      <li key={sv.href}>
+                        <Link
+                          href={sv.href}
+                          onClick={onClose}
+                          className="flex h-11 items-center gap-2 pl-9 pr-5 text-[15px] text-[#3b2a20] hover:text-[#f57c1f]"
+                        >
+                          <span aria-hidden className="size-1.5 rounded-full bg-[#f9a55c]" />
+                          {sv.label}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </li>
             ))}
           </ul>
