@@ -13,7 +13,7 @@ export function appointmentColumns(
   options: {
     showDate?: boolean;
     /** Truyền vào thì có cột bác sĩ. Màn hình của chính bác sĩ không cần cột này. */
-    doctorLabel?: (doctorUserId: string) => string;
+    doctorLabel?: (doctorUserId: string | null) => string;
   } = {},
 ): Column<Appointment>[] {
   const { doctorLabel } = options;

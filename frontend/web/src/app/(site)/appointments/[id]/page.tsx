@@ -7,6 +7,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarDays, ChevronLeft, Clock3, MapPin, Pill, Stethoscope } from "lucide-react";
 import { ApiError, bookingApi, medicalRecordApi, myPetApi } from "@/lib/api";
 import { formatDate, formatTime, todayISO } from "@/lib/utils/format";
+import type { AppointmentStatus } from "@/types";
 import { useToast } from "@/components/ui";
 import { CLINIC } from "@/config/clinic";
 import { useDoctorDirectory } from "@/lib/useDoctors";
@@ -16,6 +17,14 @@ import { CustomerOnly } from "@/components/site/CustomerOnly";
 import { PetAvatar } from "@/components/site/PetAvatar";
 import { SiteDialog } from "@/components/site/SiteDialog";
 import { APPOINTMENT_LOOK, PRESCRIPTION_LOOK, StatusPill } from "@/components/site/StatusPill";
+
+/** Lịch còn đổi hoặc huỷ được: chưa khám xong, chưa huỷ — gồm cả lịch đang chờ xếp bác sĩ. */
+const OPEN_STATUSES: AppointmentStatus[] = [
+  "AWAITING_ASSIGNMENT",
+  "AWAITING_CUSTOMER",
+  "PENDING",
+  "CONFIRMED",
+];
 
 export default function AppointmentDetailPage() {
   return (
@@ -91,10 +100,10 @@ function AppointmentDetailBody() {
               <IconItem icon={CalendarDays} label="Ngày khám" value={formatDate(appointment.date)} />
               <IconItem
                 icon={Clock3}
-                label="Giờ"
+                label={appointment.slotId ? "Giờ" : "Giờ mong muốn"}
                 value={`${formatTime(appointment.startTime)} đến ${formatTime(appointment.endTime)}`}
               />
-              {/* Hệ thống tự xếp bác sĩ lúc đặt lịch — đây là chỗ khách biết mình được xếp cho ai. */}
+              {/* Phòng khám xếp bác sĩ — đây là chỗ khách biết mình được xếp cho ai (chưa xếp thì ghi vậy). */}
               <IconItem
                 icon={Stethoscope}
                 label="Người khám"
@@ -102,6 +111,8 @@ function AppointmentDetailBody() {
               />
               <IconItem icon={MapPin} label="Tại" value={CLINIC.address} />
             </dl>
+
+            <StatusNotice appointment={appointment} doctor={doctors.label(appointment.doctorUserId)} />
 
             {pet && (
               <p className="mt-6 text-stone">
@@ -136,6 +147,55 @@ function AppointmentDetailBody() {
       </Container>
     </>
   );
+}
+
+/** Nói rõ với khách lịch đang ở bước nào và họ phải làm gì tiếp (nếu phải làm gì). */
+function StatusNotice({ appointment: a, doctor }: { appointment: Appointment; doctor: string }) {
+  const qc = useQueryClient();
+  const toast = useToast();
+
+  const accept = useMutation({
+    mutationFn: () => bookingApi.acceptProposal(a.id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["appointments"] });
+      toast.success("Đã xác nhận lịch khám");
+    },
+    onError: (err) =>
+      toast.error(err instanceof ApiError ? err.message : "Không xác nhận được lịch khám."),
+  });
+
+  if (a.status === "AWAITING_ASSIGNMENT") {
+    return (
+      <p className="measure mt-6 rounded-[var(--radius-card)] bg-peach px-5 py-4 text-[15px]">
+        Phòng khám đã nhận yêu cầu và đang xếp bác sĩ rảnh vào giờ bạn chọn. Giờ trên đây là giờ bạn
+        mong muốn, chưa phải lịch đã chốt. Có bác sĩ thì lịch chuyển sang “Đã xác nhận”.
+      </p>
+    );
+  }
+  if (a.status === "AWAITING_CUSTOMER") {
+    return (
+      <div className="measure mt-6 rounded-[var(--radius-card)] bg-peach px-5 py-4 text-[15px]">
+        <p>
+          Giờ bạn chọn
+          {a.preferredStartTime && a.preferredDate
+            ? ` (${formatTime(a.preferredStartTime)}, ${formatDate(a.preferredDate)})`
+            : ""}{" "}
+          không xếp được bác sĩ. Phòng khám đề xuất{" "}
+          <strong>
+            {formatTime(a.startTime)}, {formatDate(a.date)}
+          </strong>{" "}
+          với {doctor}.
+        </p>
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <SiteButton loading={accept.isPending} onClick={() => accept.mutate()}>
+            Đồng ý giờ này
+          </SiteButton>
+          <span className="text-stone">Không hợp thì huỷ lịch ở bên cạnh, hoặc gọi {CLINIC.phone}.</span>
+        </div>
+      </div>
+    );
+  }
+  return null;
 }
 
 function IconItem({
@@ -268,8 +328,7 @@ function CancelPanel({ appointment }: { appointment: Appointment }) {
   // Chỉ huỷ được lịch chưa diễn ra và chưa bị đóng. Luật thật nằm ở backend; đây chỉ để
   // biết có nên hiện nút hay không.
   const cancellable =
-    (appointment.status === "PENDING" || appointment.status === "CONFIRMED") &&
-    appointment.date >= todayISO();
+    OPEN_STATUSES.includes(appointment.status) && appointment.date >= todayISO();
 
   return (
     <aside className="lg:sticky lg:top-24 lg:self-start">
@@ -279,7 +338,9 @@ function CancelPanel({ appointment }: { appointment: Appointment }) {
         {cancellable ? (
           <>
             <p className="mt-3 text-stone">
-              Huỷ giúp phòng khám nhường chỗ cho người khác. Muốn đổi giờ thì huỷ rồi đặt lại.
+              {appointment.status === "AWAITING_CUSTOMER"
+                ? "Không hợp với giờ phòng khám đề xuất thì huỷ lịch, rồi gửi yêu cầu giờ khác."
+                : "Huỷ giúp phòng khám nhường chỗ cho người khác. Muốn đổi giờ thì huỷ rồi gửi yêu cầu mới."}
             </p>
             <SiteButton variant="outline" className="mt-6 w-full" onClick={() => setConfirming(true)}>
               Huỷ lịch khám
@@ -322,7 +383,7 @@ function CancelPanel({ appointment }: { appointment: Appointment }) {
         }
       >
         <p className="text-stone">
-          Huỷ xong khung giờ này mở lại cho người khác. Bạn vẫn đặt lịch mới được bất cứ lúc nào.
+          Huỷ xong giờ này nhường lại cho người khác. Bạn vẫn đặt lịch mới được bất cứ lúc nào.
         </p>
       </SiteDialog>
     </aside>

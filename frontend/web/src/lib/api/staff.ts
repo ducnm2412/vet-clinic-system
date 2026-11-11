@@ -1,5 +1,6 @@
 import { http, qs } from "./client";
 import type {
+  AttendanceAbsence,
   AttendanceRecord,
   Shift,
   ShiftCreateRequest,
@@ -25,6 +26,10 @@ export const attendanceApi = {
   /** CN-40: cả phòng khám, chỉ ADMIN. */
   all: (range: DateRange, userId?: string) =>
     http.get<AttendanceRecord[]>(`/staff/attendance${qs({ ...range, userId })}`),
+
+  /** Các ngày có ca mà không chấm công (chỉ ngày đã qua), chỉ ADMIN. */
+  absences: (range: DateRange, userId?: string) =>
+    http.get<AttendanceAbsence[]>(`/staff/attendance/absences${qs({ ...range, userId })}`),
 
   /** CN-48: bảng công theo kỳ, chỉ ADMIN. */
   timesheet: (range: DateRange, userId?: string) =>

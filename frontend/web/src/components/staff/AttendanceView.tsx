@@ -47,6 +47,19 @@ function shiftLabel(record: AttendanceRecord): string {
   return `${record.shiftStart.slice(0, 5)}–${record.shiftEnd.slice(0, 5)}`;
 }
 
+/**
+ * Giờ giấc của một ngày công so với ca được xếp. Chỉ ghi "muộn/sớm" khi quá dung sai (backend
+ * tính), nên đây chỉ hiển thị, không tự đặt ngưỡng ở giao diện.
+ */
+export function Punctuality({ record }: { record: AttendanceRecord }) {
+  if (!record.shiftStart) return <span className="text-bark">Ngoài ca</span>;
+  const issues: string[] = [];
+  if (record.lateMinutes) issues.push(`Muộn ${duration(record.lateMinutes)}`);
+  if (record.earlyLeaveMinutes) issues.push(`Về sớm ${duration(record.earlyLeaveMinutes)}`);
+  if (issues.length === 0) return <span className="text-moss">Đúng giờ</span>;
+  return <span className="text-amber">{issues.join(" · ")}</span>;
+}
+
 const isoDaysAgo = (days: number) => {
   const d = new Date();
   d.setDate(d.getDate() - days);
@@ -90,6 +103,7 @@ export function AttendanceView() {
     { key: "shift", header: "Ca", hideBelow: "sm", cell: (r) => <span className="text-bark">{shiftLabel(r)}</span> },
     { key: "in", header: "Vào", numeric: true, cell: (r) => <span className="tnum">{clock(r.checkInAt)}</span> },
     { key: "out", header: "Ra", numeric: true, cell: (r) => <span className="tnum">{clock(r.checkOutAt)}</span> },
+    { key: "punctual", header: "Giờ giấc", cell: (r) => <Punctuality record={r} /> },
     {
       key: "worked",
       header: "Số giờ",
@@ -126,6 +140,16 @@ export function AttendanceView() {
               {record?.shiftStart && (
                 <p className="mt-1 text-sm text-bark">Ca được xếp: {shiftLabel(record)}</p>
               )}
+              {record && record.lateMinutes > 0 && (
+                <p className="mt-1 text-sm text-amber">
+                  Vào muộn {duration(record.lateMinutes)} so với ca.
+                </p>
+              )}
+              {record && record.earlyLeaveMinutes > 0 && (
+                <p className="mt-1 text-sm text-amber">
+                  Ra sớm {duration(record.earlyLeaveMinutes)} so với ca.
+                </p>
+              )}
             </div>
 
             {finished ? (
@@ -145,7 +169,7 @@ export function AttendanceView() {
       <div className="mt-6">
         <TableFrame title="14 ngày gần nhất" count={history.data?.length}>
           {history.isLoading ? (
-            <TableSkeleton rows={5} cols={5} />
+            <TableSkeleton rows={5} cols={6} />
           ) : history.isError ? (
             <div className="p-4">
               <ErrorState message="Không tải được lịch sử chấm công." onRetry={() => history.refetch()} />

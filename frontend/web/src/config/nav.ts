@@ -9,9 +9,11 @@ import {
   Clock,
   Contact,
   CreditCard,
+  FileStack,
   LayoutDashboard,
   PackageSearch,
   PawPrint,
+  Pill,
   Syringe,
   Receipt,
   ReceiptText,
@@ -58,6 +60,7 @@ export const NAV: Record<Role, NavSection[]> = {
       items: [
         { href: "/admin/appointments", label: "Lịch khám", icon: CalendarDays },
         { href: "/admin/services", label: "Dịch vụ", icon: Syringe },
+        { href: "/admin/medications", label: "Danh mục thuốc", icon: Pill },
         { href: "/admin/pets", label: "Thú cưng", icon: PawPrint },
       ],
     },
@@ -79,6 +82,8 @@ export const NAV: Record<Role, NavSection[]> = {
         { href: "/doctor/appointments", label: "Lịch khám", icon: CalendarDays },
         { href: "/doctor/pets", label: "Thú cưng", icon: PawPrint },
         { href: "/doctor/records", label: "Bệnh án", icon: ClipboardPlus },
+        { href: "/doctor/medications", label: "Danh mục thuốc", icon: Pill },
+        { href: "/doctor/templates", label: "Đơn mẫu", icon: FileStack },
       ],
     },
     {

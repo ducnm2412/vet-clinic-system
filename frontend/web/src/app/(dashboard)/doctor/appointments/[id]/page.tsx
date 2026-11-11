@@ -3,16 +3,23 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { History, TriangleAlert } from "lucide-react";
+import { BookTemplate, History, TriangleAlert } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError, bookingApi, medicalRecordApi } from "@/lib/api";
 import { APPOINTMENT_STATUS, PRESCRIPTION_STATUS, speciesStripe } from "@/lib/utils/status";
 import { formatAge, formatDate, formatTime } from "@/lib/utils/format";
 import { cn } from "@/lib/utils/cn";
 import { PrescriptionEditor } from "@/components/medical/PrescriptionEditor";
+import { SaveAsTemplateDialog } from "@/components/medical/SaveAsTemplateDialog";
+import { TemplatePicker } from "@/components/medical/TemplatePicker";
 import { PetHistoryDialog } from "@/components/pet/PetHistory";
 import { Button, ErrorState, Spinner, StatusTag, TextAreaField, useToast } from "@/components/ui";
-import type { AppointmentDetail, MedicalRecord, PrescriptionItemRequest } from "@/types";
+import type {
+  AppointmentDetail,
+  MedicalRecord,
+  PrescriptionItemRequest,
+  PrescriptionTemplate,
+} from "@/types";
 
 /**
  * Màn hình khám. Sắp theo đúng thứ tự bác sĩ làm việc: xem con vật → đọc lý do khám →
@@ -238,6 +245,32 @@ function RecordEditor({
     })),
   );
 
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [saveTemplateOpen, setSaveTemplateOpen] = useState(false);
+
+  /**
+   * Điền mẫu chỉ ghi vào bốn state của form, không gọi API lưu: bệnh án vẫn qua đúng đường lưu
+   * cũ, và mẫu không để lại dấu vết nào (không id mẫu) trong bệnh án hay phiếu thu.
+   */
+  function applyTemplate(t: PrescriptionTemplate) {
+    setDiagnosis(t.diagnosis);
+    setTreatment(t.treatment ?? "");
+    setNotes(t.notes ?? "");
+    setItems(
+      t.items.map((it) => ({
+        medicationName: it.medicationName,
+        dosage: it.dosage,
+        frequency: it.frequency,
+        durationDays: it.durationDays ?? undefined,
+        notes: it.notes ?? undefined,
+      })),
+    );
+    toast.success(`Đã điền từ mẫu "${t.name}". Hãy kiểm tra lại trước khi lưu.`);
+  }
+
+  const hasContent =
+    diagnosis.trim() !== "" || treatment.trim() !== "" || notes.trim() !== "" || items.length > 0;
+
   // Đơn thuốc đã thu tiền hoặc đã phát thì khoá lại — sửa lúc đó sẽ lệch với phiếu thu.
   const locked = record != null && record.status !== "PENDING";
 
@@ -263,6 +296,18 @@ function RecordEditor({
 
   return (
     <div className="space-y-5">
+      {!locked && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-control)] border border-line bg-surface px-4 py-3">
+          <p className="text-sm text-bark">
+            Bệnh thường gặp? Điền sẵn chẩn đoán và đơn thuốc từ đơn mẫu rồi chỉnh lại theo ca này.
+          </p>
+          <Button variant="secondary" size="sm" onClick={() => setPickerOpen(true)}>
+            <BookTemplate aria-hidden className="size-4" />
+            Chọn đơn mẫu
+          </Button>
+        </div>
+      )}
+
       <Section title="Chẩn đoán" hint="Bắt buộc — đây là nội dung chính của bệnh án">
         <TextAreaField
           label="Kết luận sau khám"
@@ -315,6 +360,35 @@ function RecordEditor({
             <p className="text-sm text-bark">Nhập chẩn đoán trước khi lưu.</p>
           )}
         </div>
+      )}
+
+      {/* Lưu mẫu không đụng tới bệnh án nên vẫn dùng được khi bệnh án đã khoá. */}
+      <div>
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={diagnosis.trim().length === 0}
+          onClick={() => setSaveTemplateOpen(true)}
+        >
+          <BookTemplate aria-hidden className="size-4" />
+          Lưu đơn này thành mẫu
+        </Button>
+      </div>
+
+      <TemplatePicker
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        hasContent={hasContent}
+        onApply={applyTemplate}
+      />
+      {saveTemplateOpen && (
+        <SaveAsTemplateDialog
+          diagnosis={diagnosis}
+          treatment={treatment}
+          notes={notes}
+          items={items}
+          onClose={() => setSaveTemplateOpen(false)}
+        />
       )}
     </div>
   );

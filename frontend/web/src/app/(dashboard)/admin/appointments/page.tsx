@@ -1,13 +1,16 @@
 "use client";
 
 import { PageHeader } from "@/components/layout/DashboardShell";
-import { AppointmentsView } from "@/components/appointment/AppointmentsView";
+import { AdminAppointmentBoard } from "@/components/appointment/AdminAppointmentBoard";
 
 export default function Page() {
   return (
     <>
-      <PageHeader title="Lịch khám" description="Xác nhận lịch và cập nhật sau khi khám xong." />
-      <AppointmentsView />
+      <PageHeader
+        title="Lịch khám"
+        description="Xếp bác sĩ cho lịch khách đã đặt, đề xuất giờ khác khi không ai rảnh, và theo dõi lịch trong ngày."
+      />
+      <AdminAppointmentBoard />
     </>
   );
 }

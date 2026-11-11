@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth";
-import { homeFor, isNextAllowedForRoles } from "@/config/nav";
+import { landingFor } from "@/lib/landing";
 
 interface FacebookAuthResponse {
   accessToken: string;
@@ -114,8 +114,7 @@ export function FacebookSignInButton() {
   async function completeSignIn(accessToken: string) {
     try {
       const roles = await signInWithFacebook(accessToken);
-      const target = next && isNextAllowedForRoles(next, roles) ? next : homeFor(roles);
-      router.replace(target);
+      router.replace(await landingFor(roles, next));
     } catch {
       setError("Không đăng nhập được bằng Facebook. Thử lại sau.");
       setLoading(false);

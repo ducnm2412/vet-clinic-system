@@ -19,8 +19,12 @@ public final class Attendance {
 
     /**
      * Một ngày công. {@code workedMinutes} chưa tính khi còn đang trong ca.
-     * {@code shiftStart}/{@code shiftEnd} là ca được xếp hôm đó (null nếu đi làm ngoài ca),
-     * để nhìn ra ai đi muộn, ai về sớm.
+     * {@code shiftStart}/{@code shiftEnd} là ca được xếp hôm đó (null nếu đi làm ngoài ca): giờ bắt
+     * đầu của ca đầu tiên và giờ kết thúc của ca cuối cùng trong ngày.
+     *
+     * {@code lateMinutes}/{@code earlyLeaveMinutes} là số phút vào muộn / ra sớm so với ca, chỉ tính khi
+     * vượt dung sai (xem AttendanceService.GRACE_MINUTES); 0 nghĩa là đúng giờ, hoặc đi ngoài ca
+     * (không có ca thì không có gì để so), hoặc chưa ra ca (chưa biết có về sớm không).
      */
     public record Record(
             UUID id,
@@ -31,6 +35,8 @@ public final class Attendance {
             long workedMinutes,
             LocalTime shiftStart,
             LocalTime shiftEnd,
+            long lateMinutes,
+            long earlyLeaveMinutes,
             String note
     ) {
     }
@@ -43,7 +49,22 @@ public final class Attendance {
             long totalMinutes,
             /** Ngày đã vào ca nhưng chưa ra ca — giờ công của những ngày đó chưa tính được. */
             long daysMissingCheckOut,
-            long shiftsAssigned
+            long shiftsAssigned,
+            /** Số ngày vào ca muộn quá dung sai. */
+            long daysLate,
+            /** Số ngày ra ca sớm quá dung sai. */
+            long daysEarlyLeave,
+            /** Số ngày có ca được xếp nhưng không chấm công (chỉ tính các ngày đã qua). */
+            long daysAbsent
+    ) {
+    }
+
+    /** Một ngày có ca được xếp mà không có bản ghi chấm công nào. */
+    public record Absence(
+            UUID userId,
+            LocalDate date,
+            LocalTime shiftStart,
+            LocalTime shiftEnd
     ) {
     }
 

@@ -21,7 +21,15 @@ import {
   type Column,
 } from "@/components/ui";
 
-const STATUSES: AppointmentStatus[] = ["PENDING", "CONFIRMED", "COMPLETED", "CANCELLED", "NO_SHOW"];
+const STATUSES: AppointmentStatus[] = [
+  "AWAITING_ASSIGNMENT",
+  "AWAITING_CUSTOMER",
+  "PENDING",
+  "CONFIRMED",
+  "COMPLETED",
+  "CANCELLED",
+  "NO_SHOW",
+];
 
 /**
  * Tra cứu và xử lý lịch khám cho nhân viên và quản trị.

@@ -24,4 +24,11 @@ public class ClinicSchedule {
 
     // SlotGenerationScheduler dùng để biết sinh slot trước bao nhiêu ngày mỗi lần chạy.
     public static final int SLOT_GENERATION_HORIZON_DAYS = 14;
+
+    // Đặt theo yêu cầu: khách gửi trước tối đa bao nhiêu ngày (tính cả hôm nay).
+    public static final int REQUEST_HORIZON_DAYS = 30;
+
+    // Mỗi khách giữ tối đa bấy nhiêu yêu cầu chưa được xử lý — chặn một người gửi hàng loạt làm
+    // đầy giờ của khách khác trước khi admin kịp xếp.
+    public static final int MAX_OPEN_REQUESTS_PER_CUSTOMER = 3;
 }

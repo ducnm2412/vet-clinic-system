@@ -2,7 +2,9 @@ package com.vetclinic.booking.controller;
 
 import com.vetclinic.booking.dto.AppointmentSlotResponse;
 import com.vetclinic.booking.dto.AvailableTimeResponse;
+import com.vetclinic.booking.dto.ClinicHourResponse;
 import com.vetclinic.booking.dto.GenerateSlotsRequest;
+import com.vetclinic.booking.service.AppointmentRequestService;
 import com.vetclinic.booking.service.SlotService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -22,11 +24,20 @@ import java.util.List;
 public class SlotController {
 
     private final SlotService slotService;
+    private final AppointmentRequestService appointmentRequestService;
 
     @GetMapping("/booking/available-times")
     public List<AvailableTimeResponse> getAvailableTimes(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         return slotService.getAvailableTimes(date);
+    }
+
+    // Các mốc giờ khách chọn được khi gửi yêu cầu đặt lịch, kèm số chỗ còn lại. Khác
+    // available-times ở trên: không phụ thuộc bác sĩ đã có ca hay chưa.
+    @GetMapping("/booking/clinic-hours")
+    public List<ClinicHourResponse> getClinicHours(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        return appointmentRequestService.clinicHours(date);
     }
 
     // STAFF/ADMIN sinh khung giờ cố định (bước 4) cho 1 bác sĩ trong 1 ngày — idempotent, gọi

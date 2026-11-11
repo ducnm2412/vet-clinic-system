@@ -1,6 +1,7 @@
 package com.vetclinic.notification.service;
 
 import com.vetclinic.notification.messaging.AppointmentCreatedEvent;
+import com.vetclinic.notification.messaging.AppointmentNotificationEvent;
 import org.springframework.web.util.HtmlUtils;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
@@ -103,6 +104,102 @@ public class EmailService {
         // Tiêu đề là văn bản thuần nên không cần escape HTML, nhưng phải bỏ ký tự xuống dòng:
         // tên thú cưng chứa CR/LF là chèn được thêm header vào email.
         send(event.customerEmail(), "Đã đặt lịch khám cho " + pet.replaceAll("[\r\n]+", " "), html.toString());
+    }
+
+    /**
+     * Thư báo khách về lịch đặt theo yêu cầu. Trả {@code false} nếu loại thư không biết (booking-service
+     * mới hơn bản này) — chỗ gọi bỏ qua chứ không coi là lỗi.
+     *
+     * Tên bé, lý do khám, tên dịch vụ do khách hoặc admin gõ nên mọi giá trị đều được escape.
+     */
+    public boolean sendAppointmentNotification(AppointmentNotificationEvent event) {
+        String pet = event.petName() == null || event.petName().isBlank() ? "thú cưng của bạn" : event.petName();
+        String doctor = event.doctorName() == null || event.doctorName().isBlank()
+                ? "bác sĩ của phòng khám"
+                : "bác sĩ " + event.doctorName();
+        String link = frontendUrl + "/appointments/" + event.appointmentId();
+        String type = event.type() == null ? "" : event.type();
+
+        StringBuilder html = new StringBuilder();
+        String subject;
+        switch (type) {
+            case "REQUEST_RECEIVED" -> {
+                subject = "Đã nhận yêu cầu đặt lịch cho " + pet;
+                html.append("<p>Phòng khám đã nhận yêu cầu đặt lịch khám cho <strong>").append(esc(pet))
+                        .append("</strong>.</p>")
+                        .append("<p>Giờ bạn mong muốn: ").append(when(event)).append("</p>");
+                details(html, event);
+                html.append("<p>Đây <strong>chưa phải lịch đã chốt</strong>. Phòng khám sẽ xếp bác sĩ rảnh vào "
+                                + "giờ đó và báo lại cho bạn qua email này.</p>")
+                        .append(linkLine("Xem trạng thái hoặc huỷ yêu cầu", link));
+            }
+            case "CONFIRMED" -> {
+                subject = "Lịch khám của " + pet + " đã được xác nhận";
+                html.append("<p>Lịch khám cho <strong>").append(esc(pet))
+                        .append("</strong> đã được xác nhận.</p>")
+                        .append("<p>").append(when(event)).append("</p>")
+                        .append("<p>Người khám: ").append(esc(doctor)).append(".</p>");
+                details(html, event);
+                html.append(linkLine("Xem chi tiết hoặc huỷ lịch", link));
+            }
+            case "PROPOSAL" -> {
+                subject = "Phòng khám đề xuất giờ khác cho " + pet;
+                html.append("<p>Giờ bạn chọn");
+                if (event.preferredDate() != null && event.preferredTime() != null) {
+                    html.append(" (").append(esc(TIME_FORMAT.format(event.preferredTime()))).append(", ")
+                            .append(esc(DATE_FORMAT.format(event.preferredDate()))).append(")");
+                }
+                html.append(" chưa xếp được bác sĩ cho <strong>").append(esc(pet)).append("</strong>.</p>")
+                        .append("<p>Phòng khám đề xuất: ").append(when(event)).append(" Người khám: ")
+                        .append(esc(doctor)).append(".</p>")
+                        .append("<p><strong>Bạn cần trả lời:</strong> mở link bên dưới để đồng ý giờ này hoặc "
+                                + "huỷ lịch. Phòng khám đang giữ chỗ này cho bạn.</p>")
+                        .append(linkLine("Trả lời đề xuất", link));
+            }
+            case "CANCELLED_BY_CLINIC" -> {
+                subject = "Lịch khám của " + pet + " đã bị huỷ";
+                html.append("<p>Phòng khám đã huỷ lịch khám cho <strong>").append(esc(pet))
+                        .append("</strong> (").append(when(event).replaceAll("\\.$", "")).append(").</p>")
+                        .append("<p>Rất tiếc về sự bất tiện này. Bạn có thể gửi yêu cầu đặt lịch mới, hoặc gọi "
+                                + "phòng khám để được hỗ trợ.</p>")
+                        .append(linkLine("Đặt lịch mới", frontendUrl + "/appointments/create"));
+            }
+            default -> {
+                return false;
+            }
+        }
+        html.append("<p>VetClinic</p>");
+
+        // Tiêu đề là văn bản thuần nên không escape HTML, nhưng phải bỏ ký tự xuống dòng: tên bé
+        // chứa CR/LF là chèn được thêm header vào email.
+        send(event.customerEmail(), subject.replaceAll("[\r\n]+", " "), html.toString());
+        return true;
+    }
+
+    /** "Ngày 15/09/2026, từ 09:00 đến 09:30." — đã escape. */
+    private static String when(AppointmentNotificationEvent event) {
+        if (event.date() == null || event.startTime() == null) {
+            return "";
+        }
+        String text = "Ngày <strong>" + esc(DATE_FORMAT.format(event.date())) + "</strong>, từ <strong>"
+                + esc(TIME_FORMAT.format(event.startTime())) + "</strong>";
+        if (event.endTime() != null) {
+            text += " đến " + esc(TIME_FORMAT.format(event.endTime()));
+        }
+        return text + ".";
+    }
+
+    private static void details(StringBuilder html, AppointmentNotificationEvent event) {
+        if (event.serviceName() != null && !event.serviceName().isBlank()) {
+            html.append("<p>Dịch vụ: ").append(esc(event.serviceName())).append("</p>");
+        }
+        if (event.reason() != null && !event.reason().isBlank()) {
+            html.append("<p>Lý do bạn đã ghi: ").append(esc(event.reason())).append("</p>");
+        }
+    }
+
+    private static String linkLine(String label, String link) {
+        return "<p>" + esc(label) + ": <a href=\"" + esc(link) + "\">" + esc(link) + "</a></p>";
     }
 
     private static String esc(String value) {

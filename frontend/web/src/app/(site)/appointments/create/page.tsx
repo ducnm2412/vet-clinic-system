@@ -2,14 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, ChevronLeft, Plus } from "lucide-react";
-import { ApiError, bookingApi, clinicServiceApi, myPetApi, suggestionsFrom } from "@/lib/api";
+import { ApiError, bookingApi, clinicServiceApi, myPetApi } from "@/lib/api";
 import { formatAge, formatDate, formatTime, todayISO } from "@/lib/utils/format";
 import { cn } from "@/lib/utils/cn";
 import { useToast } from "@/components/ui";
 import { CLINIC } from "@/config/clinic";
-import type { Pet, SuggestedSlot } from "@/types";
+import type { ClinicHour, Pet } from "@/types";
 import { Container, SiteButton } from "@/components/site/primitives";
 import { CustomerOnly } from "@/components/site/CustomerOnly";
 import { PetAvatar } from "@/components/site/PetAvatar";
@@ -17,6 +17,9 @@ import { PetFormDialog } from "@/components/site/PetFormDialog";
 import { SiteSelect, SiteTextarea } from "@/components/site/fields";
 
 const STEPS = ["Chọn bé", "Chọn ngày", "Chọn giờ", "Xác nhận"] as const;
+
+/** Phòng khám nhận yêu cầu trước tối đa bấy nhiêu ngày (khớp REQUEST_HORIZON_DAYS ở backend). */
+const BOOKING_HORIZON_DAYS = 30;
 
 /** Cộng thêm `n` ngày vào một chuỗi ngày dạng "yyyy-MM-dd". */
 function addDaysISO(iso: string, n: number): string {
@@ -44,40 +47,40 @@ function BookingFlow() {
   const [startTime, setStartTime] = useState("");
   const [reason, setReason] = useState("");
   const [serviceId, setServiceId] = useState("");
-  const [suggestions, setSuggestions] = useState<SuggestedSlot[]>([]);
   const [addingPet, setAddingPet] = useState(false);
 
+  const qc = useQueryClient();
   const pets = useQuery({ queryKey: ["pets", "mine"], queryFn: myPetApi.list });
 
+  // Mốc giờ theo giờ làm việc của phòng khám, không phụ thuộc bác sĩ đã có ca hay chưa: khách chỉ
+  // gửi yêu cầu, phòng khám xếp bác sĩ sau.
   const times = useQuery({
-    queryKey: ["available-times", date],
-    queryFn: () => bookingApi.availableTimes(date),
+    queryKey: ["clinic-hours", date],
+    queryFn: () => bookingApi.clinicHours(date),
     enabled: date !== "",
   });
 
-  // Kiểm tra riêng cho "hôm nay": nếu đã qua hết khung giờ trong ngày (backend không trả khung
-  // giờ nào cho hôm nay nữa) thì không cho chọn "Hôm nay" ở bước 2 — tránh để khách đi hết bước
-  // 2 rồi mới biết ở bước 3 là đã hết giờ. Còn đang tải hoặc lỗi thì coi như vẫn chọn được, để
-  // không chặn nhầm khi mạng chậm.
+  // Kiểm tra riêng cho "hôm nay": quá giờ khám cuối ngày (hoặc mọi mốc còn lại đã đầy) thì không
+  // cho chọn "Hôm nay" ở bước 2 — tránh để khách đi hết bước 2 rồi mới biết ở bước 3. Còn đang
+  // tải hoặc lỗi thì coi như vẫn chọn được, để không chặn nhầm khi mạng chậm.
   const todayDate = todayISO();
   const todayTimes = useQuery({
-    queryKey: ["available-times", todayDate],
-    queryFn: () => bookingApi.availableTimes(todayDate),
+    queryKey: ["clinic-hours", todayDate],
+    queryFn: () => bookingApi.clinicHours(todayDate),
   });
-  const todayBookable = todayTimes.data === undefined || todayTimes.data.length > 0;
+  const todayBookable = todayTimes.data === undefined || todayTimes.data.some((t) => t.available);
 
   useEffect(() => {
     if (!todayBookable && date === todayDate) {
       setDate(addDaysISO(todayDate, 1));
       setStartTime("");
-      setSuggestions([]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [todayBookable]);
 
   const book = useMutation({
     mutationFn: () =>
-      bookingApi.create({
+      bookingApi.request({
         petId,
         date,
         startTime,
@@ -85,18 +88,20 @@ function BookingFlow() {
         reason: reason || undefined,
       }),
     onSuccess: (appointment) => {
-      toast.success("Đã đặt lịch khám");
+      qc.invalidateQueries({ queryKey: ["appointments"] });
+      qc.invalidateQueries({ queryKey: ["clinic-hours"] });
+      toast.success("Đã gửi yêu cầu đặt lịch");
       router.push(`/appointments/${appointment.id}`);
     },
-    onError: (err) => {
-      // Khung giờ vừa bị người khác đặt mất: backend trả 409 kèm tối đa 3 gợi ý thay thế.
-      const alt = suggestionsFrom(err);
-      setSuggestions(alt);
-      if (alt.length > 0) {
-        setStep(2);
+    onError: async (err) => {
+      toast.error(err instanceof ApiError ? err.message : "Không gửi được yêu cầu đặt lịch.");
+      // Có thể giờ vừa chọn bị người khác lấy mất chỗ cuối: tải lại số chỗ, nếu mốc đó đã đầy
+      // thì đưa khách về bước chọn giờ. Lỗi khác (vd quá số yêu cầu chờ) thì ở yên bước này.
+      const fresh = await times.refetch();
+      const chosen = fresh.data?.find((t) => t.startTime === startTime);
+      if (!chosen?.available) {
         setStartTime("");
-      } else {
-        toast.error(err instanceof ApiError ? err.message : "Không đặt được lịch.");
+        setStep(2);
       }
     },
   });
@@ -141,8 +146,8 @@ function BookingFlow() {
         <Container>
           <h1 className="t-h2">Đặt lịch khám</h1>
           <p className="measure t-lede mt-4 text-stone">
-            Bốn bước. Bạn không phải chọn bác sĩ — phòng khám xếp người đang rảnh vào khung
-            giờ bạn chọn.
+            Bốn bước. Bạn chọn giờ mong muốn, không phải chọn bác sĩ — phòng khám xếp người đang
+            rảnh rồi báo lại cho bạn qua email.
           </p>
         </Container>
       </div>
@@ -171,7 +176,6 @@ function BookingFlow() {
                 onChange={(d) => {
                   setDate(d);
                   setStartTime("");
-                  setSuggestions([]);
                 }}
               />
             )}
@@ -184,16 +188,7 @@ function BookingFlow() {
                 failed={times.isError}
                 onRetry={() => times.refetch()}
                 startTime={startTime}
-                suggestions={suggestions}
-                onPick={(t) => {
-                  setStartTime(t);
-                  setSuggestions([]);
-                }}
-                onPickSuggestion={(s) => {
-                  setDate(s.date);
-                  setStartTime(s.startTime);
-                  setSuggestions([]);
-                }}
+                onPick={setStartTime}
                 onBackToDate={() => setStep(1)}
               />
             )}
@@ -224,7 +219,7 @@ function BookingFlow() {
                 </SiteButton>
               ) : (
                 <SiteButton size="lg" loading={book.isPending} onClick={() => book.mutate()}>
-                  Đặt lịch khám
+                  Gửi yêu cầu đặt lịch
                 </SiteButton>
               )}
             </div>
@@ -352,6 +347,7 @@ function StepDate({
   const today = todayISO();
   // Hôm nay đã hết khung giờ thì ngày sớm nhất chọn được là ngày mai.
   const minDate = todayBookable ? today : addDaysISO(today, 1);
+  const maxDate = addDaysISO(today, BOOKING_HORIZON_DAYS - 1);
 
   // Bảy ngày tới bấm được ngay; xa hơn thì dùng ô chọn ngày.
   const quick = Array.from({ length: 7 }, (_, i) => addDaysISO(today, i));
@@ -375,7 +371,7 @@ function StepDate({
                 onClick={() => !disabled && onChange(d)}
                 disabled={disabled}
                 aria-pressed={date === d}
-                title={disabled ? "Hôm nay đã hết giờ nhận khách, chọn ngày khác giúp bạn nhé." : undefined}
+                title={disabled ? "Hôm nay đã hết giờ nhận yêu cầu, chọn ngày khác giúp bạn nhé." : undefined}
                 className={cn(
                   "w-24 rounded-[var(--radius-card)] border px-3 py-3 text-center transition-colors",
                   disabled
@@ -400,7 +396,7 @@ function StepDate({
 
       {!todayBookable && (
         <p className="mt-4 text-[14px] text-stone">
-          Hôm nay phòng khám đã hết khung giờ nhận khách. Chọn ngày mai trở đi giúp bạn nhé.
+          Hôm nay phòng khám đã hết giờ nhận yêu cầu. Chọn ngày mai trở đi giúp bạn nhé.
         </p>
       )}
 
@@ -409,6 +405,7 @@ function StepDate({
         <input
           type="date"
           min={minDate}
+          max={maxDate}
           value={date}
           onChange={(e) => onChange(e.target.value)}
           className="h-12 w-full rounded-xl border border-mist bg-white px-4 text-[16px] outline-none focus:border-teal"
@@ -418,6 +415,9 @@ function StepDate({
   );
 }
 
+/** Buổi sáng khám đến 11:30, buổi chiều từ 13:00 — chia hai nhóm cho dễ nhìn. */
+const AFTERNOON_FROM = "12:00";
+
 function StepTime({
   date,
   times,
@@ -425,50 +425,29 @@ function StepTime({
   failed,
   onRetry,
   startTime,
-  suggestions,
   onPick,
-  onPickSuggestion,
   onBackToDate,
 }: {
   date: string;
-  times: Array<{ startTime: string; endTime: string; availableCount: number }>;
+  times: ClinicHour[];
   loading: boolean;
   failed: boolean;
   onRetry: () => void;
   startTime: string;
-  suggestions: SuggestedSlot[];
   onPick: (t: string) => void;
-  onPickSuggestion: (s: SuggestedSlot) => void;
   onBackToDate: () => void;
 }) {
+  const morning = times.filter((t) => t.startTime < AFTERNOON_FROM);
+  const afternoon = times.filter((t) => t.startTime >= AFTERNOON_FROM);
+  const anyAvailable = times.some((t) => t.available);
+
   return (
     <section>
       <h2 className="t-h2">Mấy giờ thì được?</h2>
       <p className="measure mt-3 text-stone">
-        Đây là khung giờ thật sự còn chỗ ngày {formatDate(date)}. Mỗi ca kéo dài 30 phút.
+        Chọn giờ bạn muốn đến ngày {formatDate(date)}. Mỗi ca kéo dài 30 phút. Phòng khám sẽ
+        xếp bác sĩ rồi báo lại cho bạn qua email.
       </p>
-
-      {suggestions.length > 0 && (
-        <div className="mt-6 rounded-[var(--radius-card)] bg-peach p-5">
-          <p className="font-medium text-coral-deep">
-            Khung giờ bạn chọn vừa có người đặt mất.
-          </p>
-          <p className="mt-1 text-stone">Vài giờ khác còn trống:</p>
-          <ul className="mt-4 flex flex-wrap gap-2">
-            {suggestions.map((s, i) => (
-              <li key={i}>
-                <button
-                  onClick={() => onPickSuggestion(s)}
-                  className="rounded-full border border-mist bg-white px-4 py-2.5 text-[15px] transition-colors hover:border-teal"
-                >
-                  <span className="tnum font-medium">{formatTime(s.startTime)}</span>
-                  <span className="ml-2 text-stone">{formatDate(s.date)}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
 
       {loading ? (
         <ul className="mt-8 flex flex-wrap gap-3" aria-hidden>
@@ -478,55 +457,74 @@ function StepTime({
         </ul>
       ) : failed ? (
         <div className="mt-8 rounded-[var(--radius-card)] border border-mist px-6 py-10 text-center">
-          <p className="t-h3">Chưa xem được giờ trống</p>
+          <p className="t-h3">Chưa xem được giờ nhận lịch</p>
           <p className="mt-2 text-stone">Kết nối tới phòng khám đang trục trặc.</p>
           <SiteButton variant="outline" className="mt-6" onClick={onRetry}>
             Thử lại
           </SiteButton>
         </div>
-      ) : times.length === 0 ? (
+      ) : !anyAvailable ? (
         <div className="mt-8 rounded-[var(--radius-card)] bg-mint px-6 py-12 text-center">
-          <p className="t-h3">Ngày {formatDate(date)} đã kín chỗ</p>
+          <p className="t-h3">Ngày {formatDate(date)} đã hết giờ nhận lịch</p>
           <p className="measure mx-auto mt-2 text-stone">
-            Không còn khung giờ nào trống. Chọn ngày khác giúp bạn nhé, hoặc gọi{" "}
-            {CLINIC.phone} để phòng khám xếp thêm.
+            {times.length === 0
+              ? "Phòng khám chưa nhận lịch cho ngày này."
+              : "Các giờ trong ngày đã đủ lịch hoặc đã qua."}{" "}
+            Chọn ngày khác giúp bạn nhé, hoặc gọi {CLINIC.phone} để phòng khám hỗ trợ.
           </p>
           <SiteButton variant="outline" className="mt-6" onClick={onBackToDate}>
             Chọn ngày khác
           </SiteButton>
         </div>
       ) : (
-        <ul className="mt-8 flex flex-wrap gap-3">
-          {times.map((t) => (
-            <li key={t.startTime}>
-              {/* Nút cao 56px: trên điện thoại bấm bằng ngón cái không trượt sang ô bên. */}
-              <button
-                onClick={() => onPick(t.startTime)}
-                aria-pressed={startTime === t.startTime}
-                className={cn(
-                  "h-14 min-w-28 rounded-full border px-5 transition-colors",
-                  startTime === t.startTime
-                    ? "border-teal bg-teal text-white"
-                    : "border-mist hover:border-teal hover:bg-mint",
-                )}
-              >
-                <span className="tnum text-[17px] font-medium">{formatTime(t.startTime)}</span>
-                {t.availableCount > 1 && (
-                  <span
-                    className={cn(
-                      "tnum ml-2 text-[14px]",
-                      startTime === t.startTime ? "text-white/75" : "text-stone",
-                    )}
-                  >
-                    còn {t.availableCount}
-                  </span>
-                )}
-              </button>
-            </li>
-          ))}
-        </ul>
+        <div className="mt-8 space-y-8">
+          <TimeGroup title="Buổi sáng" times={morning} startTime={startTime} onPick={onPick} />
+          <TimeGroup title="Buổi chiều" times={afternoon} startTime={startTime} onPick={onPick} />
+        </div>
       )}
     </section>
+  );
+}
+
+function TimeGroup({
+  title,
+  times,
+  startTime,
+  onPick,
+}: {
+  title: string;
+  times: ClinicHour[];
+  startTime: string;
+  onPick: (t: string) => void;
+}) {
+  if (times.length === 0) return null;
+  return (
+    <div>
+      <h3 className="text-[15px] font-medium text-stone">{title}</h3>
+      <ul className="mt-3 flex flex-wrap gap-3">
+        {times.map((t) => (
+          <li key={t.startTime}>
+            {/* Nút cao 56px: trên điện thoại bấm bằng ngón cái không trượt sang ô bên. */}
+            <button
+              onClick={() => onPick(t.startTime)}
+              disabled={!t.available}
+              aria-pressed={startTime === t.startTime}
+              title={t.available ? undefined : "Giờ này đã đủ lịch hoặc đã qua"}
+              className={cn(
+                "h-14 min-w-28 rounded-full border px-5 transition-colors",
+                !t.available
+                  ? "cursor-not-allowed border-mist bg-mist/40 text-stone/60 line-through"
+                  : startTime === t.startTime
+                    ? "border-teal bg-teal text-white"
+                    : "border-mist hover:border-teal hover:bg-mint",
+              )}
+            >
+              <span className="tnum text-[17px] font-medium">{formatTime(t.startTime)}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
@@ -589,11 +587,17 @@ function StepConfirm({
         </div>
       )}
 
-      <dl className="mt-10 max-w-xl divide-y divide-mist rounded-[var(--radius-card)] border border-mist px-6">
+      <p className="mt-10 max-w-xl rounded-[var(--radius-card)] bg-peach px-5 py-4 text-[15px]">
+        Đây là yêu cầu đặt lịch, chưa phải lịch đã chốt. Phòng khám sẽ xếp bác sĩ rảnh vào giờ bạn
+        chọn và báo lại qua email. Nếu giờ đó không xếp được, phòng khám đề xuất giờ khác để bạn
+        đồng ý hoặc huỷ. Bạn cũng xem được trạng thái ở trang Lịch khám.
+      </p>
+
+      <dl className="mt-6 max-w-xl divide-y divide-mist rounded-[var(--radius-card)] border border-mist px-6">
         <Line label="Bé" value={pet?.name ?? "Chưa chọn"} />
         {chosen && <Line label="Dịch vụ" value={chosen.name} />}
         <Line label="Ngày" value={formatDate(date)} />
-        <Line label="Giờ" value={formatTime(startTime)} />
+        <Line label="Giờ mong muốn" value={formatTime(startTime)} />
         <Line label="Tại" value={CLINIC.address} />
       </dl>
     </section>
@@ -642,7 +646,7 @@ function BookingSummary({
             <dd className="font-medium">{formatDate(date)}</dd>
           </div>
           <div>
-            <dt className="text-stone">Giờ</dt>
+            <dt className="text-stone">Giờ mong muốn</dt>
             <dd className="tnum font-medium">
               {startTime ? formatTime(startTime) : "Chưa chọn"}
             </dd>
@@ -650,7 +654,7 @@ function BookingSummary({
         </dl>
 
         <p className="mt-6 border-t border-mist pt-5 text-[15px] text-stone">
-          Đặt xong bạn vẫn huỷ được, miễn là trước giờ khám.
+          Gửi xong bạn vẫn huỷ được, miễn là trước giờ khám.
         </p>
       </div>
     </aside>

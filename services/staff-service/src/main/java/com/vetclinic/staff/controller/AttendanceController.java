@@ -73,6 +73,15 @@ public class AttendanceController {
         return attendanceService.search(from, to, userId);
     }
 
+    @GetMapping("/absences")
+    @PreAuthorize("hasRole('ADMIN')")
+    public List<Attendance.Absence> absences(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(required = false) UUID userId) {
+        return attendanceService.absences(from, to, userId);
+    }
+
     @GetMapping("/timesheet")
     @PreAuthorize("hasRole('ADMIN')")
     public Attendance.Timesheet timesheet(

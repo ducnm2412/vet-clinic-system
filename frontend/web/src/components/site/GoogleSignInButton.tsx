@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth";
-import { homeFor, isNextAllowedForRoles } from "@/config/nav";
+import { landingFor } from "@/lib/landing";
 
 interface GoogleCredentialResponse {
   credential: string;
@@ -77,8 +77,7 @@ export function GoogleSignInButton() {
             setError(null);
             try {
               const roles = await signInWithGoogle(response.credential);
-              const target = next && isNextAllowedForRoles(next, roles) ? next : homeFor(roles);
-              router.replace(target);
+              router.replace(await landingFor(roles, next));
             } catch {
               setError("Không đăng nhập được bằng Google. Thử lại sau.");
             }

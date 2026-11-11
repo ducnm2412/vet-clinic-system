@@ -29,6 +29,8 @@ const STOPPED = "bg-coral/12 text-coral-deep";
 
 export const APPOINTMENT_LOOK: Record<AppointmentStatus, Look> = {
   PENDING: { label: "Chờ phòng khám xác nhận", dot: "bg-[#f2a93b]", skin: WAIT },
+  AWAITING_ASSIGNMENT: { label: "Chờ phòng khám xếp bác sĩ", dot: "bg-[#f2a93b]", skin: WAIT },
+  AWAITING_CUSTOMER: { label: "Phòng khám đề xuất giờ khác", dot: "bg-[#f2a93b]", skin: WAIT },
   CONFIRMED: { label: "Đã xác nhận", dot: "bg-teal", skin: GOING },
   COMPLETED: { label: "Đã khám xong", dot: "bg-pine", skin: DONE },
   CANCELLED: { label: "Đã huỷ", dot: "bg-coral", skin: STOPPED },

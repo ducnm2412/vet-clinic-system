@@ -12,6 +12,8 @@ export {
 export { authApi, readToken, ROLE_LABEL } from "./auth";
 export { customerApi, doctorApi, staffApi, customerLookupApi } from "./profile";
 export { myPetApi, petLookupApi, medicalRecordApi } from "./pets";
+export { medicationApi, MEDICATION_MAX_LIMIT } from "./medications";
+export { prescriptionTemplateApi, TEMPLATE_MAX_ITEMS } from "./prescriptionTemplates";
 export { productApi, categoryApi } from "./products";
 export { cartApi, orderApi, orderManageApi, nextActions } from "./orders";
 export { bookingApi, clinicServiceApi, suggestionsFrom } from "./bookings";

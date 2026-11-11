@@ -14,6 +14,8 @@ public class AppointmentEventPublisher {
 
     private static final String ROUTING_KEY_APPOINTMENT_CREATED = "appointment.created";
 
+    private static final String ROUTING_KEY_APPOINTMENT_NOTIFICATION = "appointment.notification";
+
     private final RabbitTemplate rabbitTemplate;
 
     // AFTER_COMMIT: chỉ publish khi transaction tạo appointment đã commit thành công, tránh
@@ -23,5 +25,12 @@ public class AppointmentEventPublisher {
     public void onAppointmentCreated(AppointmentCreatedEvent event) {
         rabbitTemplate.convertAndSend(RabbitMQConfig.BOOKING_EVENTS_EXCHANGE, ROUTING_KEY_APPOINTMENT_CREATED, event);
         log.info("Published appointment.created event for appointmentId={}", event.appointmentId());
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onAppointmentNotification(AppointmentNotificationEvent event) {
+        rabbitTemplate.convertAndSend(RabbitMQConfig.BOOKING_EVENTS_EXCHANGE, ROUTING_KEY_APPOINTMENT_NOTIFICATION,
+                event);
+        log.info("Published appointment.notification {} for appointmentId={}", event.type(), event.appointmentId());
     }
 }

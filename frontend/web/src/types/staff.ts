@@ -38,9 +38,13 @@ export interface AttendanceRecord {
   checkOutAt: string | null;
   /** Chưa ra ca thì bằng 0, không phải "làm 0 phút". */
   workedMinutes: number;
-  /** Ca được xếp hôm đó; null nghĩa là đi làm ngoài ca. */
+  /** Ca được xếp hôm đó (đầu ca đầu tiên đến cuối ca cuối cùng); null nghĩa là đi làm ngoài ca. */
   shiftStart: string | null;
   shiftEnd: string | null;
+  /** Số phút vào muộn so với ca, chỉ tính khi quá dung sai 10 phút; 0 = đúng giờ hoặc ngoài ca. */
+  lateMinutes: number;
+  /** Số phút ra sớm so với ca (quá dung sai); 0 = đúng giờ, ngoài ca, hoặc chưa ra ca. */
+  earlyLeaveMinutes: number;
   note: string | null;
 }
 
@@ -50,6 +54,18 @@ export interface TimesheetRow {
   totalMinutes: number;
   daysMissingCheckOut: number;
   shiftsAssigned: number;
+  daysLate: number;
+  daysEarlyLeave: number;
+  /** Ngày có ca được xếp mà không chấm công; chỉ tính các ngày đã qua. */
+  daysAbsent: number;
+}
+
+/** Một ngày có ca được xếp nhưng không có bản ghi chấm công. */
+export interface AttendanceAbsence {
+  userId: string;
+  date: string;
+  shiftStart: string;
+  shiftEnd: string;
 }
 
 export interface Timesheet {

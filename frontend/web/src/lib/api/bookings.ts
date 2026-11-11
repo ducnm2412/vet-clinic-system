@@ -7,8 +7,11 @@ import type {
   AppointmentSlot,
   AppointmentStatus,
   AvailableTime,
+  ClinicHour,
   ClinicService,
   ClinicServiceRequest,
+  DoctorAvailability,
+  ProposeTimeRequest,
   SuggestedSlot,
 } from "@/types";
 
@@ -21,6 +24,42 @@ export const bookingApi = {
    */
   create: (body: AppointmentRequest) =>
     http.post<Appointment>("/booking/appointments", body),
+
+  /**
+   * Gửi yêu cầu đặt lịch theo giờ mong muốn. Chưa có bác sĩ và chưa giữ khung giờ nào: phòng
+   * khám xếp bác sĩ sau (AWAITING_ASSIGNMENT). Lỗi 409 nghĩa là khung giờ đã đủ lịch, bé đã có
+   * lịch giờ đó, hoặc khách đang có quá nhiều yêu cầu chờ — message của backend nói rõ lý do.
+   */
+  request: (body: AppointmentRequest) =>
+    http.post<Appointment>("/booking/appointments/requests", body),
+
+  /** Các mốc giờ chọn được trong ngày, kèm số chỗ còn lại. Ngoài 30 ngày tới trả mảng rỗng. */
+  clinicHours: (date: string) =>
+    http.get<ClinicHour[]>(`/booking/clinic-hours${qs({ date })}`),
+
+  /** ADMIN: lịch đang chờ xếp bác sĩ hoặc chờ khách đồng ý, theo giờ khám tăng dần. */
+  awaiting: () => http.get<Appointment[]>("/booking/appointments/awaiting"),
+
+  /**
+   * ADMIN: bác sĩ xếp được vào lịch này. Không truyền `date`/`time` thì xem đúng giờ khách chọn;
+   * truyền để xem một giờ khác khi tính đề xuất. Bác sĩ đang bận vẫn có mặt, kèm `free: false`.
+   */
+  availableDoctors: (id: string, when?: { date: string; time: string }) =>
+    http.get<DoctorAvailability[]>(
+      `/booking/appointments/${id}/available-doctors${qs({ date: when?.date, time: when?.time })}`,
+    ),
+
+  /** ADMIN: xếp bác sĩ đúng giờ khách chọn — lịch thành "Đã xác nhận". */
+  assign: (id: string, doctorUserId: string) =>
+    http.put<Appointment>(`/booking/appointments/${id}/assign`, { doctorUserId }),
+
+  /** ADMIN: đề xuất giờ khác (đã giữ sẵn bác sĩ), chờ khách đồng ý hoặc huỷ. */
+  propose: (id: string, body: ProposeTimeRequest) =>
+    http.put<Appointment>(`/booking/appointments/${id}/propose`, body),
+
+  /** CUSTOMER: đồng ý giờ phòng khám đề xuất. Không đồng ý thì gọi `cancel`. */
+  acceptProposal: (id: string) =>
+    http.put<Appointment>(`/booking/appointments/${id}/accept-proposal`),
 
   mine: () => http.get<Appointment[]>("/booking/appointments/me"),
 

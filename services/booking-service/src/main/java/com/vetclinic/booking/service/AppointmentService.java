@@ -23,8 +23,10 @@ import com.vetclinic.booking.repository.AppointmentSlotRepository;
 import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -44,6 +46,7 @@ public class AppointmentService {
     private final PetServiceClient petServiceClient;
     private final SuggestionService suggestionService;
     private final ApplicationEventPublisher applicationEventPublisher;
+    private final AppointmentNotifier notifier;
 
     @Transactional
     public AppointmentResponse createAppointment(UUID customerUserId, String bearerToken, AppointmentRequest request) {
@@ -161,11 +164,18 @@ public class AppointmentService {
         if (appointment.getStatus() != AppointmentStatus.CANCELLED) {
             appointment.setStatus(AppointmentStatus.CANCELLED);
             AppointmentSlot slot = appointment.getSlot();
-            // CN-08: bác sĩ đang bị khoá thì giờ vừa trống không được mở lại cho khách khác đặt.
-            slot.setStatus(blockedDoctorRepository.existsById(slot.getDoctorUserId())
-                    ? SlotStatus.BLOCKED : SlotStatus.AVAILABLE);
-            appointmentSlotRepository.saveAndFlush(slot);
+            // Lịch còn chờ xếp bác sĩ chưa giữ slot nào, không có gì để trả lại.
+            if (slot != null) {
+                // CN-08: bác sĩ đang bị khoá thì giờ vừa trống không được mở lại cho khách khác đặt.
+                slot.setStatus(blockedDoctorRepository.existsById(slot.getDoctorUserId())
+                        ? SlotStatus.BLOCKED : SlotStatus.AVAILABLE);
+                appointmentSlotRepository.saveAndFlush(slot);
+            }
             appointmentRepository.saveAndFlush(appointment);
+            // Khách tự huỷ thì họ vừa bấm, không cần thư. Phòng khám huỷ thì khách phải được biết.
+            if (privileged && !appointment.getCustomerUserId().equals(callerUserId)) {
+                notifier.cancelledByClinic(appointment);
+            }
         }
 
         return toResponse(appointment);
@@ -174,6 +184,15 @@ public class AppointmentService {
     @Transactional
     public AppointmentResponse updateStatus(UUID appointmentId, AppointmentStatus newStatus) {
         Appointment appointment = getAppointmentOrThrow(appointmentId);
+        // Lịch còn chờ xếp bác sĩ hoặc chờ khách đồng ý chỉ đi tiếp bằng đúng thao tác của nó (xếp
+        // bác sĩ, khách đồng ý) hoặc bị huỷ. Chặn ở đây để không ai đánh dấu "đã khám" một lịch
+        // chưa có người khám, hay "xác nhận" một giờ khách chưa đồng ý.
+        if ((appointment.getStatus() == AppointmentStatus.AWAITING_ASSIGNMENT
+                || appointment.getStatus() == AppointmentStatus.AWAITING_CUSTOMER)
+                && newStatus != AppointmentStatus.CANCELLED) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Lịch này đang chờ xếp bác sĩ hoặc chờ khách đồng ý nên chưa đổi sang " + newStatus + " được");
+        }
         appointment.setStatus(newStatus);
         appointmentRepository.saveAndFlush(appointment);
         return toResponse(appointment);
@@ -209,22 +228,27 @@ public class AppointmentService {
         }
     }
 
-    private AppointmentResponse toResponse(Appointment appointment) {
+    AppointmentResponse toResponse(Appointment appointment) {
         AppointmentSlot slot = appointment.getSlot();
         ClinicService service = appointment.getService();
-        return new AppointmentResponse(appointment.getId(), slot.getId(), slot.getDoctorUserId(), slot.getDate(),
-                slot.getStartTime(), slot.getEndTime(), appointment.getCustomerUserId(), appointment.getPetId(),
-                service == null ? null : service.getId(), service == null ? null : service.getName(),
-                appointment.getReason(), appointment.getStatus(), appointment.getCreatedAt(), appointment.getUpdatedAt());
+        return new AppointmentResponse(appointment.getId(), slot == null ? null : slot.getId(),
+                slot == null ? null : slot.getDoctorUserId(), appointment.effectiveDate(),
+                appointment.effectiveStartTime(), appointment.effectiveEndTime(), appointment.getCustomerUserId(),
+                appointment.getPetId(), service == null ? null : service.getId(),
+                service == null ? null : service.getName(), appointment.getReason(), appointment.getStatus(),
+                appointment.getCreatedAt(), appointment.getUpdatedAt(), appointment.getProposedDate(),
+                appointment.getProposedTime(), appointment.getPreferredDate(), appointment.getPreferredTime());
     }
 
     private AppointmentDetailResponse toDetailResponse(Appointment appointment, PetResponse pet) {
         AppointmentSlot slot = appointment.getSlot();
         ClinicService service = appointment.getService();
-        return new AppointmentDetailResponse(appointment.getId(), slot.getId(), slot.getDoctorUserId(), slot.getDate(),
-                slot.getStartTime(), slot.getEndTime(), appointment.getCustomerUserId(), appointment.getPetId(),
-                service == null ? null : service.getId(), service == null ? null : service.getName(),
-                appointment.getReason(), appointment.getStatus(), appointment.getCreatedAt(), appointment.getUpdatedAt(),
-                pet);
+        return new AppointmentDetailResponse(appointment.getId(), slot == null ? null : slot.getId(),
+                slot == null ? null : slot.getDoctorUserId(), appointment.effectiveDate(),
+                appointment.effectiveStartTime(), appointment.effectiveEndTime(), appointment.getCustomerUserId(),
+                appointment.getPetId(), service == null ? null : service.getId(),
+                service == null ? null : service.getName(), appointment.getReason(), appointment.getStatus(),
+                appointment.getCreatedAt(), appointment.getUpdatedAt(), appointment.getProposedDate(),
+                appointment.getProposedTime(), appointment.getPreferredDate(), appointment.getPreferredTime(), pet);
     }
 }

@@ -1,0 +1,17 @@
+package com.vetclinic.pet.dto;
+
+import com.vetclinic.pet.domain.Medication;
+
+import java.util.UUID;
+
+public record MedicationResponse(
+        UUID id,
+        String name,
+        String unit,
+        String caution,
+        boolean active
+) {
+    public static MedicationResponse from(Medication m) {
+        return new MedicationResponse(m.getId(), m.getName(), m.getUnit(), m.getCaution(), m.isActive());
+    }
+}

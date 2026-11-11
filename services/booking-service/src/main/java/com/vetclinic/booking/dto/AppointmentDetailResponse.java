@@ -25,6 +25,10 @@ public record AppointmentDetailResponse(
         AppointmentStatus status,
         Instant createdAt,
         Instant updatedAt,
+        LocalDate proposedDate,
+        LocalTime proposedStartTime,
+        LocalDate preferredDate,
+        LocalTime preferredStartTime,
         PetResponse pet
 ) {
 }

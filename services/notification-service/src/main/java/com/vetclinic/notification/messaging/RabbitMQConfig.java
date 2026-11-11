@@ -31,6 +31,8 @@ public class RabbitMQConfig {
     public static final String BOOKING_EVENTS_EXCHANGE = "booking.events";
     public static final String APPOINTMENT_CREATED_QUEUE = "notification.appointment-created";
     private static final String ROUTING_KEY_APPOINTMENT_CREATED = "appointment.created";
+    public static final String APPOINTMENT_NOTIFICATION_QUEUE = "notification.appointment-notification";
+    private static final String ROUTING_KEY_APPOINTMENT_NOTIFICATION = "appointment.notification";
 
     @Bean
     public TopicExchange userEventsExchange() {
@@ -73,6 +75,18 @@ public class RabbitMQConfig {
     public Binding appointmentCreatedBinding(Queue appointmentCreatedQueue, TopicExchange bookingEventsExchange) {
         return BindingBuilder.bind(appointmentCreatedQueue).to(bookingEventsExchange)
                 .with(ROUTING_KEY_APPOINTMENT_CREATED);
+    }
+
+    @Bean
+    public Queue appointmentNotificationQueue() {
+        return new Queue(APPOINTMENT_NOTIFICATION_QUEUE, true);
+    }
+
+    @Bean
+    public Binding appointmentNotificationBinding(Queue appointmentNotificationQueue,
+                                                  TopicExchange bookingEventsExchange) {
+        return BindingBuilder.bind(appointmentNotificationQueue).to(bookingEventsExchange)
+                .with(ROUTING_KEY_APPOINTMENT_NOTIFICATION);
     }
 
     // Bắt buộc phải có để @RabbitListener parse được JSON auth-service gửi thành record Java

@@ -113,6 +113,20 @@ class StaffSecurityTest {
     }
 
     @Test
+    void absencesAreAdminOnly() throws Exception {
+        for (String role : List.of("STAFF", "DOCTOR")) {
+            mockMvc.perform(get("/staff/attendance/absences").header("Authorization", bearer(role))
+                            .param("from", "2026-10-01").param("to", "2026-10-07"))
+                    .andExpect(status().isForbidden());
+        }
+
+        mockMvc.perform(get("/staff/attendance/absences").header("Authorization", bearer("ADMIN"))
+                        .param("from", "2026-10-01").param("to", "2026-10-07"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray());
+    }
+
+    @Test
     void timesheetOfEveryoneIsAdminOnly() throws Exception {
         for (String role : List.of("STAFF", "DOCTOR")) {
             mockMvc.perform(get("/staff/attendance/timesheet").header("Authorization", bearer(role))

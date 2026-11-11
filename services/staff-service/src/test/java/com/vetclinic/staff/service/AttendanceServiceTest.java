@@ -132,6 +132,172 @@ class AttendanceServiceTest {
                 .isInstanceOf(StaffExceptions.InvalidRequestException.class);
     }
 
+    // ---------- đi muộn / về sớm ----------
+
+    @Test
+    void lateBeyondGraceReportsTheFullMinutes() {
+        LocalDate date = today.minusDays(1);
+        shift(me, date, 8, 12);
+        punch(me, date, LocalTime.of(8, 25), LocalTime.of(12, 0));
+
+        Attendance.Record r = only(me, date);
+
+        assertThat(r.lateMinutes()).isEqualTo(25);
+        assertThat(r.earlyLeaveMinutes()).isZero();
+    }
+
+    @Test
+    void withinGraceCountsAsOnTimeAndOneMinuteOverDoesNot() {
+        LocalDate date = today.minusDays(1);
+        UUID other = UUID.randomUUID();
+        shift(me, date, 8, 12);
+        shift(other, date, 8, 12);
+        punch(me, date, LocalTime.of(8, 10), LocalTime.of(11, 50));
+        punch(other, date, LocalTime.of(8, 11), LocalTime.of(11, 49));
+
+        // Đúng 10 phút (cả vào lẫn ra) vẫn đúng giờ; thêm 1 phút thì ghi toàn bộ độ lệch.
+        assertThat(only(me, date).lateMinutes()).isZero();
+        assertThat(only(me, date).earlyLeaveMinutes()).isZero();
+        assertThat(only(other, date).lateMinutes()).isEqualTo(11);
+        assertThat(only(other, date).earlyLeaveMinutes()).isEqualTo(11);
+    }
+
+    @Test
+    void arrivingEarlyIsNotLate() {
+        LocalDate date = today.minusDays(1);
+        shift(me, date, 8, 12);
+        punch(me, date, LocalTime.of(7, 30), LocalTime.of(12, 30));
+
+        assertThat(only(me, date).lateMinutes()).isZero();
+        assertThat(only(me, date).earlyLeaveMinutes()).isZero();
+    }
+
+    @Test
+    void leavingEarlyIsReported() {
+        LocalDate date = today.minusDays(1);
+        shift(me, date, 8, 12);
+        punch(me, date, LocalTime.of(8, 0), LocalTime.of(11, 30));
+
+        assertThat(only(me, date).earlyLeaveMinutes()).isEqualTo(30);
+    }
+
+    @Test
+    void lunchBreakBetweenTwoShiftsIsNotLeavingEarly() {
+        LocalDate date = today.minusDays(1);
+        shift(me, date, 8, 12);
+        shift(me, date, 13, 17);
+        punch(me, date, LocalTime.of(8, 0), LocalTime.of(17, 0));
+
+        Attendance.Record r = only(me, date);
+
+        // Ca được báo là từ đầu ca đầu đến cuối ca cuối, và không có gì để ghi muộn/sớm.
+        assertThat(r.shiftStart()).isEqualTo(LocalTime.of(8, 0));
+        assertThat(r.shiftEnd()).isEqualTo(LocalTime.of(17, 0));
+        assertThat(r.lateMinutes()).isZero();
+        assertThat(r.earlyLeaveMinutes()).isZero();
+    }
+
+    @Test
+    void workingOutsideAnyShiftHasNothingToCompareAgainst() {
+        LocalDate date = today.minusDays(1);
+        punch(me, date, LocalTime.of(15, 0), LocalTime.of(16, 0));
+
+        Attendance.Record r = only(me, date);
+
+        assertThat(r.shiftStart()).isNull();
+        assertThat(r.lateMinutes()).isZero();
+        assertThat(r.earlyLeaveMinutes()).isZero();
+    }
+
+    @Test
+    void stillInShiftIsNeverEarlyLeave() {
+        LocalDate date = today.minusDays(1);
+        shift(me, date, 8, 12);
+        attendanceRepository.saveAndFlush(AttendanceRecord.builder().userId(me).date(date)
+                .checkInAt(date.atTime(8, 0).atZone(AttendanceService.CLINIC_ZONE).toInstant()).build());
+
+        assertThat(only(me, date).earlyLeaveMinutes()).isZero();
+    }
+
+    // ---------- vắng mặt ----------
+
+    @Test
+    void absenceIsAPastShiftWithNoAttendanceRecord() {
+        UUID other = UUID.randomUUID();
+        shift(me, today.minusDays(2), 8, 12);          // vắng
+        shift(me, today.minusDays(1), 8, 12);          // có đi làm
+        punch(me, today.minusDays(1), LocalTime.of(8, 0), LocalTime.of(12, 0));
+        shift(me, today, 8, 12);                       // hôm nay: chưa khép sổ
+        shift(me, today.plusDays(1), 8, 12);           // tương lai
+        shift(other, today.minusDays(3), 13, 17);      // người khác cũng vắng
+
+        var all = attendanceService.absences(today.minusDays(5), today.plusDays(2), null);
+        var mine = attendanceService.absences(today.minusDays(5), today.plusDays(2), me);
+
+        assertThat(all).extracting(Attendance.Absence::userId, Attendance.Absence::date)
+                .containsExactly(
+                        org.assertj.core.groups.Tuple.tuple(me, today.minusDays(2)),
+                        org.assertj.core.groups.Tuple.tuple(other, today.minusDays(3)));
+        assertThat(mine).singleElement().satisfies(a -> {
+            assertThat(a.date()).isEqualTo(today.minusDays(2));
+            assertThat(a.shiftStart()).isEqualTo(LocalTime.of(8, 0));
+            assertThat(a.shiftEnd()).isEqualTo(LocalTime.of(12, 0));
+        });
+    }
+
+    @Test
+    void twoShiftsInOneDayAreOneAbsence() {
+        shift(me, today.minusDays(1), 8, 12);
+        shift(me, today.minusDays(1), 13, 17);
+
+        assertThat(attendanceService.absences(today.minusDays(2), today, me)).singleElement()
+                .satisfies(a -> {
+                    assertThat(a.shiftStart()).isEqualTo(LocalTime.of(8, 0));
+                    assertThat(a.shiftEnd()).isEqualTo(LocalTime.of(17, 0));
+                });
+    }
+
+    @Test
+    void timesheetCountsLateEarlyAndAbsentDays() {
+        shift(me, today.minusDays(4), 8, 12);
+        punch(me, today.minusDays(4), LocalTime.of(8, 30), LocalTime.of(12, 0));   // muộn
+        shift(me, today.minusDays(3), 8, 12);
+        punch(me, today.minusDays(3), LocalTime.of(8, 0), LocalTime.of(11, 0));    // về sớm
+        shift(me, today.minusDays(2), 8, 12);
+        punch(me, today.minusDays(2), LocalTime.of(8, 30), LocalTime.of(11, 0));   // cả hai, vẫn là hai ngày riêng
+        shift(me, today.minusDays(1), 8, 12);                                      // vắng
+
+        Attendance.TimesheetRow row = attendanceService.timesheet(today.minusDays(5), today, me).rows().get(0);
+
+        assertThat(row.daysWorked()).isEqualTo(3);
+        assertThat(row.shiftsAssigned()).isEqualTo(4);
+        assertThat(row.daysLate()).isEqualTo(2);
+        assertThat(row.daysEarlyLeave()).isEqualTo(2);
+        assertThat(row.daysAbsent()).isEqualTo(1);
+    }
+
+    @Test
+    void absencesRejectReversedRange() {
+        assertThatThrownBy(() -> attendanceService.absences(today, today.minusDays(1), null))
+                .isInstanceOf(StaffExceptions.InvalidRequestException.class);
+    }
+
+    private Attendance.Record only(UUID userId, LocalDate date) {
+        return attendanceService.search(date, date, userId).stream().findFirst().orElseThrow();
+    }
+
+    private void shift(UUID userId, LocalDate date, int fromHour, int toHour) {
+        shiftRepository.saveAndFlush(Shift.builder().userId(userId).date(date)
+                .startTime(LocalTime.of(fromHour, 0)).endTime(LocalTime.of(toHour, 0)).build());
+    }
+
+    private void punch(UUID userId, LocalDate date, LocalTime in, LocalTime out) {
+        attendanceRepository.saveAndFlush(AttendanceRecord.builder().userId(userId).date(date)
+                .checkInAt(date.atTime(in).atZone(AttendanceService.CLINIC_ZONE).toInstant())
+                .checkOutAt(date.atTime(out).atZone(AttendanceService.CLINIC_ZONE).toInstant())
+                .build());
+    }
+
     private void record(UUID userId, LocalDate date, int fromHour, int toHour) {
         attendanceRepository.saveAndFlush(AttendanceRecord.builder()
                 .userId(userId).date(date)

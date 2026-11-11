@@ -8,6 +8,7 @@ import com.vetclinic.booking.dto.AppointmentResponse;
 import com.vetclinic.booking.dto.AppointmentStatusUpdateRequest;
 import com.vetclinic.booking.security.RoleUtils;
 import com.vetclinic.booking.security.jwt.AuthenticatedUser;
+import com.vetclinic.booking.service.AppointmentRequestService;
 import com.vetclinic.booking.service.AppointmentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +36,7 @@ import java.util.UUID;
 public class AppointmentController {
 
     private final AppointmentService appointmentService;
+    private final AppointmentRequestService appointmentRequestService;
 
     @PostMapping("/booking/appointments")
     @ResponseStatus(HttpStatus.CREATED)
@@ -43,6 +45,19 @@ public class AppointmentController {
                                                   @RequestHeader("Authorization") String bearerToken,
                                                   @Valid @RequestBody AppointmentRequest request) {
         return appointmentService.createAppointment(principal.userId(), principal.email(), bearerToken, request);
+    }
+
+    /**
+     * Gửi yêu cầu đặt lịch theo giờ mong muốn; admin xếp bác sĩ sau. Khác {@code POST
+     * /booking/appointments} (giữ chỗ ngay ở slot của bác sĩ): đường này không cần slot nào tồn tại.
+     */
+    @PostMapping("/booking/appointments/requests")
+    @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasRole('CUSTOMER')")
+    public AppointmentResponse createRequest(@AuthenticationPrincipal AuthenticatedUser principal,
+                                              @RequestHeader("Authorization") String bearerToken,
+                                              @Valid @RequestBody AppointmentRequest request) {
+        return appointmentRequestService.createRequest(principal.userId(), principal.email(), bearerToken, request);
     }
 
     /**
@@ -69,7 +84,11 @@ public class AppointmentController {
     public List<AppointmentResponse> listMyDoctorAppointments(
             @AuthenticationPrincipal AuthenticatedUser principal,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-        return appointmentService.search(date, null, principal.userId());
+        // Giờ phòng khám mới đề xuất cho khách (chờ khách đồng ý) đã giữ sẵn slot của bác sĩ nhưng
+        // chưa phải lịch thật — chưa đưa vào lịch của bác sĩ.
+        return appointmentService.search(date, null, principal.userId()).stream()
+                .filter(a -> a.status() != AppointmentStatus.AWAITING_CUSTOMER)
+                .toList();
     }
 
     @GetMapping("/booking/appointments")

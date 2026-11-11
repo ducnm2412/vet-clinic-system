@@ -48,6 +48,8 @@ export const ORDER_PAYMENT_METHOD: Record<OrderPaymentMethod, string> = {
 
 export const APPOINTMENT_STATUS: Record<AppointmentStatus, StatusStyle> = {
   PENDING: { label: "Chờ xác nhận", dot: "bg-amber", tint: "bg-amber-wash text-ink" },
+  AWAITING_ASSIGNMENT: { label: "Chờ xếp bác sĩ", dot: "bg-amber", tint: "bg-amber-wash text-ink" },
+  AWAITING_CUSTOMER: { label: "Chờ khách đồng ý", dot: "bg-amber", tint: "bg-amber-wash text-ink" },
   CONFIRMED: { label: "Đã xác nhận", dot: "bg-info", tint: "bg-info-wash text-ink" },
   COMPLETED: { label: "Đã khám", dot: "bg-moss", tint: "bg-moss-wash text-ink" },
   CANCELLED: { label: "Đã huỷ", dot: "bg-danger", tint: "bg-danger-wash text-ink" },

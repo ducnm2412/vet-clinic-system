@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { CalendarCheck, Clock, TriangleAlert } from "lucide-react";
+import { CalendarCheck, CalendarX, Clock, TriangleAlert } from "lucide-react";
 import { ApiError, attendanceApi, authApi } from "@/lib/api";
 import { formatDate } from "@/lib/utils/format";
 import { PageHeader } from "@/components/layout/DashboardShell";
 import { Metric, MetricRow } from "@/components/dashboard/Metric";
-import { duration } from "@/components/staff/AttendanceView";
+import { Punctuality, duration } from "@/components/staff/AttendanceView";
 import {
   DataTable,
   EmptyState,
@@ -17,7 +17,7 @@ import {
   controlClass,
   type Column,
 } from "@/components/ui";
-import type { AttendanceRecord, TimesheetRow } from "@/types";
+import type { AttendanceAbsence, AttendanceRecord, TimesheetRow } from "@/types";
 
 const isoDaysAgo = (days: number) => {
   const d = new Date();
@@ -54,6 +54,11 @@ export default function AdminAttendancePage() {
     queryFn: () => attendanceApi.all(range),
     placeholderData: keepPreviousData,
   });
+  const absences = useQuery({
+    queryKey: ["attendance", "absences", range],
+    queryFn: () => attendanceApi.absences(range),
+    placeholderData: keepPreviousData,
+  });
   const people = useQuery({
     queryKey: ["admin-users", { size: 100 }],
     queryFn: () => authApi.listUsers({ size: 100 }),
@@ -67,6 +72,7 @@ export default function AdminAttendancePage() {
   const rows = timesheet.data?.rows ?? [];
   const totalMinutes = rows.reduce((sum, r) => sum + r.totalMinutes, 0);
   const missing = rows.reduce((sum, r) => sum + r.daysMissingCheckOut, 0);
+  const absent = rows.reduce((sum, r) => sum + r.daysAbsent, 0);
 
   const timesheetColumns: Column<TimesheetRow>[] = [
     { key: "name", header: "Người", cell: (r) => <span className="font-medium text-ink">{nameOf(r.userId)}</span> },
@@ -78,6 +84,26 @@ export default function AdminAttendancePage() {
       numeric: true,
       hideBelow: "sm",
       cell: (r) => <span className="tnum text-bark">{r.shiftsAssigned}</span>,
+    },
+    {
+      key: "late",
+      header: "Muộn",
+      numeric: true,
+      cell: (r) => (r.daysLate ? <span className="tnum text-amber">{r.daysLate}</span> : <span className="text-bark">—</span>),
+    },
+    {
+      key: "early",
+      header: "Về sớm",
+      numeric: true,
+      hideBelow: "sm",
+      cell: (r) =>
+        r.daysEarlyLeave ? <span className="tnum text-amber">{r.daysEarlyLeave}</span> : <span className="text-bark">—</span>,
+    },
+    {
+      key: "absent",
+      header: "Vắng",
+      numeric: true,
+      cell: (r) => (r.daysAbsent ? <span className="tnum text-danger">{r.daysAbsent}</span> : <span className="text-bark">—</span>),
     },
     {
       key: "missing",
@@ -92,11 +118,27 @@ export default function AdminAttendancePage() {
     },
   ];
 
+  const absenceColumns: Column<AttendanceAbsence>[] = [
+    { key: "date", header: "Ngày", cell: (a) => <span className="tnum">{formatDate(a.date)}</span> },
+    { key: "name", header: "Người", cell: (a) => <span className="font-medium text-ink">{nameOf(a.userId)}</span> },
+    {
+      key: "shift",
+      header: "Ca được xếp",
+      numeric: true,
+      cell: (a) => (
+        <span className="tnum text-bark">
+          {a.shiftStart.slice(0, 5)}–{a.shiftEnd.slice(0, 5)}
+        </span>
+      ),
+    },
+  ];
+
   const recordColumns: Column<AttendanceRecord>[] = [
     { key: "date", header: "Ngày", cell: (r) => <span className="tnum">{formatDate(r.date)}</span> },
     { key: "name", header: "Người", cell: (r) => nameOf(r.userId) },
     { key: "in", header: "Vào", numeric: true, cell: (r) => <span className="tnum">{clock(r.checkInAt)}</span> },
     { key: "out", header: "Ra", numeric: true, cell: (r) => <span className="tnum">{clock(r.checkOutAt)}</span> },
+    { key: "punctual", header: "Giờ giấc", cell: (r) => <Punctuality record={r} /> },
     {
       key: "worked",
       header: "Số giờ",
@@ -149,6 +191,13 @@ export default function AdminAttendancePage() {
           loading={timesheet.isLoading}
           tone={missing ? "alert" : "plain"}
         />
+        <Metric
+          label="Ngày vắng mặt"
+          value={timesheet.data ? absent : null}
+          icon={CalendarX}
+          loading={timesheet.isLoading}
+          tone={absent ? "alert" : "plain"}
+        />
       </MetricRow>
 
       <div className="mt-6 grid gap-5 xl:grid-cols-2">
@@ -187,6 +236,34 @@ export default function AdminAttendancePage() {
               keyOf={(r) => r.id}
               columns={recordColumns}
               empty={<EmptyState title="Chưa có ngày công nào" />}
+            />
+          )}
+        </TableFrame>
+      </div>
+
+      <div className="mt-5">
+        <TableFrame title="Ngày vắng mặt" count={absences.data?.length}>
+          {absences.isLoading ? (
+            <TableSkeleton rows={3} cols={3} />
+          ) : absences.isError ? (
+            <div className="p-4">
+              <ErrorState
+                message={absences.error instanceof ApiError ? absences.error.message : "Không tải được danh sách vắng mặt."}
+                onRetry={() => absences.refetch()}
+              />
+            </div>
+          ) : (
+            <DataTable
+              caption="Ngày có ca nhưng không chấm công"
+              rows={absences.data ?? []}
+              keyOf={(a) => `${a.userId}@${a.date}`}
+              columns={absenceColumns}
+              empty={
+                <EmptyState
+                  title="Không có ngày vắng nào"
+                  description="Chỉ tính các ngày đã qua; hôm nay chưa khép sổ."
+                />
+              }
             />
           )}
         </TableFrame>

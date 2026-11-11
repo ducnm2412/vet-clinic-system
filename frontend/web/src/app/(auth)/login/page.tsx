@@ -8,7 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { homeFor, isNextAllowedForRoles } from "@/config/nav";
+import { landingFor } from "@/lib/landing";
 import { SiteButton } from "@/components/site/primitives";
 import { SiteInput } from "@/components/site/fields";
 import { SocialSignInButtons } from "@/components/site/SocialSignInButtons";
@@ -39,11 +39,9 @@ function LoginForm() {
     setFormError(null);
     try {
       const roles = await signIn(values.email, values.password);
-      // Quay lại đúng chỗ đang dở — nhưng chỉ khi chỗ đó hợp với vai trò vừa đăng nhập, không
-      // thì về thẳng trang chính của vai trò (tránh việc "next" trỏ tới dashboard vai trò khác,
-      // ví dụ tài khoản nhân viên nhưng next=/admin/... rồi lại bị đá sang /unauthorized).
-      const target = next && isNextAllowedForRoles(next, roles) ? next : homeFor(roles);
-      router.replace(target);
+      // Quay lại đúng chỗ đang dở nếu hợp với vai trò, không thì về trang chính của vai trò
+      // (hoặc trang chấm công nếu bác sĩ/nhân viên chưa chấm công hôm nay) — xem landingFor.
+      router.replace(await landingFor(roles, next));
     } catch (err) {
       // Backend cố tình trả cùng một lỗi cho sai mật khẩu, không tồn tại và chưa kích hoạt —
       // không đoán thêm để không lộ tài khoản nào có thật. Riêng tài khoản bị khoá trả 403, và

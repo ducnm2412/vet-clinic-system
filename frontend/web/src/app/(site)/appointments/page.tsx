@@ -7,11 +7,19 @@ import { bookingApi, myPetApi } from "@/lib/api";
 import { formatDate, formatTime, todayISO } from "@/lib/utils/format";
 import { CLINIC } from "@/config/clinic";
 import { useDoctorDirectory } from "@/lib/useDoctors";
-import type { Appointment, Pet } from "@/types";
+import type { Appointment, AppointmentStatus, Pet } from "@/types";
 import { ButtonLink, Container, SiteButton } from "@/components/site/primitives";
 import { CustomerOnly } from "@/components/site/CustomerOnly";
 import { PetAvatar } from "@/components/site/PetAvatar";
 import { APPOINTMENT_LOOK, StatusPill } from "@/components/site/StatusPill";
+
+/** Lịch còn "sống": chưa khám xong, chưa huỷ — kể cả lịch đang chờ phòng khám xếp bác sĩ. */
+const OPEN_STATUSES: AppointmentStatus[] = [
+  "AWAITING_ASSIGNMENT",
+  "AWAITING_CUSTOMER",
+  "PENDING",
+  "CONFIRMED",
+];
 
 export default function AppointmentsPage() {
   return (
@@ -32,7 +40,7 @@ function AppointmentsBody() {
 
   const all = [...(appointments.data ?? [])];
   const upcoming = all
-    .filter((a) => a.date >= today && (a.status === "PENDING" || a.status === "CONFIRMED"))
+    .filter((a) => a.date >= today && OPEN_STATUSES.includes(a.status))
     .sort((a, b) => `${a.date}${a.startTime}`.localeCompare(`${b.date}${b.startTime}`));
   const past = all
     .filter((a) => !upcoming.includes(a))
@@ -133,6 +141,12 @@ function UpcomingCard({
       href={`/appointments/${a.id}`}
       className="block overflow-hidden rounded-[var(--radius-card)] border border-mist transition-[border-color,transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:border-teal hover:shadow-[var(--shadow-lift)]"
     >
+      {a.status === "AWAITING_CUSTOMER" && a.proposedDate && a.proposedStartTime && (
+        <p className="bg-peach px-6 py-3 text-[15px] font-medium text-coral-deep">
+          Phòng khám đề xuất giờ khác: {formatTime(a.proposedStartTime)}, {formatDate(a.proposedDate)}.
+          Bấm vào để xem.
+        </p>
+      )}
       <div className="flex flex-wrap gap-6 p-6 md:gap-8">
         <PetAvatar species={pet?.species} small className="h-24 w-20" />
 
@@ -155,7 +169,8 @@ function UpcomingCard({
           <div className="flex gap-3">
             <Clock3 aria-hidden className="mt-0.5 size-4 shrink-0 text-teal" />
             <div>
-              <dt className="text-stone">Giờ</dt>
+              {/* Chưa có slot nghĩa là chưa xếp bác sĩ: giờ này mới là giờ khách mong muốn. */}
+              <dt className="text-stone">{a.slotId ? "Giờ" : "Giờ mong muốn"}</dt>
               <dd className="tnum font-medium">
                 {formatTime(a.startTime)} đến {formatTime(a.endTime)}
               </dd>

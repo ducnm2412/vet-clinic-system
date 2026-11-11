@@ -31,7 +31,9 @@ export function useDoctorDirectory() {
     ...doctors,
     byUserId,
     /** Nhãn ngắn gọn cho một bác sĩ; không bao giờ trả chuỗi rỗng. */
-    label: (userId: string | null | undefined) => doctorLabel(userId ? byUserId.get(userId) : undefined, doctors.isLoading),
+    label: (userId: string | null | undefined) =>
+      // Lịch còn chờ xếp thì chưa có ai phụ trách — khác với "có bác sĩ nhưng không tra được hồ sơ".
+      userId ? doctorLabel(byUserId.get(userId), doctors.isLoading) : "Chưa xếp bác sĩ",
   };
 }
 
