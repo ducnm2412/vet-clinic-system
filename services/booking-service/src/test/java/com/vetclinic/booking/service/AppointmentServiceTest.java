@@ -95,7 +95,7 @@ class AppointmentServiceTest {
         appointmentSlotRepository.saveAndFlush(AppointmentSlot.builder()
                 .doctorUserId(UUID.randomUUID()).date(date).startTime(time).endTime(time.plusMinutes(30)).build());
 
-        // VD-21: bốn dịch vụ đã có sẵn từ migration.
+        // VD-21: dịch vụ "tiem-phong" có sẵn từ migration.
         ClinicService tiemPhong = clinicServiceRepository.findBySlug("tiem-phong").orElseThrow();
 
         AppointmentResponse response = appointmentService.createAppointment(UUID.randomUUID(), "Bearer t",
@@ -103,7 +103,7 @@ class AppointmentServiceTest {
 
         assertThat(response.serviceId()).isEqualTo(tiemPhong.getId());
         // Tên trả kèm để màn hình không phải hỏi thêm lượt nữa.
-        assertThat(response.serviceName()).isEqualTo("Tiêm phòng");
+        assertThat(response.serviceName()).isEqualTo(tiemPhong.getName());
     }
 
     @Test

@@ -165,6 +165,9 @@
                              HOÀN TOÀN application.yml chính, không phải merge thêm. -->
                         <DB_PORT>5440</DB_PORT>
                         <DB_NAME>pet_db_test</DB_NAME>
+                        <!-- Dữ liệu mẫu (db/seed) không nạp vào database test: nhiều test giả định
+                             danh mục thuốc và đơn mẫu đang trống. -->
+                        <spring.flyway.locations>classpath:db/migration</spring.flyway.locations>
                     </systemPropertyVariables>
                 </configuration>
             </plugin>

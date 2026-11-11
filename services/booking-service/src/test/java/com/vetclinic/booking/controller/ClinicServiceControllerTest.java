@@ -17,6 +17,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.UUID;
 
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.hasItems;
+import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -43,6 +46,9 @@ class ClinicServiceControllerTest {
     @Value("${jwt.secret}")
     private String jwtSecret;
 
+    // Mã chưa có trong danh mục seed.
+    private static final String NEW_SLUG = "dich-vu-moi-cua-test";
+
     private String bearer(String role) {
         return "Bearer " + TestJwtSupport.token(jwtSecret, UUID.randomUUID(), List.of(role));
     }
@@ -53,13 +59,16 @@ class ClinicServiceControllerTest {
                 """.formatted(slug, name);
     }
 
+    // Danh mục dịch vụ được seed sẵn bằng migration và sẽ còn đổi theo phòng khám, nên test không
+    // cố định số lượng: chỉ kiểm tra những dịch vụ chắc chắn có và dịch vụ chắc chắn đã ẩn.
     @Test
     void anyoneCanReadTheServiceList() throws Exception {
-        // Trang chủ đọc khi khách chưa đăng nhập — bốn dịch vụ đã seed sẵn trong migration.
+        // Trang chủ đọc khi khách chưa đăng nhập.
         mockMvc.perform(get("/booking/services"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(4))
-                .andExpect(jsonPath("$[0].slug").value("kham-tong-quat"));
+                .andExpect(jsonPath("$[*].slug", hasItems("kham-tong-quat", "tiem-phong", "phau-thuat")))
+                // Dịch vụ đã ngừng cung cấp thì khách không thấy.
+                .andExpect(jsonPath("$[*].slug", not(hasItem("cham-soc-lam-dep"))));
     }
 
     @Test
@@ -73,8 +82,12 @@ class ClinicServiceControllerTest {
 
     @Test
     void adminAddsAServiceThenStopsOfferingIt() throws Exception {
+        // Đếm trước khi thêm: số dịch vụ có sẵn do migration seed quyết định, không phải test này.
+        int visibleBefore = count(get("/booking/services"));
+        int allBefore = count(get("/booking/services").header("Authorization", bearer("ADMIN")));
+
         MvcResult created = mockMvc.perform(post("/booking/services").header("Authorization", bearer("ADMIN"))
-                        .contentType(MediaType.APPLICATION_JSON).content(body("sieu-am", "Sieu am")))
+                        .contentType(MediaType.APPLICATION_JSON).content(body(NEW_SLUG, "Dich vu moi")))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.durationMinutes").value(45))
                 .andExpect(jsonPath("$.active").value(true))
@@ -83,7 +96,7 @@ class ClinicServiceControllerTest {
 
         // Trùng mã dịch vụ thì báo rõ, không tạo bản thứ hai.
         mockMvc.perform(post("/booking/services").header("Authorization", bearer("ADMIN"))
-                        .contentType(MediaType.APPLICATION_JSON).content(body("sieu-am", "Sieu am 2")))
+                        .contentType(MediaType.APPLICATION_JSON).content(body(NEW_SLUG, "Dich vu moi 2")))
                 .andExpect(status().isConflict());
 
         mockMvc.perform(put("/booking/services/" + id + "/hide").header("Authorization", bearer("ADMIN")))
@@ -91,16 +104,20 @@ class ClinicServiceControllerTest {
                 .andExpect(jsonPath("$.active").value(false));
 
         // Ngừng cung cấp: khách không thấy nữa, nhưng phòng khám vẫn quản lý được.
-        mockMvc.perform(get("/booking/services"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(4));
-        mockMvc.perform(get("/booking/services").header("Authorization", bearer("ADMIN")))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(5));
+        org.assertj.core.api.Assertions.assertThat(count(get("/booking/services"))).isEqualTo(visibleBefore);
+        org.assertj.core.api.Assertions
+                .assertThat(count(get("/booking/services").header("Authorization", bearer("ADMIN"))))
+                .isEqualTo(allBefore + 1);
 
         mockMvc.perform(put("/booking/services/" + id + "/unhide").header("Authorization", bearer("ADMIN")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.active").value(true));
+    }
+
+    private int count(org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder request)
+            throws Exception {
+        String json = mockMvc.perform(request).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        return com.jayway.jsonpath.JsonPath.<java.util.List<?>>read(json, "$").size();
     }
 
     @Test
