@@ -77,6 +77,13 @@ export function refreshSession(): Promise<boolean> {
   if (refreshing) return refreshing;
 
   refreshing = (async () => {
+    // MOCK-TẠM: phiên demo không có refresh token ở server — khôi phục từ sessionStorage.
+    const { restoreMockToken } = await import("./mock-auth");
+    const demo = restoreMockToken();
+    if (demo) {
+      setToken(demo);
+      return true;
+    }
     try {
       const res = await fetch(`${BASE}/auth/refresh`, { method: "POST" });
       if (!res.ok) {

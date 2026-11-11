@@ -87,44 +87,49 @@ function RegisterForm() {
 
   return (
     <>
-      <h1 className="t-h2">Tạo tài khoản</h1>
-      <p className="mt-3 text-stone">
+      <h1 className="font-[family-name:var(--font-brand)] text-[34px] font-semibold leading-tight">Tạo tài khoản</h1>
+      <p className="mt-1.5 text-stone">
         Đã có tài khoản?{" "}
         <Link href="/login" className="text-teal-deep underline underline-offset-4">
           Đăng nhập
         </Link>
       </p>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="mt-8 space-y-5" noValidate>
+      <form onSubmit={handleSubmit(onSubmit)} className="mt-5 space-y-3.5" noValidate>
         <div className="grid grid-cols-2 gap-4">
-          <SiteInput label="Họ" required error={errors.firstName?.message} {...register("firstName")} />
-          <SiteInput label="Tên" required error={errors.lastName?.message} {...register("lastName")} />
+          <SiteInput label="Họ" placeholder="Nguyễn" required error={errors.firstName?.message} {...register("firstName")} />
+          <SiteInput label="Tên" placeholder="Văn A" required error={errors.lastName?.message} {...register("lastName")} />
         </div>
         <SiteInput
           label="Email"
           type="email"
           autoComplete="email"
+          placeholder="you@email.com"
           required
           error={errors.email?.message}
           {...register("email")}
         />
-        <SiteInput
-          label="Mật khẩu"
-          type="password"
-          autoComplete="new-password"
-          hint="Ít nhất 8 ký tự"
-          required
-          error={errors.password?.message}
-          {...register("password")}
-        />
-        <SiteInput
-          label="Nhập lại mật khẩu"
-          type="password"
-          autoComplete="new-password"
-          required
-          error={errors.confirmPassword?.message}
-          {...register("confirmPassword")}
-        />
+        {/* Hai ô mật khẩu đứng cạnh nhau để cả form vừa một màn hình, không phải cuộn. */}
+        <div className="grid grid-cols-2 gap-4">
+          <SiteInput
+            label="Mật khẩu"
+            type="password"
+            autoComplete="new-password"
+            placeholder="Ít nhất 8 ký tự"
+            required
+            error={errors.password?.message}
+            {...register("password")}
+          />
+          <SiteInput
+            label="Nhập lại mật khẩu"
+            type="password"
+            autoComplete="new-password"
+            placeholder="Nhập lại mật khẩu"
+            required
+            error={errors.confirmPassword?.message}
+            {...register("confirmPassword")}
+          />
+        </div>
 
         {formError && (
           <p role="alert" className="rounded-[var(--radius-card)] bg-peach px-4 py-3 text-[15px] text-coral-deep">
@@ -132,7 +137,7 @@ function RegisterForm() {
           </p>
         )}
 
-        <SiteButton type="submit" size="lg" loading={isSubmitting} className="w-full">
+        <SiteButton type="submit" size="lg" loading={isSubmitting} className="!mt-5 w-full">
           Tạo tài khoản
         </SiteButton>
       </form>

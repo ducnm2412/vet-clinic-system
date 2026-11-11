@@ -1,4 +1,5 @@
 import { http, qs, setToken } from "./client";
+import { clearMockToken, mockLogin } from "./mock-auth"; // MOCK-TẠM
 import type {
   AccessTokenResponse,
   PageResponse,
@@ -13,6 +14,12 @@ import type {
 
 export const authApi = {
   async login(email: string, password: string): Promise<AccessTokenResponse> {
+    // MOCK-TẠM: tài khoản demo đăng nhập không cần backend (chỉ khi chạy dev).
+    const demo = mockLogin(email, password);
+    if (demo) {
+      setToken(demo);
+      return { accessToken: demo };
+    }
     const res = await http.post<AccessTokenResponse>("/auth/login", { email, password }, true);
     setToken(res.accessToken);
     return res;
@@ -41,6 +48,7 @@ export const authApi = {
    */
   async logout(): Promise<void> {
     setToken(null);
+    clearMockToken(); // MOCK-TẠM
     try {
       await http.post<void>("/auth/logout", undefined, true);
     } catch {

@@ -1,4 +1,5 @@
 import { http } from "./client";
+import { devMock, mockAddresses, mockProfile } from "./mock-account"; // MOCK-TẠM
 import type {
   Address,
   AddressRequest,
@@ -20,13 +21,13 @@ function formOf(file: File): FormData {
 
 /** Hồ sơ của chính khách hàng. Backend giới hạn toàn bộ nhánh này cho role CUSTOMER. */
 export const customerApi = {
-  me: () => http.get<CustomerProfile>("/profile/customer/me"),
+  me: () => devMock(http.get<CustomerProfile>("/profile/customer/me"), () => mockProfile), // MOCK-TẠM
   updateMe: (body: CustomerProfileRequest) =>
     http.put<CustomerProfile>("/profile/customer/me", body),
   uploadMyPhoto: (file: File) =>
     http.postForm<CustomerProfile>("/profile/customer/me/photo", formOf(file)),
 
-  addresses: () => http.get<Address[]>("/profile/customer/me/addresses"),
+  addresses: () => devMock(http.get<Address[]>("/profile/customer/me/addresses"), () => mockAddresses), // MOCK-TẠM
   addAddress: (body: AddressRequest) =>
     http.post<Address>("/profile/customer/me/addresses", body),
   updateAddress: (id: string, body: AddressRequest) =>

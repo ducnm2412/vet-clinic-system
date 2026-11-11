@@ -60,7 +60,7 @@ function MockGatewayBody() {
       } else {
         toast.error(outcome === "CANCELLED" ? "Bạn đã huỷ thanh toán." : "Thanh toán không thành công.");
       }
-      router.replace(`/orders/${result.orderId}`);
+      router.replace(`/user/orders/${result.orderId}`);
     },
     onError: (err) => {
       toast.error(
@@ -79,7 +79,7 @@ function MockGatewayBody() {
           Link bị thiếu thông tin. Mở lại đơn của bạn và bấm &ldquo;Thanh toán ngay&rdquo; để lấy link mới.
         </p>
         <div className="mt-8">
-          <ButtonLink href="/orders" variant="outline">
+          <ButtonLink href="/user/orders" variant="outline">
             Về danh sách đơn
           </ButtonLink>
         </div>

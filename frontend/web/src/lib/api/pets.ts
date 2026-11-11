@@ -1,4 +1,5 @@
 import { http } from "./client";
+import { devMock, mockPet, mockPetHistory, mockPets } from "./mock-account"; // MOCK-TẠM
 import type { MedicalRecord, MedicalRecordRequest, Pet, PetRequest } from "@/types";
 
 /**
@@ -8,8 +9,8 @@ import type { MedicalRecord, MedicalRecordRequest, Pet, PetRequest } from "@/typ
 
 /** Thú cưng của chính khách. Chủ nuôi lấy từ token, không gửi lên được. */
 export const myPetApi = {
-  list: () => http.get<Pet[]>("/pets/me"),
-  get: (id: string) => http.get<Pet>(`/pets/me/${id}`),
+  list: () => devMock(http.get<Pet[]>("/pets/me"), () => mockPets), // MOCK-TẠM
+  get: (id: string) => devMock(http.get<Pet>(`/pets/me/${id}`), () => mockPet(id)), // MOCK-TẠM
   add: (body: PetRequest) => http.post<Pet>("/pets/me", body),
   update: (id: string, body: PetRequest) => http.put<Pet>(`/pets/me/${id}`, body),
   remove: (id: string) => http.del<void>(`/pets/me/${id}`),
@@ -20,7 +21,7 @@ export const myPetApi = {
     return http.postForm<Pet>(`/pets/me/${id}/photo`, form);
   },
   /** CN-24: lịch sử khám của bé này, mới nhất trước. */
-  history: (id: string) => http.get<MedicalRecord[]>(`/pets/me/${id}/medical-records`),
+  history: (id: string) => devMock(http.get<MedicalRecord[]>(`/pets/me/${id}/medical-records`), () => mockPetHistory(id)), // MOCK-TẠM
 };
 
 /** DOCTOR/STAFF/ADMIN tra cứu thú cưng của mọi khách. */

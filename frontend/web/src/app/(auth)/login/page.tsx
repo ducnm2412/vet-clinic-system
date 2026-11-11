@@ -8,7 +8,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { landingFor } from "@/lib/landing";
+import { homeFor, isNextAllowedForRoles } from "@/config/nav";
+import {
+  DEMO_ACCOUNTS,
+  DEMO_PASSWORD,
+  MOCK_AUTH_ENABLED,
+} from "@/lib/api/mock-auth"; // MOCK-TẠM
 import { SiteButton } from "@/components/site/primitives";
 import { SiteInput } from "@/components/site/fields";
 import { SocialSignInButtons } from "@/components/site/SocialSignInButtons";
@@ -52,8 +57,8 @@ function LoginForm() {
           : err instanceof ApiError && err.status === 403
             ? "Tài khoản này đã bị khoá. Liên hệ phòng khám để được hỗ trợ."
             : err instanceof Error
-            ? err.message
-            : "Không đăng nhập được.",
+              ? err.message
+              : "Không đăng nhập được.",
       );
     }
   }
@@ -63,7 +68,10 @@ function LoginForm() {
       <h1 className="t-h2">Đăng nhập</h1>
       <p className="mt-3 text-stone">
         Chưa có tài khoản?{" "}
-        <Link href="/register" className="text-teal-deep underline underline-offset-4">
+        <Link
+          href="/register"
+          className="text-teal-deep underline underline-offset-4"
+        >
           Đăng ký
         </Link>
       </p>
@@ -74,7 +82,11 @@ function LoginForm() {
         </p>
       )}
 
-      <form onSubmit={handleSubmit(onSubmit)} className="mt-8 space-y-5" noValidate>
+      <form
+        onSubmit={handleSubmit(onSubmit)}
+        className="mt-8 space-y-5"
+        noValidate
+      >
         <SiteInput
           label="Email"
           type="email"
@@ -92,23 +104,64 @@ function LoginForm() {
           {...register("password")}
         />
         <div className="-mt-2 text-right">
-          <Link href="/forgot-password" className="text-[15px] text-teal-deep underline underline-offset-4">
+          <Link
+            href="/forgot-password"
+            className="text-[15px] text-teal-deep underline underline-offset-4"
+          >
             Quên mật khẩu?
           </Link>
         </div>
 
         {formError && (
-          <p role="alert" className="rounded-[var(--radius-card)] bg-peach px-4 py-3 text-[15px] text-coral-deep">
+          <p
+            role="alert"
+            className="rounded-[var(--radius-card)] bg-peach px-4 py-3 text-[15px] text-coral-deep"
+          >
             {formError}
           </p>
         )}
 
-        <SiteButton type="submit" size="lg" loading={isSubmitting} className="w-full">
+        <SiteButton
+          type="submit"
+          size="lg"
+          loading={isSubmitting}
+          className="w-full"
+        >
           Đăng nhập
         </SiteButton>
       </form>
 
       <SocialSignInButtons />
+
+      {/* MOCK-TẠM: đăng nhập nhanh bằng tài khoản demo, chỉ hiện khi chạy dev. */}
+      {MOCK_AUTH_ENABLED && (
+        <div className="mt-6 rounded-2xl border border-dashed border-[#f3c9a1] bg-[#fff8f1] p-4">
+          <p className="text-sm font-semibold text-pine">
+            Tài khoản demo (không cần backend)
+          </p>
+          <p className="mt-1 text-xs text-stone">
+            Mật khẩu chung: {DEMO_PASSWORD}
+          </p>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            {DEMO_ACCOUNTS.map((a) => (
+              <button
+                key={a.email}
+                type="button"
+                disabled={isSubmitting}
+                onClick={() =>
+                  onSubmit({ email: a.email, password: DEMO_PASSWORD })
+                }
+                className="rounded-xl bg-white px-3 py-2 text-left text-sm shadow-sm transition hover:bg-[#fff1e3]"
+              >
+                <span className="block font-semibold text-pine">{a.label}</span>
+                <span className="block truncate text-xs text-stone">
+                  {a.email}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </>
   );
 }

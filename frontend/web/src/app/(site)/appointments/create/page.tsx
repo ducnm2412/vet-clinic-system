@@ -5,7 +5,12 @@ import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, ChevronLeft, Plus } from "lucide-react";
 import { ApiError, bookingApi, clinicServiceApi, myPetApi } from "@/lib/api";
-import { formatAge, formatDate, formatTime, todayISO } from "@/lib/utils/format";
+import {
+  formatAge,
+  formatDate,
+  formatTime,
+  todayISO,
+} from "@/lib/utils/format";
 import { cn } from "@/lib/utils/cn";
 import { useToast } from "@/components/ui";
 import { CLINIC } from "@/config/clinic";
@@ -68,10 +73,13 @@ function BookingFlow() {
     queryKey: ["clinic-hours", todayDate],
     queryFn: () => bookingApi.clinicHours(todayDate),
   });
-  const todayBookable = todayTimes.data === undefined || todayTimes.data.some((t) => t.available);
+  const todayBookable =
+    todayTimes.data === undefined || todayTimes.data.some((t) => t.available);
 
   useEffect(() => {
     if (!todayBookable && date === todayDate) {
+      // Chỉ chạy khi dữ liệu "hôm nay" về và báo hết giờ — không lặp render.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDate(addDaysISO(todayDate, 1));
       setStartTime("");
     }
@@ -94,7 +102,11 @@ function BookingFlow() {
       router.push(`/appointments/${appointment.id}`);
     },
     onError: async (err) => {
-      toast.error(err instanceof ApiError ? err.message : "Không gửi được yêu cầu đặt lịch.");
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Không gửi được yêu cầu đặt lịch.",
+      );
       // Có thể giờ vừa chọn bị người khác lấy mất chỗ cuối: tải lại số chỗ, nếu mốc đó đã đầy
       // thì đưa khách về bước chọn giờ. Lỗi khác (vd quá số yêu cầu chờ) thì ở yên bước này.
       const fresh = await times.refetch();
@@ -124,21 +136,33 @@ function BookingFlow() {
           <PetAvatar species={null} className="mx-auto h-48 w-36" />
           <h1 className="t-h2 mt-10">Thêm bé nhà bạn trước đã</h1>
           <p className="measure mx-auto mt-4 text-stone">
-            Bác sĩ cần biết khám cho bé nào. Chỉ cần tên và loài là đặt lịch được, phần còn
-            lại điền sau cũng không sao.
+            Bác sĩ cần biết khám cho bé nào. Chỉ cần tên và loài là đặt lịch
+            được, phần còn lại điền sau cũng không sao.
           </p>
-          <SiteButton size="lg" className="mt-8" onClick={() => setAddingPet(true)}>
+          <SiteButton
+            size="lg"
+            className="mt-8"
+            onClick={() => setAddingPet(true)}
+          >
             <Plus aria-hidden className="size-4" />
             Thêm thú cưng
           </SiteButton>
         </Container>
-        {addingPet && <PetFormDialog open pet={null} onClose={() => setAddingPet(false)} />}
+        {addingPet && (
+          <PetFormDialog open pet={null} onClose={() => setAddingPet(false)} />
+        )}
       </>
     );
   }
 
   const canContinue =
-    step === 0 ? petId !== "" : step === 1 ? date !== "" : step === 2 ? startTime !== "" : true;
+    step === 0
+      ? petId !== ""
+      : step === 1
+        ? date !== ""
+        : step === 2
+          ? startTime !== ""
+          : true;
 
   return (
     <>
@@ -146,8 +170,8 @@ function BookingFlow() {
         <Container>
           <h1 className="t-h2">Đặt lịch khám</h1>
           <p className="measure t-lede mt-4 text-stone">
-            Bốn bước. Bạn chọn giờ mong muốn, không phải chọn bác sĩ — phòng khám xếp người đang
-            rảnh rồi báo lại cho bạn qua email.
+            Bốn bước. Bạn chọn giờ mong muốn, không phải chọn bác sĩ — phòng
+            khám xếp người đang rảnh rồi báo lại cho bạn qua email.
           </p>
         </Container>
       </div>
@@ -214,28 +238,48 @@ function BookingFlow() {
               )}
 
               {step < 3 ? (
-                <SiteButton disabled={!canContinue} onClick={() => setStep(step + 1)}>
+                <SiteButton
+                  disabled={!canContinue}
+                  onClick={() => setStep(step + 1)}
+                >
                   Tiếp tục
                 </SiteButton>
               ) : (
-                <SiteButton size="lg" loading={book.isPending} onClick={() => book.mutate()}>
+                <SiteButton
+                  size="lg"
+                  loading={book.isPending}
+                  onClick={() => book.mutate()}
+                >
                   Gửi yêu cầu đặt lịch
                 </SiteButton>
               )}
             </div>
           </div>
 
-          <BookingSummary pet={pet} date={date} startTime={startTime} step={step} />
+          <BookingSummary
+            pet={pet}
+            date={date}
+            startTime={startTime}
+            step={step}
+          />
         </div>
       </Container>
 
-      {addingPet && <PetFormDialog open pet={null} onClose={() => setAddingPet(false)} />}
+      {addingPet && (
+        <PetFormDialog open pet={null} onClose={() => setAddingPet(false)} />
+      )}
     </>
   );
 }
 
 /** Thanh bước. Bấm quay lại bước đã qua được, không nhảy tới bước chưa tới. */
-function Stepper({ current, onJump }: { current: number; onJump: (i: number) => void }) {
+function Stepper({
+  current,
+  onJump,
+}: {
+  current: number;
+  onJump: (i: number) => void;
+}) {
   return (
     <ol className="flex flex-wrap gap-x-2 gap-y-3">
       {STEPS.map((label, i) => {
@@ -258,7 +302,11 @@ function Stepper({ current, onJump }: { current: number; onJump: (i: number) => 
                 aria-hidden
                 className={cn(
                   "grid size-7 place-items-center rounded-full text-[14px] font-semibold",
-                  active ? "bg-white text-pine" : done ? "bg-teal text-white" : "bg-mist text-stone",
+                  active
+                    ? "bg-white text-pine"
+                    : done
+                      ? "bg-teal text-white"
+                      : "bg-mist text-stone",
                 )}
               >
                 {done ? <Check className="size-4" /> : i + 1}
@@ -290,7 +338,8 @@ function StepPets({
     <section>
       <h2 className="t-h2">Khám cho bé nào?</h2>
       <p className="measure mt-3 text-stone">
-        Chọn một bé. Muốn khám hai bé cùng hôm thì đặt hai lịch riêng để mỗi bé có đủ thời gian.
+        Chọn một bé. Muốn khám hai bé cùng hôm thì đặt hai lịch riêng để mỗi bé
+        có đủ thời gian.
       </p>
 
       <ul className="mt-8 grid gap-4 sm:grid-cols-2">
@@ -306,7 +355,13 @@ function StepPets({
                   : "border-mist hover:border-teal hover:bg-mint/60",
               )}
             >
-              <PetAvatar species={pet.species} photoUrl={pet.photoUrl} name={pet.name} small className="h-16 w-13" />
+              <PetAvatar
+                species={pet.species}
+                photoUrl={pet.photoUrl}
+                name={pet.name}
+                small
+                className="h-16 w-13"
+              />
               <span className="min-w-0">
                 <span className="block font-[family-name:var(--font-brand)] text-[19px] font-semibold">
                   {pet.name}
@@ -315,7 +370,9 @@ function StepPets({
                   {pet.species}
                   {pet.breed ? ` ${pet.breed}` : ""}
                 </span>
-                <span className="block text-[15px] text-stone">{formatAge(pet.dateOfBirth)}</span>
+                <span className="block text-[15px] text-stone">
+                  {formatAge(pet.dateOfBirth)}
+                </span>
               </span>
             </button>
           </li>
@@ -352,13 +409,22 @@ function StepDate({
   // Bảy ngày tới bấm được ngay; xa hơn thì dùng ô chọn ngày.
   const quick = Array.from({ length: 7 }, (_, i) => addDaysISO(today, i));
 
-  const weekday = ["Chủ Nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"];
+  const weekday = [
+    "Chủ Nhật",
+    "Thứ Hai",
+    "Thứ Ba",
+    "Thứ Tư",
+    "Thứ Năm",
+    "Thứ Sáu",
+    "Thứ Bảy",
+  ];
 
   return (
     <section>
       <h2 className="t-h2">Ngày nào bạn tiện?</h2>
       <p className="measure mt-3 text-stone">
-        Phòng khám mở cả tuần, {CLINIC.hours.toLowerCase().replace("thứ hai đến chủ nhật, ", "")}.
+        Phòng khám mở cả tuần,{" "}
+        {CLINIC.hours.toLowerCase().replace("thứ hai đến chủ nhật, ", "")}.
       </p>
 
       <ul className="mt-8 flex flex-wrap gap-3">
@@ -371,7 +437,11 @@ function StepDate({
                 onClick={() => !disabled && onChange(d)}
                 disabled={disabled}
                 aria-pressed={date === d}
-                title={disabled ? "Hôm nay đã hết giờ nhận yêu cầu, chọn ngày khác giúp bạn nhé." : undefined}
+                title={
+                  disabled
+                    ? "Hôm nay đã hết giờ nhận yêu cầu, chọn ngày khác giúp bạn nhé."
+                    : undefined
+                }
                 className={cn(
                   "w-24 rounded-[var(--radius-card)] border px-3 py-3 text-center transition-colors",
                   disabled
@@ -385,9 +455,14 @@ function StepDate({
                   {i === 0 ? "Hôm nay" : weekday[day.getDay()]}
                 </span>
                 <span className="tnum block text-[19px] font-semibold">
-                  {String(day.getDate()).padStart(2, "0")}/{String(day.getMonth() + 1).padStart(2, "0")}
+                  {String(day.getDate()).padStart(2, "0")}/
+                  {String(day.getMonth() + 1).padStart(2, "0")}
                 </span>
-                {disabled && <span className="mt-1 block text-[12px] text-stone/70">Hết giờ</span>}
+                {disabled && (
+                  <span className="mt-1 block text-[12px] text-stone/70">
+                    Hết giờ
+                  </span>
+                )}
               </button>
             </li>
           );
@@ -396,12 +471,15 @@ function StepDate({
 
       {!todayBookable && (
         <p className="mt-4 text-[14px] text-stone">
-          Hôm nay phòng khám đã hết giờ nhận yêu cầu. Chọn ngày mai trở đi giúp bạn nhé.
+          Hôm nay phòng khám đã hết giờ nhận yêu cầu. Chọn ngày mai trở đi giúp
+          bạn nhé.
         </p>
       )}
 
       <label className="mt-8 block max-w-60">
-        <span className="mb-1.5 block text-[15px] font-medium">Hoặc chọn ngày khác</span>
+        <span className="mb-1.5 block text-[15px] font-medium">
+          Hoặc chọn ngày khác
+        </span>
         <input
           type="date"
           min={minDate}
@@ -445,20 +523,25 @@ function StepTime({
     <section>
       <h2 className="t-h2">Mấy giờ thì được?</h2>
       <p className="measure mt-3 text-stone">
-        Chọn giờ bạn muốn đến ngày {formatDate(date)}. Mỗi ca kéo dài 30 phút. Phòng khám sẽ
-        xếp bác sĩ rồi báo lại cho bạn qua email.
+        Chọn giờ bạn muốn đến ngày {formatDate(date)}. Mỗi ca kéo dài 30 phút.
+        Phòng khám sẽ xếp bác sĩ rồi báo lại cho bạn qua email.
       </p>
 
       {loading ? (
         <ul className="mt-8 flex flex-wrap gap-3" aria-hidden>
           {Array.from({ length: 8 }).map((_, i) => (
-            <li key={i} className="h-14 w-28 animate-pulse rounded-full bg-mint" />
+            <li
+              key={i}
+              className="h-14 w-28 animate-pulse rounded-full bg-mint"
+            />
           ))}
         </ul>
       ) : failed ? (
         <div className="mt-8 rounded-[var(--radius-card)] border border-mist px-6 py-10 text-center">
           <p className="t-h3">Chưa xem được giờ nhận lịch</p>
-          <p className="mt-2 text-stone">Kết nối tới phòng khám đang trục trặc.</p>
+          <p className="mt-2 text-stone">
+            Kết nối tới phòng khám đang trục trặc.
+          </p>
           <SiteButton variant="outline" className="mt-6" onClick={onRetry}>
             Thử lại
           </SiteButton>
@@ -470,7 +553,8 @@ function StepTime({
             {times.length === 0
               ? "Phòng khám chưa nhận lịch cho ngày này."
               : "Các giờ trong ngày đã đủ lịch hoặc đã qua."}{" "}
-            Chọn ngày khác giúp bạn nhé, hoặc gọi {CLINIC.phone} để phòng khám hỗ trợ.
+            Chọn ngày khác giúp bạn nhé, hoặc gọi {CLINIC.phone} để phòng khám
+            hỗ trợ.
           </p>
           <SiteButton variant="outline" className="mt-6" onClick={onBackToDate}>
             Chọn ngày khác
@@ -478,8 +562,18 @@ function StepTime({
         </div>
       ) : (
         <div className="mt-8 space-y-8">
-          <TimeGroup title="Buổi sáng" times={morning} startTime={startTime} onPick={onPick} />
-          <TimeGroup title="Buổi chiều" times={afternoon} startTime={startTime} onPick={onPick} />
+          <TimeGroup
+            title="Buổi sáng"
+            times={morning}
+            startTime={startTime}
+            onPick={onPick}
+          />
+          <TimeGroup
+            title="Buổi chiều"
+            times={afternoon}
+            startTime={startTime}
+            onPick={onPick}
+          />
         </div>
       )}
     </section>
@@ -519,7 +613,9 @@ function TimeGroup({
                     : "border-mist hover:border-teal hover:bg-mint",
               )}
             >
-              <span className="tnum text-[17px] font-medium">{formatTime(t.startTime)}</span>
+              <span className="tnum text-[17px] font-medium">
+                {formatTime(t.startTime)}
+              </span>
             </button>
           </li>
         ))}
@@ -547,7 +643,10 @@ function StepConfirm({
 }) {
   // VD-21: danh mục dịch vụ lấy từ backend. Gọi hỏng thì ẩn ô chọn đi, khách vẫn đặt được và
   // mô tả ở ô lý do — không chặn việc đặt lịch chỉ vì thiếu một ô không bắt buộc.
-  const services = useQuery({ queryKey: ["clinic-services"], queryFn: clinicServiceApi.list });
+  const services = useQuery({
+    queryKey: ["clinic-services"],
+    queryFn: clinicServiceApi.list,
+  });
   const list = services.data ?? [];
   const chosen = list.find((x) => x.id === serviceId) ?? null;
 
@@ -555,7 +654,8 @@ function StepConfirm({
     <section>
       <h2 className="t-h2">Bé đang bị gì?</h2>
       <p className="measure mt-3 text-stone">
-        Ghi vài dòng thôi cũng được. Bác sĩ đọc trước nên lúc bạn đến là vào việc luôn.
+        Ghi vài dòng thôi cũng được. Bác sĩ đọc trước nên lúc bạn đến là vào
+        việc luôn.
       </p>
 
       <div className="mt-8 max-w-xl">
@@ -588,9 +688,10 @@ function StepConfirm({
       )}
 
       <p className="mt-10 max-w-xl rounded-[var(--radius-card)] bg-peach px-5 py-4 text-[15px]">
-        Đây là yêu cầu đặt lịch, chưa phải lịch đã chốt. Phòng khám sẽ xếp bác sĩ rảnh vào giờ bạn
-        chọn và báo lại qua email. Nếu giờ đó không xếp được, phòng khám đề xuất giờ khác để bạn
-        đồng ý hoặc huỷ. Bạn cũng xem được trạng thái ở trang Lịch khám.
+        Đây là yêu cầu đặt lịch, chưa phải lịch đã chốt. Phòng khám sẽ xếp bác
+        sĩ rảnh vào giờ bạn chọn và báo lại qua email. Nếu giờ đó không xếp
+        được, phòng khám đề xuất giờ khác để bạn đồng ý hoặc huỷ. Bạn cũng xem
+        được trạng thái ở trang Lịch khám.
       </p>
 
       <dl className="mt-6 max-w-xl divide-y divide-mist rounded-[var(--radius-card)] border border-mist px-6">
@@ -634,7 +735,13 @@ function BookingSummary({
         <dl className="mt-5 space-y-4 text-[15px]">
           {pet && (
             <div className="flex items-center gap-4">
-              <PetAvatar species={pet.species} photoUrl={pet.photoUrl} name={pet.name} small className="h-14 w-11" />
+              <PetAvatar
+                species={pet.species}
+                photoUrl={pet.photoUrl}
+                name={pet.name}
+                small
+                className="h-14 w-11"
+              />
               <div>
                 <dt className="text-stone">Khám cho</dt>
                 <dd className="font-medium">{pet.name}</dd>

@@ -164,7 +164,7 @@ function Notice({
       <h1 className="t-h2 mt-8">{title}</h1>
       <p className="measure mx-auto mt-4 text-stone">{body}</p>
       <div className="mt-8 flex flex-wrap justify-center gap-3">
-        <ButtonLink href={orderId ? `/orders/${orderId}` : "/orders"}>
+        <ButtonLink href={orderId ? `/user/orders/${orderId}` : "/user/orders"}>
           {orderId ? "Xem đơn hàng" : "Đơn hàng của bạn"}
         </ButtonLink>
         <ButtonLink href="/products" variant="outline">

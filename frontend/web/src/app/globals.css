@@ -240,3 +240,29 @@ body {
     border: none;
   }
 }
+
+/* Khu vực khách hàng (/user): ngăn kéo, dropdown, chuyển trang. */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes slideIn {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+@keyframes dropIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes pageIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-\[fadeIn_\.2s_ease-out\],
+  .animate-\[slideIn_\.25s_ease-out\],
+  .animate-\[dropIn_\.18s_ease-out\],
+  .animate-\[pageIn_\.3s_ease-out\] {
+    animation: none;
+  }
+}

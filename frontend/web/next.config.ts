@@ -25,12 +25,21 @@ const nextConfig: NextConfig = {
     const moved: Array<[string, string]> = [
       ["/customer/shop", "/products"],
       ["/customer/cart", "/cart"],
-      ["/customer/orders/:id", "/orders/:id"],
-      ["/customer/orders", "/orders"],
-      ["/customer/pets", "/pets"],
+      ["/customer/orders/:id", "/user/orders/:id"],
+      ["/customer/orders", "/user/orders"],
+      ["/customer/pets", "/user/pets"],
       ["/customer/appointments/create", "/appointments/create"],
-      ["/customer/appointments", "/appointments"],
+      ["/customer/appointments", "/user/appointments"],
       ["/customer", "/"],
+      // Khu vực khách hàng gom về /user/* (có sidebar chung). Trang đặt lịch vẫn ở /appointments/create.
+      ["/account/settings", "/user/settings"],
+      ["/account", "/user"],
+      ["/pets/:id", "/user/pets/:id"],
+      ["/pets", "/user/pets"],
+      ["/orders/:id", "/user/orders/:id"],
+      ["/orders", "/user/orders"],
+      ["/appointments/:id((?!create$)[^/]+)", "/user/appointments/:id"],
+      ["/appointments", "/user/appointments"],
     ];
 
     return moved.map(([source, destination]) => ({ source, destination, permanent: false }));

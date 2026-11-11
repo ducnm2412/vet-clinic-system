@@ -1,4 +1,5 @@
 import { http, qs } from "./client";
+import { devMock, mockOrderDetail, mockOrderHistory, mockOrderPage } from "./mock-account"; // MOCK-TẠM
 import type {
   AddToCartRequest,
   Cart,
@@ -29,9 +30,9 @@ export const orderApi = {
 
   /** Đơn của chính mình. */
   mine: (page = 0, size = 20) =>
-    http.get<PageResponse<OrderSummary>>(`/orders${qs({ page, size })}`),
-  byId: (id: string) => http.get<Order>(`/orders/${id}`),
-  history: (id: string) => http.get<OrderStatusHistory[]>(`/orders/${id}/history`),
+    devMock(http.get<PageResponse<OrderSummary>>(`/orders${qs({ page, size })}`), () => mockOrderPage(page, size)), // MOCK-TẠM
+  byId: (id: string) => devMock(http.get<Order>(`/orders/${id}`), () => mockOrderDetail(id)), // MOCK-TẠM
+  history: (id: string) => devMock(http.get<OrderStatusHistory[]>(`/orders/${id}/history`), () => mockOrderHistory(id)), // MOCK-TẠM
   cancelMine: (id: string, reason: string) => http.post<Order>(`/orders/${id}/cancel`, { reason }),
 
   /** Lấy link sang cổng để trả tiền đơn online. Mỗi lần gọi cấp link mới và vô hiệu link cũ. */

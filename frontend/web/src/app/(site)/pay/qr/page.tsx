@@ -73,7 +73,7 @@ function QrPaymentBody() {
     if (!paid || !data) return;
     qc.invalidateQueries({ queryKey: ["orders"] });
     toast.success("Phòng khám đã nhận được tiền");
-    router.replace(`/orders/${data.id}`);
+    router.replace(`/user/orders/${data.id}`);
   }, [paid, data, qc, router, toast]);
 
   if (!orderId || order.isError || (order.isSuccess && data?.paymentMethod !== "ONLINE")) {
@@ -84,7 +84,7 @@ function QrPaymentBody() {
           Link bị thiếu hoặc đơn không tồn tại. Mở lại đơn của bạn và bấm &ldquo;Thanh toán ngay&rdquo;.
         </p>
         <div className="mt-8">
-          <ButtonLink href="/orders" variant="outline">
+          <ButtonLink href="/user/orders" variant="outline">
             Về danh sách đơn
           </ButtonLink>
         </div>
@@ -136,7 +136,7 @@ function QrPaymentBody() {
         )}
 
         <div className="mt-8">
-          <ButtonLink href={`/orders/${data.id}`} variant="outline" className="w-full">
+          <ButtonLink href={`/user/orders/${data.id}`} variant="outline" className="w-full">
             Xem đơn hàng
           </ButtonLink>
         </div>

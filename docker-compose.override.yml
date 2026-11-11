@@ -1,0 +1,82 @@
+# Gioi han RAM cho may it bo nho (7-8 GB). Compose tu doc file nay.
+#
+# Healthcheck cua cac service Java: cong HTTP mo = Spring Boot da khoi dong xong.
+# (Image eclipse-temurin khong co curl/wget nen dung /dev/tcp cua bash.)
+# scripts/start.sh dua vao healthcheck nay de bat tung dot service theo thu tu uu tien.
+x-jvm: &jvm
+  JAVA_TOOL_OPTIONS: "-Xmx200m -Xss512k -XX:MaxMetaspaceSize=128m -XX:+UseSerialGC -XX:TieredStopAtLevel=1"
+x-hc: &hc
+  interval: 10s
+  timeout: 3s
+  retries: 30
+  start_period: 60s
+services:
+  eureka-server:
+    environment:
+      <<: *jvm
+  api-gateway:
+    environment:
+      <<: *jvm
+    healthcheck:
+      <<: *hc
+      test: ["CMD", "bash", "-c", ":> /dev/tcp/localhost/8080"]
+  auth-service:
+    environment:
+      <<: *jvm
+    healthcheck:
+      <<: *hc
+      test: ["CMD", "bash", "-c", ":> /dev/tcp/localhost/8081"]
+  profile-service:
+    environment:
+      <<: *jvm
+    healthcheck:
+      <<: *hc
+      test: ["CMD", "bash", "-c", ":> /dev/tcp/localhost/8083"]
+  pet-service:
+    environment:
+      <<: *jvm
+    healthcheck:
+      <<: *hc
+      test: ["CMD", "bash", "-c", ":> /dev/tcp/localhost/8091"]
+  booking-service:
+    environment:
+      <<: *jvm
+    healthcheck:
+      <<: *hc
+      test: ["CMD", "bash", "-c", ":> /dev/tcp/localhost/8086"]
+  product-service:
+    environment:
+      <<: *jvm
+    healthcheck:
+      <<: *hc
+      test: ["CMD", "bash", "-c", ":> /dev/tcp/localhost/8084"]
+  order-service:
+    environment:
+      <<: *jvm
+    healthcheck:
+      <<: *hc
+      test: ["CMD", "bash", "-c", ":> /dev/tcp/localhost/8085"]
+  payment-service:
+    environment:
+      <<: *jvm
+    healthcheck:
+      <<: *hc
+      test: ["CMD", "bash", "-c", ":> /dev/tcp/localhost/8087"]
+  staff-service:
+    environment:
+      <<: *jvm
+    healthcheck:
+      <<: *hc
+      test: ["CMD", "bash", "-c", ":> /dev/tcp/localhost/8090"]
+  notification-service:
+    environment:
+      <<: *jvm
+    healthcheck:
+      <<: *hc
+      test: ["CMD", "bash", "-c", ":> /dev/tcp/localhost/8088"]
+  reporting-service:
+    environment:
+      <<: *jvm
+    healthcheck:
+      <<: *hc
+      test: ["CMD", "bash", "-c", ":> /dev/tcp/localhost/8089"]

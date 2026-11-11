@@ -80,8 +80,8 @@ jobs:
             echo "::endgroup::"
             [ $FAILED = 1 ] && break
           done
-          # Bat lai toan bo (service build loi se chay lai image cu).
-          docker compose up -d
+          # Bat lai toan bo THEO THU TU UU TIEN (service build loi se chay lai image cu).
+          bash scripts/start.sh
           exit $FAILED
 
       - name: Kiem tra trang thai

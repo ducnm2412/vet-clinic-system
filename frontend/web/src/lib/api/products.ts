@@ -1,4 +1,5 @@
 import { http, qs } from "./client";
+import { mockCategories, mockProductPage, mockProducts, withMock } from "./mock-data"; // MOCK-TẠM
 import type {
   Category,
   CategoryRequest,
@@ -16,7 +17,7 @@ export const productApi = {
    * xem cả hàng đã ẩn (VD-01) và việc sửa thuộc về backend, không phải che ở frontend.
    */
   search: (filter: ProductFilter = {}) =>
-    http.get<PageResponse<Product>>(
+    withMock(http.get<PageResponse<Product>>(
       `/products${qs({
         keyword: filter.keyword,
         categoryId: filter.categoryId,
@@ -27,9 +28,9 @@ export const productApi = {
         sort: filter.sort,
       })}`,
       true,
-    ),
+    ), () => mockProductPage(filter)), // MOCK-TẠM
 
-  byId: (id: string) => http.get<Product>(`/products/${id}`, true),
+  byId: (id: string) => withMock(http.get<Product>(`/products/${id}`, true), () => mockProducts.find((x) => x.id === id) ?? mockProducts[0]), // MOCK-TẠM
 
   create: (body: ProductRequest) => http.post<Product>("/products", body),
   update: (id: string, body: ProductRequest) => http.put<Product>(`/products/${id}`, body),
@@ -50,7 +51,7 @@ export const productApi = {
 };
 
 export const categoryApi = {
-  list: () => http.get<Category[]>("/categories", true),
+  list: () => withMock(http.get<Category[]>("/categories", true), () => mockCategories), // MOCK-TẠM
   byId: (id: string) => http.get<Category>(`/categories/${id}`, true),
   create: (body: CategoryRequest) => http.post<Category>("/categories", body),
   update: (id: string, body: CategoryRequest) => http.put<Category>(`/categories/${id}`, body),
