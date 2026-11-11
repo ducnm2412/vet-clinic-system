@@ -57,7 +57,7 @@ function OrderDetailBody() {
           Đơn có thể không thuộc tài khoản của bạn, hoặc đường dẫn bị sai.
         </p>
         <div className="mt-8">
-          <ButtonLink href="/orders" variant="outline">
+          <ButtonLink href="/user/orders" variant="outline">
             Về danh sách đơn
           </ButtonLink>
         </div>
@@ -97,7 +97,7 @@ function OrderBody({ order }: { order: Order }) {
       <div className="bg-mint">
         <Container className="pt-8">
           <Link
-            href="/orders"
+            href="/user/orders"
             className="inline-flex items-center gap-1.5 text-[15px] text-stone hover:text-pine"
           >
             <ChevronLeft aria-hidden className="size-4" />

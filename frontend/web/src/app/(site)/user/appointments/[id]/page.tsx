@@ -55,7 +55,7 @@ function AppointmentDetailBody() {
           Lịch hẹn có thể đã bị xoá, hoặc không thuộc tài khoản của bạn.
         </p>
         <div className="mt-8">
-          <ButtonLink href="/appointments" variant="outline">
+          <ButtonLink href="/user/appointments" variant="outline">
             Về lịch khám của bạn
           </ButtonLink>
         </div>
@@ -70,7 +70,7 @@ function AppointmentDetailBody() {
       <div className="bg-mint">
         <Container className="pt-8">
           <Link
-            href="/appointments"
+            href="/user/appointments"
             className="inline-flex items-center gap-1.5 text-[15px] text-stone hover:text-pine"
           >
             <ChevronLeft aria-hidden className="size-4" />
@@ -105,7 +105,7 @@ function AppointmentDetailBody() {
 
             {pet && (
               <p className="mt-6 text-stone">
-                <Link href={`/pets/${pet.id}`} className="text-teal-deep underline underline-offset-4">
+                <Link href={`/user/pets/${pet.id}`} className="text-teal-deep underline underline-offset-4">
                   Xem hồ sơ của {pet.name}
                 </Link>
               </p>

@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, ChevronDown, LogOut, Menu, PawPrint, ShoppingBag, User, X } from "lucide-react";
+import { ArrowRight, ChevronDown, KeyRound, LayoutGrid, LogOut, Menu, PawPrint, Search, ShoppingBag, User, UserRound, X } from "lucide-react";
+import { CustomerAvatar } from "@/components/user/UserSidebar";
 import { clinicServiceApi } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useCart } from "@/lib/useCart";
@@ -12,16 +13,22 @@ import { cn } from "@/lib/utils/cn";
 import { BrandLockup } from "./Brand";
 import { ButtonLink } from "./primitives";
 
-/** Mục nào cần đăng nhập bằng tài khoản khách thì đánh dấu, để không mời người ta vào chỗ 401. */
-const LINKS: Array<{ href: string; label: string; customerOnly?: boolean }> = [
+type NavLink = { href: string; label: string };
+
+/** Khách vãng lai: các trang giới thiệu chung. */
+const GUEST_LINKS: NavLink[] = [
   { href: "/", label: "Trang chủ" },
   { href: "/about", label: "Giới thiệu" },
   { href: "/services", label: "Dịch vụ" },
   { href: "/products", label: "Sản phẩm" },
   { href: "/contact", label: "Liên hệ" },
-  { href: "/pets", label: "Thú cưng", customerOnly: true },
-  { href: "/appointments", label: "Lịch khám", customerOnly: true },
-  { href: "/orders", label: "Đơn hàng", customerOnly: true },
+];
+
+/** Khách hàng đã đăng nhập: các mục riêng (thú cưng, lịch hẹn, đơn hàng…) nằm ở sidebar /user. */
+const CUSTOMER_LINKS: NavLink[] = [
+  { href: "/", label: "Trang chủ" },
+  { href: "/services", label: "Dịch vụ" },
+  { href: "/products", label: "Sản phẩm" },
 ];
 
 export function SiteHeader() {
@@ -41,7 +48,7 @@ export function SiteHeader() {
     .filter((s) => s.active)
     .sort((a, b) => a.displayOrder - b.displayOrder)
     .map((s) => ({ href: `/services/${s.slug}`, label: s.name }));
-  const links = LINKS.filter((l) => !l.customerOnly || isCustomer);
+  const links = isCustomer ? CUSTOMER_LINKS : GUEST_LINKS;
 
   // Đầu trang chỉ hiện đường kẻ sau khi người ta bắt đầu cuộn — lúc mới mở, hero liền
   // mạch với đầu trang, không bị một vạch cắt ngang.
@@ -75,11 +82,11 @@ export function SiteHeader() {
         scrolled ? "shadow-[0_1px_0_var(--mist),0_6px_20px_-18px_rgb(19_78_74/0.5)]" : "",
       )}
     >
-      <div className="mx-auto flex h-18 w-full max-w-[1200px] items-center gap-6 px-5 md:px-6">
+      <div className="mx-auto flex h-18 w-full max-w-[1440px] items-center gap-4 px-5 md:px-6">
         <BrandLockup />
 
-        <nav aria-label="Điều hướng chính" className="ml-2 hidden xl:block">
-          <ul className="flex items-center gap-1">
+        <nav aria-label="Điều hướng chính" className="ml-2 hidden min-w-0 xl:block">
+          <ul className="flex items-center gap-0.5">
             {links.map((l) =>
               l.href === "/services" ? (
                 <ServicesDropdown key={l.href} active={isActive(l.href)} items={services} />
@@ -89,7 +96,7 @@ export function SiteHeader() {
                     href={l.href}
                     aria-current={isActive(l.href) ? "page" : undefined}
                     className={cn(
-                      "rounded-full px-3.5 py-2 text-[15px] transition-colors",
+                      "whitespace-nowrap rounded-full px-3 py-2 text-[15px] transition-colors",
                       isActive(l.href)
                         ? "bg-mint font-medium text-pine"
                         : "text-stone hover:bg-mint hover:text-pine",
@@ -104,6 +111,7 @@ export function SiteHeader() {
         </nav>
 
         <div className="ml-auto flex items-center gap-2">
+          {isCustomer && <HeaderSearch />}
           {hasCart && (
             <Link
               href="/cart"
@@ -131,9 +139,19 @@ export function SiteHeader() {
                 aria-expanded={accountOpen}
                 aria-haspopup="menu"
                 aria-label={`Tài khoản ${email}`}
-                className="grid size-11 place-items-center rounded-full border border-mist text-pine transition-colors hover:border-teal hover:bg-mint"
+                className={cn(
+                  "flex items-center gap-1 rounded-full border border-mist text-pine transition-colors hover:border-[#f57c1f]",
+                  isCustomer ? "p-1 pr-2" : "size-11 justify-center hover:bg-mint",
+                )}
               >
-                <User aria-hidden className="size-5 text-teal" />
+                {isCustomer ? (
+                  <>
+                    <CustomerAvatar className="size-9" />
+                    <ChevronDown aria-hidden className={cn("size-4 text-stone transition-transform", accountOpen && "rotate-180")} />
+                  </>
+                ) : (
+                  <User aria-hidden className="size-5 text-teal" />
+                )}
               </button>
 
               {accountOpen && (
@@ -145,23 +163,20 @@ export function SiteHeader() {
                   />
                   <div
                     role="menu"
-                    className="absolute right-0 z-20 mt-2 w-64 overflow-hidden rounded-2xl border border-mist bg-white py-1 shadow-[var(--shadow-lift)]"
+                    className="absolute right-0 z-20 mt-2 w-64 origin-top-right animate-[dropIn_.18s_ease-out] overflow-hidden rounded-2xl border border-mist bg-white py-1 shadow-[var(--shadow-lift)]"
                   >
                     <p className="truncate px-4 pb-2 pt-3 text-sm text-stone">{email}</p>
                     <hr className="mb-1 border-mist" />
                     {isCustomer && (
                       <>
-                        <AccountItem href="/pets" onClick={() => setAccountOpen(false)}>
-                          Thú cưng của tôi
+                        <AccountItem href="/user" onClick={() => setAccountOpen(false)}>
+                          <LayoutGrid aria-hidden className="size-4 text-stone" /> Tài khoản của tôi
                         </AccountItem>
-                        <AccountItem href="/appointments" onClick={() => setAccountOpen(false)}>
-                          Lịch khám của tôi
+                        <AccountItem href="/user/settings" onClick={() => setAccountOpen(false)}>
+                          <UserRound aria-hidden className="size-4 text-stone" /> Thông tin cá nhân
                         </AccountItem>
-                        <AccountItem href="/orders" onClick={() => setAccountOpen(false)}>
-                          Đơn hàng của tôi
-                        </AccountItem>
-                        <AccountItem href="/account" onClick={() => setAccountOpen(false)}>
-                          Thông tin và địa chỉ
+                        <AccountItem href="/user/settings?tab=password" onClick={() => setAccountOpen(false)}>
+                          <KeyRound aria-hidden className="size-4 text-stone" /> Đổi mật khẩu
                         </AccountItem>
                         <hr className="my-1 border-mist" />
                       </>
@@ -246,7 +261,7 @@ function AccountItem({
       role="menuitem"
       href={href}
       onClick={onClick}
-      className="block px-4 py-2.5 text-[15px] text-pine hover:bg-mint"
+      className="flex items-center gap-2.5 px-4 py-2.5 text-[15px] text-pine hover:bg-mint"
     >
       {children}
     </Link>
@@ -269,7 +284,7 @@ function ServicesDropdown({ active, items }: { active: boolean; items: Array<{ h
         aria-current={active ? "page" : undefined}
         aria-haspopup="true"
         className={cn(
-          "inline-flex items-center gap-1 rounded-full px-3.5 py-2 text-[15px] transition-colors",
+          "inline-flex items-center gap-1 whitespace-nowrap rounded-full px-3 py-2 text-[15px] transition-colors",
           active ? "bg-mint font-medium text-pine" : "text-stone hover:bg-mint hover:text-pine",
         )}
       >
@@ -424,5 +439,36 @@ function MobileDrawer({
         </div>
       </div>
     </div>
+  );
+}
+
+/** Tìm sản phẩm nhanh từ header — chuyển sang /products?q=… */
+function HeaderSearch() {
+  const router = useRouter();
+  const [q, setQ] = useState("");
+  return (
+    <form
+      role="search"
+      onSubmit={(e) => {
+        e.preventDefault();
+        router.push(q.trim() ? `/products?q=${encodeURIComponent(q.trim())}` : "/products");
+      }}
+      className="relative mr-1 hidden lg:block"
+    >
+      <label htmlFor="header-search" className="sr-only">
+        Tìm kiếm sản phẩm
+      </label>
+      <input
+        id="header-search"
+        type="search"
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        placeholder="Tìm kiếm sản phẩm…"
+        className="h-11 w-60 rounded-full border border-mist bg-[#fffcf8] pl-4 pr-11 text-sm outline-none transition focus:border-[#f57c1f] focus:ring-2 focus:ring-[#f57c1f]/15 xl:w-72"
+      />
+      <button type="submit" aria-label="Tìm" className="absolute right-1 top-1/2 grid size-9 -translate-y-1/2 place-items-center rounded-full text-stone hover:text-[#f57c1f]">
+        <Search aria-hidden className="size-4" />
+      </button>
+    </form>
   );
 }

@@ -1,5 +1,6 @@
 import { ApiError, http, qs } from "./client";
 import { mockServices, withMock } from "./mock-data"; // MOCK-TẠM
+import { devMock, mockAppointments } from "./mock-account"; // MOCK-TẠM
 import type {
   Appointment,
   AppointmentDetail,
@@ -23,7 +24,7 @@ export const bookingApi = {
   create: (body: AppointmentRequest) =>
     http.post<Appointment>("/booking/appointments", body),
 
-  mine: () => http.get<Appointment[]>("/booking/appointments/me"),
+  mine: () => devMock(http.get<Appointment[]>("/booking/appointments/me"), () => mockAppointments), // MOCK-TẠM
 
   /**
    * CN-19: lễ tân đặt lịch hộ khách đang đứng ở quầy. Backend đối chiếu con vật có đúng của khách

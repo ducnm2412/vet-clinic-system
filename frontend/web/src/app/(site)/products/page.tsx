@@ -8,7 +8,7 @@
   trường thương hiệu).
 */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
@@ -58,6 +58,16 @@ export default function ProductsPage() {
   const [sort, setSort] = useState<string>(SORTS[0].value);
   const [page, setPage] = useState(0);
   const [filtersOpen, setFiltersOpen] = useState(false);
+
+  // Ô tìm kiếm ở header chuyển tới /products?q=…
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get("q");
+    if (q) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- đọc query string một lần sau hydrate
+      setDraft(q);
+      setKeyword(q);
+    }
+  }, []);
 
   const categories = useQuery({ queryKey: ["categories"], queryFn: categoryApi.list });
 

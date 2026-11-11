@@ -267,7 +267,7 @@ function CheckoutPanel({ subtotal, checkoutable }: { subtotal: number; checkouta
         if (method === "ONLINE") {
           toast.error("Chưa mở được trang thanh toán. Bạn bấm \"Thanh toán ngay\" ở trang đơn nhé.");
         }
-        router.push(`/orders/${order.id}`);
+        router.push(`/user/orders/${order.id}`);
       }
     },
     onError: (err) => {

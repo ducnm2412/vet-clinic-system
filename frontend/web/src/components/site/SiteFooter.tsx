@@ -18,9 +18,9 @@ const QUICK_LINKS = [
 const SUPPORT_LINKS = [
   { href: "/products", label: "Hướng dẫn mua hàng" },
   { href: "/cart", label: "Giỏ hàng" },
-  { href: "/orders", label: "Đơn hàng của tôi" },
-  { href: "/appointments", label: "Lịch khám của tôi" },
-  { href: "/pets", label: "Thú cưng của tôi" },
+  { href: "/user/orders", label: "Đơn hàng của tôi" },
+  { href: "/user/appointments", label: "Lịch khám của tôi" },
+  { href: "/user/pets", label: "Thú cưng của tôi" },
 ];
 
 /* Lucide bản này không còn icon thương hiệu nên vẽ tay cho gọn. */

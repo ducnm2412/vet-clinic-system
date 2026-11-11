@@ -68,6 +68,8 @@ function BookingFlow() {
 
   useEffect(() => {
     if (!todayBookable && date === todayDate) {
+      // Chỉ chạy khi dữ liệu "hôm nay" về và báo hết giờ — không lặp render.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDate(addDaysISO(todayDate, 1));
       setStartTime("");
       setSuggestions([]);
@@ -86,7 +88,7 @@ function BookingFlow() {
       }),
     onSuccess: (appointment) => {
       toast.success("Đã đặt lịch khám");
-      router.push(`/appointments/${appointment.id}`);
+      router.push(`/user/appointments/${appointment.id}`);
     },
     onError: (err) => {
       // Khung giờ vừa bị người khác đặt mất: backend trả 409 kèm tối đa 3 gợi ý thay thế.

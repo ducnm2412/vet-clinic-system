@@ -40,7 +40,7 @@ function PetDetailBody() {
           Có thể hồ sơ đã bị xoá, hoặc bé này không thuộc tài khoản của bạn.
         </p>
         <div className="mt-8">
-          <ButtonLink href="/pets" variant="outline">
+          <ButtonLink href="/user/pets" variant="outline">
             Về danh sách thú cưng
           </ButtonLink>
         </div>
@@ -64,7 +64,7 @@ function PetProfile({ pet }: { pet: Pet }) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["pets"] });
       toast.success(`Đã xoá hồ sơ ${pet.name}`);
-      router.push("/pets");
+      router.push("/user/pets");
     },
     onError: (err) =>
       toast.error(err instanceof ApiError ? err.message : "Không xoá được hồ sơ."),
@@ -78,7 +78,7 @@ function PetProfile({ pet }: { pet: Pet }) {
       <div className="bg-mint">
         <Container className="pt-8">
           <Link
-            href="/pets"
+            href="/user/pets"
             className="inline-flex items-center gap-1.5 text-[15px] text-stone hover:text-pine"
           >
             <ChevronLeft aria-hidden className="size-4" />
@@ -259,7 +259,7 @@ function AppointmentRow({
   return (
     <li>
       <Link
-        href={`/appointments/${a.id}`}
+        href={`/user/appointments/${a.id}`}
         className="block py-5 transition-colors hover:bg-mint/60"
       >
         <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
