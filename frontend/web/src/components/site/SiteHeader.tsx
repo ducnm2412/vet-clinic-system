@@ -78,8 +78,13 @@ export function SiteHeader() {
   return (
     <header
       className={cn(
-        "sticky top-0 z-50 bg-white/95 backdrop-blur transition-shadow duration-300",
-        scrolled ? "shadow-[0_1px_0_var(--mist),0_6px_20px_-18px_rgb(19_78_74/0.5)]" : "",
+        "top-0 z-50 transition-[background-color,box-shadow,backdrop-filter] duration-300",
+        // Trang chủ: header nằm đè lên hero (trong suốt, chữ trắng), cuộn xuống mới hiện nền trắng.
+        pathname === "/" ? "fixed inset-x-0" : "sticky",
+        pathname === "/" && !scrolled && !drawerOpen
+          ? "header-overlay bg-transparent"
+          : "bg-white/95 backdrop-blur",
+        scrolled ? "header-solid shadow-[0_1px_0_var(--mist),0_6px_20px_-18px_rgb(19_78_74/0.5)]" : "",
       )}
     >
       <div className="mx-auto flex h-18 w-full max-w-[1440px] items-center gap-4 px-5 md:px-6">
