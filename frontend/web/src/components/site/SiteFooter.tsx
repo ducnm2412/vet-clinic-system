@@ -10,7 +10,7 @@ const QUICK_LINKS = [
   { href: "/", label: "Trang chủ" },
   { href: "/about", label: "Giới thiệu" },
   { href: "/services", label: "Dịch vụ" },
-  { href: "/products", label: "Cửa hàng" },
+  { href: "/products", label: "Sản phẩm" },
   { href: "/appointments/create", label: "Đặt lịch khám" },
   { href: "/contact", label: "Liên hệ" },
 ];
@@ -53,19 +53,19 @@ export function SiteFooter() {
       </svg>
 
       <div className="bg-[#1f4a3c]">
-        <div className="mx-auto w-full max-w-[1440px] px-5 pb-8 pt-8 md:px-6">
-          <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-[1.3fr_1fr_1fr_1.4fr] lg:gap-0 lg:[&>*+*]:border-l lg:[&>*+*]:border-white/20 lg:[&>*+*]:pl-10 lg:[&>*]:pr-8">
-            <div>
+        <div className="mx-auto w-full max-w-[1440px] px-5 pb-6 pt-6 md:px-6 md:pb-8 md:pt-8">
+          <div className="grid grid-cols-2 gap-x-6 gap-y-7 md:gap-10 lg:grid-cols-[1.3fr_1fr_1fr_1.4fr] lg:gap-0 lg:[&>*+*]:border-l lg:[&>*+*]:border-white/20 lg:[&>*+*]:pl-10 lg:[&>*]:pr-8">
+            <div className="col-span-2 md:col-span-1">
               <div className="flex items-center gap-2.5">
                 <BrandMark className="size-10" />
                 <span className="text-[22px] font-extrabold">
                   Vet <span className="text-[#f57c1f]">Clinic</span>
                 </span>
               </div>
-              <p className="mt-4 max-w-xs text-sm leading-relaxed text-white/85">
+              <p className="mt-3 max-w-xs text-sm leading-relaxed text-white/85 md:mt-4">
                 Hệ thống chăm sóc thú cưng uy tín, đồng hành cùng bạn và thú cưng.
               </p>
-              <div className="mt-6 flex gap-3">
+              <div className="mt-4 flex gap-3 md:mt-6">
                 {SOCIALS.map((s) => (
                   <a
                     key={s.label}
@@ -89,9 +89,9 @@ export function SiteFooter() {
             <FooterCol title="Liên kết nhanh" links={QUICK_LINKS} />
             <FooterCol title="Hỗ trợ khách hàng" links={SUPPORT_LINKS} />
 
-            <div>
+            <div className="col-span-2 md:col-span-1">
               <h2 className="text-[15px] font-bold">Liên hệ với chúng tôi</h2>
-              <ul className="mt-4 space-y-3 text-sm text-white/85">
+              <ul className="mt-3 space-y-2.5 md:mt-4 md:space-y-3 text-sm text-white/85">
                 <li className="flex gap-3">
                   <Phone aria-hidden className="mt-0.5 size-4 shrink-0" />
                   <a href={`tel:${CLINIC.phone.replace(/\s/g, "")}`} className="hover:text-white">{CLINIC.phone}</a>
@@ -128,7 +128,7 @@ export function SiteFooter() {
             </div>
           </div>
 
-          <div className="mt-10 border-t border-white/20 pt-5 text-xs text-white/75">
+          <div className="mt-7 border-t border-white/20 pt-4 md:mt-10 md:pt-5 text-xs text-white/75">
             © {new Date().getFullYear()} Vet Clinic. Tất cả quyền được bảo lưu.
           </div>
         </div>
@@ -141,7 +141,7 @@ function FooterCol({ title, links }: { title: string; links: Array<{ href: strin
   return (
     <div>
       <h2 className="text-[15px] font-bold">{title}</h2>
-      <ul className="mt-4 space-y-2.5 text-sm">
+      <ul className="mt-3 space-y-2 text-sm md:mt-4 md:space-y-2.5">
         {links.map((l) => (
           <li key={l.label}>
             <Link href={l.href} className="text-white/85 transition-colors hover:text-[#f57c1f]">{l.label}</Link>

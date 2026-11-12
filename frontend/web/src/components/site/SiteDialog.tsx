@@ -48,14 +48,14 @@ export function SiteDialog({
         if (e.target === ref.current) onClose();
       }}
       aria-labelledby="site-dialog-title"
-      className="m-auto w-[min(34rem,calc(100vw-2rem))] rounded-3xl border border-mist bg-white p-0 text-pine shadow-[var(--shadow-lift)] backdrop:bg-pine/40 backdrop:backdrop-blur-[2px]"
+      className="m-auto max-h-[calc(100dvh-1.5rem)] w-[min(34rem,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-3xl border open:flex border-mist bg-white p-0 text-pine shadow-[var(--shadow-lift)] backdrop:bg-pine/40 backdrop:backdrop-blur-[2px]"
     >
-      <div className="flex items-start gap-4 px-6 pb-2 pt-6">
+      <div className="flex shrink-0 items-start gap-4 px-4 pb-1 pt-4 sm:px-6 sm:pb-2 sm:pt-6">
         <div className="min-w-0 flex-1">
-          <h2 id="site-dialog-title" className="t-h3">
+          <h2 id="site-dialog-title" className="t-h3 text-[20px] sm:text-[inherit]">
             {title}
           </h2>
-          {description && <p className="mt-1.5 text-stone">{description}</p>}
+          {description && <p className="mt-1 text-sm text-stone sm:mt-1.5 sm:text-base">{description}</p>}
         </div>
         <button
           onClick={onClose}
@@ -66,10 +66,10 @@ export function SiteDialog({
         </button>
       </div>
 
-      <div className="max-h-[70vh] overflow-y-auto px-6 py-4">{children}</div>
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 sm:px-6 sm:py-4">{children}</div>
 
       {footer && (
-        <div className="flex flex-wrap justify-end gap-3 border-t border-mist px-6 py-4">
+        <div className="flex shrink-0 justify-end gap-3 border-t border-mist bg-white px-4 py-3 sm:px-6 sm:py-4 [&>*]:flex-1 [&>*]:whitespace-nowrap max-sm:[&>*]:px-3 max-sm:[&>*]:text-[15px] sm:[&>*]:flex-none">
           {footer}
         </div>
       )}

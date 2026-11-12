@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, ChevronLeft } from "lucide-react";
-import { ApiError, orderApi } from "@/lib/api";
+import { ArrowLeft, Check, ChevronRight, MapPin, Package, PawPrint, Printer, ShoppingCart, Truck } from "lucide-react";
+import { ApiError, orderApi, productApi } from "@/lib/api";
 import { formatDateTime, formatPrice } from "@/lib/utils/format";
 import { ORDER_PAYMENT_METHOD } from "@/lib/utils/status";
 import { goToPaymentUrl } from "@/lib/utils/payment";
@@ -91,192 +91,220 @@ function isAwaitingCounter(order: Order | undefined): boolean {
 function OrderBody({ order }: { order: Order }) {
   const counter = order.channel === "COUNTER";
   const awaitingCounter = isAwaitingCounter(order);
+  const look = orderLook(order);
 
   return (
-    <>
-      <div className="bg-mint">
-        <Container className="pt-8">
-          <Link
-            href="/user/orders"
-            className="inline-flex items-center gap-1.5 text-[15px] text-stone hover:text-pine"
+    <div>
+      {/* Breadcrumb */}
+      <nav aria-label="Breadcrumb" className="mb-4 flex flex-wrap items-center gap-2 text-[13px] text-[#6b5a4e]">
+        <Link href="/" className="hover:text-[#f57c1f]">Trang chủ</Link>
+        <ChevronRight aria-hidden className="size-3.5" />
+        <Link href="/user/orders" className="hover:text-[#f57c1f]">Đơn hàng của tôi</Link>
+        <ChevronRight aria-hidden className="size-3.5" />
+        <span className="text-[#2b1d14]">Chi tiết đơn hàng</span>
+      </nav>
+
+      <div className="rounded-[28px] bg-white p-4 shadow-[0_4px_30px_-14px_rgba(90,45,10,0.25)] sm:p-6">
+        {/* Đầu trang: quay lại, mã đơn, trạng thái, in hoá đơn */}
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0">
+            <Link
+              href="/user/orders"
+              className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-[#f7b98a] bg-[#fff1e3] px-4 text-sm font-semibold text-[#f57c1f] transition hover:bg-[#ffe3c9]"
+            >
+              <ArrowLeft aria-hidden className="size-4" /> Quay lại
+            </Link>
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <h1 className="text-[26px] font-extrabold text-[#2b1d14] sm:text-[30px]">
+                {counter ? "Hoá đơn" : "Đơn hàng"} #{order.orderCode.replace(/^#/, "")}
+              </h1>
+              <StatusPill look={look} />
+            </div>
+            <p className="mt-1 text-[15px] text-[#6b5a4e]">
+              {counter ? "Lập tại quầy" : "Đặt ngày"}: {formatDateTime(order.createdAt)}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className="inline-flex h-10 items-center gap-2 rounded-xl border border-[#f57c1f] bg-white px-4 text-sm font-semibold text-[#f57c1f] transition hover:bg-[#fff1e3] print:hidden"
           >
-            <ChevronLeft aria-hidden className="size-4" />
-            Đơn hàng của bạn
-          </Link>
-        </Container>
+            <Printer aria-hidden className="size-4" /> In hoá đơn
+          </button>
+        </div>
 
-        <Container className="py-10 md:py-14">
-          <StatusPill look={orderLook(order)} />
-          <h1 className="t-h2 mt-4">{counter ? "Hoá đơn" : "Đơn"} {order.orderCode}</h1>
-          <p className="mt-3 text-stone">
-            {counter ? "Lập tại quầy lúc" : "Đặt lúc"} {formatDateTime(order.createdAt)}
-          </p>
+        {awaitingCounter && (
+          <Notice>
+            Phòng khám đã lập hoá đơn này sau buổi khám của bạn. Bạn ghé quầy để thanh toán; nếu muốn mua thêm sản
+            phẩm, nhân viên sẽ thêm vào hoá đơn giúp bạn. Số tiền cuối cùng được chốt khi thanh toán.
+          </Notice>
+        )}
+        {order.status === "CANCELLED" && order.cancelReason && (
+          <Notice tone="danger">Lý do huỷ: {order.cancelReason}</Notice>
+        )}
+        {order.refundRequired && (
+          <Notice>
+            Đơn này bạn đã thanh toán trước khi bị huỷ. Phòng khám sẽ hoàn tiền lại cho bạn; gọi {CLINIC.phone} nếu
+            cần biết thêm.
+          </Notice>
+        )}
 
-          {awaitingCounter && (
-            <p className="measure mt-6 rounded-[var(--radius-card)] bg-white px-5 py-4 text-pine">
-              Phòng khám đã lập hoá đơn này sau buổi khám của bạn. Bạn ghé quầy để thanh toán; nếu muốn
-              mua thêm sản phẩm, nhân viên sẽ thêm vào hoá đơn giúp bạn. Số tiền cuối cùng được chốt khi
-              thanh toán.
-            </p>
-          )}
+        {/* Hoá đơn tại quầy được thu ngay nên không có chặng xác nhận và giao hàng để kể. */}
+        {!counter && (
+          <div className="mt-6">
+            <Timeline order={order} />
+          </div>
+        )}
 
-          {order.status === "CANCELLED" && order.cancelReason && (
-            <p className="measure mt-6 rounded-[var(--radius-card)] bg-white px-5 py-4 text-coral-deep">
-              Lý do huỷ: {order.cancelReason}
-            </p>
-          )}
-
-          {order.refundRequired && (
-            <p className="measure mt-4 rounded-[var(--radius-card)] bg-white px-5 py-4 text-pine">
-              Đơn này bạn đã thanh toán trước khi bị huỷ. Phòng khám sẽ hoàn tiền lại cho bạn; gọi{" "}
-              {CLINIC.phone} nếu cần biết thêm.
-            </p>
-          )}
-        </Container>
-      </div>
-
-      <Container className="grid gap-12 py-14 lg:grid-cols-[1fr_21rem] lg:gap-16 md:py-20">
-        <div className="min-w-0 space-y-14">
-          {/* Hoá đơn tại quầy được thu ngay nên không có chặng xác nhận và giao hàng để kể. */}
-          {!counter && <Timeline order={order} />}
-
-
-          <section>
-            <h2 className="t-h3">{counter ? "Nội dung hoá đơn" : "Món trong đơn"}</h2>
-            <ul className="mt-5 divide-y divide-mist border-y border-mist">
-              {order.examAmount > 0 && (
-                <li className="flex flex-wrap items-baseline gap-x-6 gap-y-2 py-4">
-                  <p className="min-w-52 flex-1 font-medium">Tiền khám / thuốc</p>
-                  <p className="tnum font-semibold">{formatPrice(order.examAmount)}</p>
-                </li>
+        {/* Thông tin đơn + địa chỉ */}
+        <div className="mt-6 grid gap-5 lg:grid-cols-[1.15fr_1fr]">
+          <section className="rounded-2xl border border-[#f3ebe3] bg-white p-5 shadow-[0_2px_14px_-8px_rgba(0,0,0,0.12)]">
+            <h2 className="border-b border-[#f3ebe3] pb-3 text-lg font-bold text-[#2b1d14]">Thông tin đơn hàng</h2>
+            <dl className="mt-3 space-y-3 text-[15px]">
+              <InfoRow label="Mã đơn hàng">#{order.orderCode.replace(/^#/, "")}</InfoRow>
+              <InfoRow label="Phương thức thanh toán">
+                {order.paymentMethod ? ORDER_PAYMENT_METHOD[order.paymentMethod] : "—"}
+                {order.paymentMethod === "ONLINE" && (
+                  <span className="text-[#6b5a4e]"> · {order.paymentStatus === "PAID" ? "đã thanh toán" : "chưa thanh toán"}</span>
+                )}
+              </InfoRow>
+              <InfoRow label={counter ? "Hình thức" : "Phương thức vận chuyển"}>
+                {counter ? "Thanh toán tại quầy" : "Giao hàng tận nơi"}
+              </InfoRow>
+              {order.transferReference && <InfoRow label="Mã giao dịch">{order.transferReference}</InfoRow>}
+              {order.paidAt && (
+                <InfoRow label="Đã thanh toán lúc">
+                  <span className="tnum">{formatDateTime(order.paidAt)}</span>
+                </InfoRow>
               )}
-              {order.items.map((item) => (
-                <li key={item.productId} className="flex flex-wrap items-baseline gap-x-6 gap-y-2 py-4">
-                  <div className="min-w-52 flex-1">
-                    <Link
-                      href={`/products/${item.productId}`}
-                      className="font-medium hover:text-teal-deep"
-                    >
-                      {item.productName}
-                    </Link>
-                    <p className="tnum text-[15px] text-stone">
-                      {formatPrice(item.unitPrice)} × {item.quantity}
-                    </p>
-                  </div>
-                  <p className="tnum font-semibold">{formatPrice(item.lineTotal)}</p>
-                </li>
-              ))}
-            </ul>
-
-            <dl className="mt-6 ml-auto max-w-sm space-y-2">
-              {order.items.length > 0 && <Money label="Tiền hàng" value={order.subtotal} />}
-              {order.examAmount > 0 && <Money label="Tiền khám / thuốc" value={order.examAmount} />}
-              {!counter && <Money label="Phí giao hàng" value={order.shippingFee} />}
-              <div className="flex justify-between border-t border-mist pt-3">
-                <dt className="font-medium">{awaitingCounter ? "Cần thanh toán" : "Tổng cộng"}</dt>
-                <dd className="tnum text-[21px] font-semibold">{formatPrice(order.total)}</dd>
-              </div>
+              <InfoRow label="Trạng thái">
+                <StatusPill look={look} />
+              </InfoRow>
             </dl>
+          </section>
+
+          <section className="rounded-2xl border border-[#f3ebe3] bg-white p-5 shadow-[0_2px_14px_-8px_rgba(0,0,0,0.12)]">
+            <h2 className="text-lg font-bold text-[#2b1d14]">{counter ? "Khách hàng" : "Địa chỉ giao hàng"}</h2>
+            <div className="mt-4 flex gap-4">
+              <div className="min-w-0 flex-1">
+                <p className="flex items-center gap-2 font-semibold text-[#2b1d14]">
+                  <MapPin aria-hidden className="size-4 shrink-0 fill-[#2b1d14] text-white" /> {order.recipientName}
+                </p>
+                {!counter && (
+                  <>
+                    <p className="tnum mt-1 pl-6 text-[13px] text-[#6b5a4e]">{order.recipientPhone}</p>
+                    <p className="mt-1 pl-6 text-[13px] leading-relaxed text-[#6b5a4e]">{order.shippingAddress}</p>
+                  </>
+                )}
+                {order.note && <p className="mt-2 pl-6 text-[13px] italic text-[#6b5a4e]">Ghi chú: {order.note}</p>}
+              </div>
+              {!counter && <MapThumb />}
+            </div>
           </section>
         </div>
 
-        <aside className="space-y-6 lg:sticky lg:top-24 lg:self-start">
-          {isAwaitingPayment(order) && <PayNowPanel order={order} />}
-
-          {counter ? (
-            <div className="rounded-[var(--radius-card)] bg-mint p-6">
-              <h2 className="t-h3">{awaitingCounter ? "Chờ thanh toán tại quầy" : "Thanh toán tại quầy"}</h2>
-              <dl className="mt-4 space-y-3 text-[15px]">
-                <div>
-                  <dt className="text-stone">Khách hàng</dt>
-                  <dd className="font-medium">{order.recipientName}</dd>
-                </div>
-                {order.paymentMethod && (
-                  <div>
-                    <dt className="text-stone">Hình thức</dt>
-                    <dd className="font-medium">{ORDER_PAYMENT_METHOD[order.paymentMethod]}</dd>
-                  </div>
-                )}
-                {order.transferReference && (
-                  <div>
-                    <dt className="text-stone">Mã giao dịch</dt>
-                    <dd className="font-medium">{order.transferReference}</dd>
-                  </div>
-                )}
-                {order.paidAt && (
-                  <div>
-                    <dt className="text-stone">Đã thu lúc</dt>
-                    <dd className="tnum font-medium">{formatDateTime(order.paidAt)}</dd>
-                  </div>
-                )}
-                {order.note && (
-                  <div>
-                    <dt className="text-stone">Ghi chú</dt>
-                    <dd>{order.note}</dd>
-                  </div>
-                )}
-              </dl>
-            </div>
-          ) : (
-          <div className="rounded-[var(--radius-card)] bg-mint p-6">
-            <h2 className="t-h3">Giao tới</h2>
-            <dl className="mt-4 space-y-3 text-[15px]">
-              <div>
-                <dt className="text-stone">Người nhận</dt>
-                <dd className="font-medium">{order.recipientName}</dd>
-              </div>
-              <div>
-                <dt className="text-stone">Điện thoại</dt>
-                <dd className="tnum font-medium">{order.recipientPhone}</dd>
-              </div>
-              <div>
-                <dt className="text-stone">Địa chỉ</dt>
-                <dd className="font-medium">{order.shippingAddress}</dd>
-              </div>
-              {order.note && (
-                <div>
-                  <dt className="text-stone">Ghi chú của bạn</dt>
-                  <dd>{order.note}</dd>
-                </div>
+        {/* Sản phẩm */}
+        <section className="mt-8">
+          <h2 className="flex items-center gap-2 text-lg font-bold text-[#2b1d14]">
+            <PawPrint aria-hidden className="size-6 fill-[#f57c1f] text-[#f57c1f]" />
+            {counter ? "Nội dung hoá đơn" : "Sản phẩm trong đơn hàng"}
+          </h2>
+          <div className="mt-4 overflow-hidden rounded-2xl border border-[#f3ebe3]">
+            <ul className="divide-y divide-[#f3ebe3] px-4">
+              {order.examAmount > 0 && (
+                <li className="flex items-center gap-4 py-4">
+                  <span className="grid size-[72px] shrink-0 place-items-center rounded-xl bg-[#fdf1e4] text-[#f7a964]">
+                    <Package className="size-8" />
+                  </span>
+                  <p className="min-w-0 flex-1 font-medium text-[#2b1d14]">Tiền khám / thuốc</p>
+                  <p className="tnum font-bold text-[#2b1d14]">{formatPrice(order.examAmount)}</p>
+                </li>
               )}
-              <div>
-                <dt className="text-stone">Thanh toán</dt>
-                <dd className="font-medium">
-                  {order.paymentMethod ? ORDER_PAYMENT_METHOD[order.paymentMethod] : "—"}
-                  {order.paymentMethod === "ONLINE" && (
-                    <span className="ml-2 text-[15px] font-normal text-stone">
-                      · {order.paymentStatus === "PAID" ? "đã thanh toán" : "chưa thanh toán"}
-                    </span>
-                  )}
-                </dd>
-              </div>
-              {order.paymentStatus === "PAID" && order.paidAt && order.paymentMethod === "ONLINE" && (
-                <div>
-                  <dt className="text-stone">Đã thanh toán lúc</dt>
-                  <dd className="tnum font-medium">{formatDateTime(order.paidAt)}</dd>
-                </div>
-              )}
+              {order.items.map((item) => (
+                <li
+                  key={item.productId}
+                  className="grid grid-cols-[64px_1fr] items-center gap-x-3 py-4 sm:grid-cols-[72px_1fr_110px_60px_110px] sm:gap-x-4"
+                >
+                  <ItemThumb productId={item.productId} />
+                  {/* Điện thoại: tên (tối đa 2 dòng) ở trên, số lượng và thành tiền chung một dòng ở dưới. */}
+                  <div className="min-w-0 sm:contents">
+                    <Link href={`/products/${item.productId}`} className="line-clamp-2 text-[15px] text-[#2b1d14] hover:text-[#f57c1f] sm:line-clamp-none">
+                      {item.productName}
+                    </Link>
+                    <div className="mt-1 flex items-baseline justify-between gap-2 sm:hidden">
+                      <span className="tnum text-[13px] text-[#6b5a4e]">× {item.quantity}</span>
+                      <span className="tnum whitespace-nowrap font-bold text-[#2b1d14]">{formatPrice(item.lineTotal)}</span>
+                    </div>
+                  </div>
+                  <p className="tnum hidden text-right font-bold text-[#2b1d14] sm:block">{formatPrice(item.unitPrice)}</p>
+                  <p className="tnum hidden text-center text-[#2b1d14] sm:block">× {item.quantity}</p>
+                  <p className="tnum hidden text-right font-bold text-[#2b1d14] sm:block">{formatPrice(item.lineTotal)}</p>
+                </li>
+              ))}
+            </ul>
+            <dl className="ml-auto max-w-xs space-y-2 border-t border-[#f3ebe3] px-5 py-4 text-sm sm:max-w-sm">
+              {order.items.length > 0 && <Money label="Tạm tính" value={order.subtotal} />}
+              {order.examAmount > 0 && <Money label="Tiền khám / thuốc" value={order.examAmount} />}
+              {!counter && <Money label="Phí vận chuyển" value={order.shippingFee} />}
             </dl>
+            <div className="flex items-center justify-between gap-3 bg-[#fdecdc] px-5 py-4 sm:justify-end sm:gap-10">
+              <span className="whitespace-nowrap font-bold text-[#2b1d14]">{awaitingCounter ? "Cần thanh toán" : "Tổng thanh toán"}</span>
+              <span className="tnum whitespace-nowrap text-[20px] font-extrabold text-[#f57c1f] sm:text-[24px]">{formatPrice(order.total)}</span>
+            </div>
           </div>
-          )}
+        </section>
 
+        {/* Thanh toán / huỷ */}
+        <div className={cn("mt-6 grid gap-5 print:hidden", isAwaitingPayment(order) && "md:grid-cols-2")}>
+          {isAwaitingPayment(order) && <PayNowPanel order={order} />}
           {counter ? (
-            <div className="rounded-[var(--radius-card)] border border-mist p-6">
-              <p className="text-stone">
-                {awaitingCounter
-                  ? "Hoá đơn này do nhân viên xử lý tại quầy nên bạn không tự thanh toán hay huỷ trên web được."
-                  : order.status === "CANCELLED"
-                    ? "Hoá đơn này đã được phòng khám huỷ."
-                    : "Hoá đơn này đã thanh toán xong tại quầy."}{" "}
-                Gọi {CLINIC.phone} nếu bạn cần phòng khám hỗ trợ.
-              </p>
+            <div className="text-[15px] text-[#6b5a4e]">
+              {awaitingCounter
+                ? "Hoá đơn này do nhân viên xử lý tại quầy nên bạn không tự thanh toán hay huỷ trên web được."
+                : order.status === "CANCELLED"
+                  ? "Hoá đơn này đã được phòng khám huỷ."
+                  : "Hoá đơn này đã thanh toán xong tại quầy."}{" "}
+              Gọi {CLINIC.phone} nếu bạn cần phòng khám hỗ trợ.
             </div>
           ) : (
             <CancelPanel order={order} />
           )}
-        </aside>
-      </Container>
-    </>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Notice({ children, tone }: { children: React.ReactNode; tone?: "danger" }) {
+  return (
+    <p className={cn("mt-4 rounded-2xl bg-[#fdf6ee] px-5 py-3 text-[15px]", tone === "danger" ? "text-coral-deep" : "text-[#3b2a20]")}>
+      {children}
+    </p>
+  );
+}
+
+function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    // Điện thoại: nhãn trái, giá trị dồn phải trên cùng một dòng. Màn rộng: hai cột có dấu ":".
+    <div className="flex items-center justify-between gap-4 sm:grid sm:grid-cols-[minmax(0,11rem)_1fr] sm:gap-3">
+      <dt className="shrink-0 text-[#6b5a4e] sm:text-[#3b2a20]">{label}</dt>
+      <dd className="min-w-0 text-right font-medium text-[#2b1d14] sm:text-left">
+        <span className="mr-1 hidden text-[#6b5a4e] sm:inline">:</span> {children}
+      </dd>
+    </div>
+  );
+}
+
+/** Ô bản đồ minh hoạ (không phải bản đồ thật — đơn hàng không lưu toạ độ). */
+function MapThumb() {
+  return (
+    <div aria-hidden className="relative hidden h-28 w-36 shrink-0 overflow-hidden rounded-xl bg-[#eef1f4] sm:block">
+      <svg viewBox="0 0 144 112" className="absolute inset-0 size-full">
+        <path d="M0 30 L144 52 M0 80 L144 70 M40 0 L55 112 M100 0 L90 112 M0 105 L60 60 L144 20" stroke="#fff" strokeWidth="5" fill="none" />
+        <path d="M0 55 Q40 40 70 90 T144 95" stroke="#bfe0f2" strokeWidth="8" fill="none" />
+      </svg>
+      <MapPin className="absolute left-1/2 top-1/2 size-8 -translate-x-1/2 -translate-y-[70%] fill-[#f57c1f] text-white" />
+    </div>
   );
 }
 
@@ -312,7 +340,7 @@ function PayNowPanel({ order }: { order: Order }) {
   });
 
   return (
-    <div className="rounded-[var(--radius-card)] border border-teal bg-white p-6">
+    <div className="rounded-2xl border border-[#f7b98a] bg-white p-5">
       <h2 className="t-h3">Thanh toán đơn này</h2>
       <p className="tnum mt-3 text-[21px] font-semibold">{formatPrice(order.total)}</p>
       {expired ? (
@@ -344,6 +372,22 @@ function PayNowPanel({ order }: { order: Order }) {
   );
 }
 
+/** OrderItem không có ảnh, nên hỏi product-service theo id (dùng chung cache với trang sản phẩm). */
+function ItemThumb({ productId }: { productId: string }) {
+  const product = useQuery({ queryKey: ["products", productId], queryFn: () => productApi.byId(productId), retry: false });
+  const url = product.data?.imageUrl;
+  return (
+    <Link href={`/products/${productId}`} className="grid size-16 shrink-0 sm:size-[72px] place-items-center overflow-hidden rounded-xl bg-[#fdf1e4]">
+      {url ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={url} alt="" className="size-[85%] object-contain mix-blend-multiply" />
+      ) : (
+        <Package className="size-8 text-[#f7a964]" />
+      )}
+    </Link>
+  );
+}
+
 function Money({ label, value }: { label: string; value: number }) {
   return (
     <div className="flex justify-between">
@@ -354,10 +398,10 @@ function Money({ label, value }: { label: string; value: number }) {
 }
 
 const FLOW: Array<{ status: OrderStatus; label: string; note: string }> = [
-  { status: "PENDING", label: "Bạn đã đặt", note: "Phòng khám nhận được đơn." },
-  { status: "CONFIRMED", label: "Đã xác nhận", note: "Phòng khám đã gom hàng cho bạn." },
+  { status: "PENDING", label: "Đặt hàng", note: "Phòng khám nhận được đơn." },
+  { status: "CONFIRMED", label: "Đang xử lý", note: "Phòng khám đã gom hàng cho bạn." },
   { status: "SHIPPING", label: "Đang giao", note: "Hàng đang trên đường tới bạn." },
-  { status: "COMPLETED", label: "Đã giao xong", note: "Bạn đã nhận và trả tiền." },
+  { status: "COMPLETED", label: "Giao hàng thành công", note: "Bạn đã nhận và trả tiền." },
 ];
 
 /** Ở chặng đầu, đơn online cần nói rõ đang chờ tiền hay đã có tiền. */
@@ -387,7 +431,7 @@ function Timeline({ order }: { order: Order }) {
 
   if (order.status === "CANCELLED") {
     return (
-      <section>
+      <section className="rounded-2xl bg-[#fdf6ee] p-5">
         <h2 className="t-h3">Đơn đã dừng lại</h2>
         <p className="measure mt-3 text-stone">
           Đơn này bị huỷ {order.cancelledAt ? `lúc ${formatDateTime(order.cancelledAt)}` : ""}. Nếu
@@ -405,46 +449,36 @@ function Timeline({ order }: { order: Order }) {
   const current = FLOW.findIndex((f) => f.status === order.status);
 
   return (
-    <section>
-      <h2 className="t-h3">Đơn đang ở đâu</h2>
-
-      <ol className="mt-6">
+    <section aria-label="Tiến trình đơn hàng">
+      <ol className="grid grid-cols-4">
         {FLOW.map((stage, i) => {
           const done = i <= current;
           const isNow = i === current;
+          const last = i === FLOW.length - 1;
           const time = at.get(stage.status);
-          const note = stage.status === "PENDING" ? pendingNote(order) : stage.note;
-
+          const Icon = STAGE_ICONS[i];
           return (
-            <li key={stage.status} className="flex gap-5">
-              <div className="flex flex-col items-center">
-                <span
-                  aria-hidden
-                  className={cn(
-                    "grid size-9 shrink-0 place-items-center rounded-full text-[14px] font-semibold",
-                    done ? "bg-teal text-white" : "border border-mist bg-white text-stone",
-                  )}
-                >
-                  {done ? <Check className="size-4" /> : i + 1}
-                </span>
-                {i < FLOW.length - 1 && (
-                  <span
-                    aria-hidden
-                    className={cn("w-px flex-1", i < current ? "bg-teal" : "bg-mist")}
-                  />
+            <li key={stage.status} className="relative flex flex-col items-center px-1 text-center">
+              {!last && (
+                <span aria-hidden className={cn("absolute left-1/2 top-6 h-[3px] w-full", i < current ? "bg-[#1f7a4d]" : "bg-[#e8e1da]")} />
+              )}
+              <span
+                aria-hidden
+                title={stage.status === "PENDING" ? pendingNote(order) : stage.note}
+                className={cn(
+                  "relative grid size-12 place-items-center rounded-full",
+                  !done && "border-2 border-[#e8e1da] bg-white text-[#b5a89c]",
+                  done && !(isNow && last) && "bg-[#1f7a4d] text-white",
+                  isNow && last && "bg-[#f57c1f] text-white ring-4 ring-[#f57c1f]/25",
+                  isNow && !last && "ring-4 ring-[#1f7a4d]/20",
                 )}
-              </div>
-
-              <div className={cn("pb-8", i === FLOW.length - 1 && "pb-0")}>
-                <p className={cn("font-medium", !done && "text-stone")}>
-                  {stage.label}
-                  {isNow && <span className="ml-2 text-[15px] text-teal-deep">đang ở đây</span>}
-                </p>
-                <p className="text-[15px] text-stone">{note}</p>
-                {time && done && (
-                  <p className="tnum mt-1 text-[15px] text-stone">{formatDateTime(time)}</p>
-                )}
-              </div>
+              >
+                <Icon className="size-5" strokeWidth={2.5} />
+              </span>
+              <p className={cn("mt-2 text-[13px] font-semibold sm:text-sm", done ? "text-[#2b1d14]" : "text-[#9a8b7e]")}>{stage.label}</p>
+              <p className="tnum mt-0.5 text-[11px] text-[#6b5a4e] sm:text-[13px]">
+                {time && done ? formatDateTime(time) : isNow ? "đang ở đây" : " "}
+              </p>
             </li>
           );
         })}
@@ -452,6 +486,8 @@ function Timeline({ order }: { order: Order }) {
     </section>
   );
 }
+
+const STAGE_ICONS = [ShoppingCart, Check, Truck, Check];
 
 function CancelPanel({ order }: { order: Order }) {
   const [open, setOpen] = useState(false);
@@ -472,7 +508,7 @@ function CancelPanel({ order }: { order: Order }) {
   // Khách chỉ huỷ được đơn chưa xác nhận. Luật thật ở backend; đây chỉ quyết định hiện nút.
   if (order.status !== "PENDING") {
     return (
-      <div className="rounded-[var(--radius-card)] border border-mist p-6">
+      <div>
         <p className="text-stone">
           Đơn đã qua bước xác nhận nên không tự huỷ được nữa. Gọi {CLINIC.phone} nếu bạn cần
           phòng khám hỗ trợ.
@@ -482,7 +518,7 @@ function CancelPanel({ order }: { order: Order }) {
   }
 
   return (
-    <div className="rounded-[var(--radius-card)] border border-mist p-6">
+    <div>
       <h2 className="t-h3">Đổi ý?</h2>
       <p className="mt-3 text-stone">
         Đơn chưa được xác nhận nên bạn vẫn huỷ được. Sau khi phòng khám gom hàng thì không.

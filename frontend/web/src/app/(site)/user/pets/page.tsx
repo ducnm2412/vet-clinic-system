@@ -52,7 +52,6 @@ export default function MyPetsPage() {
     <>
       <PageHeader
         title="Thú cưng của tôi"
-        description="Mỗi bé một hồ sơ — bác sĩ mở ra là thấy ngay tuổi, cân nặng và lịch sử khám."
         crumbs={[{ label: "Thú cưng của tôi" }]}
         action={
           <button type="button" onClick={() => setAdding(true)} className={btnPrimary}>

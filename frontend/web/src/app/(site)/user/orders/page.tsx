@@ -47,7 +47,6 @@ export default function MyOrdersPage() {
     <>
       <PageHeader
         title="Đơn hàng của tôi"
-        description="Theo dõi đơn từ lúc đặt đến lúc nhận hàng."
         crumbs={[{ label: "Đơn hàng của tôi" }]}
         action={
           <Link href="/products" className={btnPrimary}>

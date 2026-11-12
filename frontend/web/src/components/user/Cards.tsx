@@ -235,11 +235,14 @@ export function AppointmentCard({
           </span>
         </p>
       </div>
-<div className="flex w-full flex-wrap items-center justify-end gap-3 sm:ml-auto sm:w-auto">
-      <AppointmentStatusBadge status={a.status} />
-      <Link href={`/user/appointments/${a.id}`} className={btnOrangeOutline}>
-        Xem chi tiết <ChevronRight aria-hidden className="size-4" />
-      </Link>
+      {/* Trạng thái và nút luôn chung một hàng: trạng thái co lại (cắt chữ) thay vì rớt xuống dòng. */}
+      <div className="flex w-full flex-nowrap items-center justify-between gap-2 sm:ml-auto sm:w-auto sm:justify-end sm:gap-3">
+        <div className="min-w-0 [&>*]:max-w-full [&>*]:truncate [&>*]:whitespace-nowrap">
+          <AppointmentStatusBadge status={a.status} />
+        </div>
+        <Link href={`/user/appointments/${a.id}`} className={cn(btnOrangeOutline, "shrink-0 whitespace-nowrap")}>
+          Xem chi tiết <ChevronRight aria-hidden className="size-4" />
+        </Link>
       </div>
     </article>
   );
@@ -279,6 +282,7 @@ export function OrderCard({ order, compact }: { order: OrderSummary; compact?: b
           <h3 className="font-bold text-[#1f4a3c]">{order.orderCode}</h3>
           <span className="text-xs text-[#999999]">{formatDateTime(order.createdAt)}</span>
         </div>
+        <p className="tnum mt-1 text-[16px] font-extrabold text-[#242424] sm:hidden">{formatPrice(order.total)}</p>
         <p className="mt-1.5 line-clamp-1 text-[14px] text-[#242424]">
           {first ? first.productName : order.totalItems > 0 ? "Đang tải sản phẩm…" : "Tiền khám / thuốc"}
         </p>
@@ -289,12 +293,15 @@ export function OrderCard({ order, compact }: { order: OrderSummary; compact?: b
           </p>
         )}
       </div>
-<div className="flex w-full flex-wrap items-center justify-end gap-3 sm:ml-auto sm:w-auto">
-      <OrderStatusBadge order={order} />
-      <p className="tnum text-right text-[17px] font-extrabold text-[#242424]">{formatPrice(order.total)}</p>
-      <Link href={`/user/orders/${order.id}`} className={btnOrangeOutline}>
-        Chi tiết <ChevronRight aria-hidden className="size-4" />
-      </Link>
+      {/* Trạng thái, tổng tiền và nút luôn chung một hàng; trên điện thoại tổng tiền lên cột thông tin cho đủ chỗ. */}
+      <div className="flex w-full flex-nowrap items-center justify-between gap-2 sm:ml-auto sm:w-auto sm:justify-end sm:gap-3">
+        <div className="min-w-0 [&>*]:max-w-full [&>*]:truncate [&>*]:whitespace-nowrap">
+          <OrderStatusBadge order={order} />
+        </div>
+        <p className="tnum hidden shrink-0 text-right text-[17px] font-extrabold text-[#242424] sm:block">{formatPrice(order.total)}</p>
+        <Link href={`/user/orders/${order.id}`} className={cn(btnOrangeOutline, "shrink-0 whitespace-nowrap")}>
+          Chi tiết <ChevronRight aria-hidden className="size-4" />
+        </Link>
       </div>
     </article>
   );

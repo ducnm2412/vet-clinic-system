@@ -29,6 +29,7 @@ import {
   HeartHandshake,
   CheckCircle2,
 } from "lucide-react";
+import { ServiceCarousel } from "@/components/ui/services-card";
 import { clinicServiceApi, productApi } from "@/lib/api";
 import { formatPrice } from "@/lib/utils/format";
 import { CLINIC } from "@/config/clinic";
@@ -42,8 +43,6 @@ import { CareProcess, EmergencyBanner, PromoBanners } from "@/components/site/Ho
 
 const ORANGE = "#f57c1f";
 const GREEN = "#1f4a3c";
-const SERVICE_IMAGES = ["/img/meo.jpg", "/img/cho-con.jpg", "/img/hero.jpg", "/img/cham-soc.jpg"];
-
 export default function HomePage() {
   return (
     <div className="bg-white">
@@ -372,9 +371,17 @@ function About() {
 
 /* ---------- Dịch vụ khám ---------- */
 
+const SERVICE_IMAGES = ["/img/meo.jpg", "/img/cho-con.jpg", "/img/hero.jpg", "/img/cham-soc.jpg"];
+const SERVICE_GRADIENTS = [
+  "from-[#ffe1c7] to-[#ffc999]",
+  "from-[#e3f1e6] to-[#c5e3cc]",
+  "from-[#fde7e3] to-[#f8cbc2]",
+  "from-[#fff1d6] to-[#ffe0a3]",
+];
+
 function ServiceGrid() {
   const services = useQuery({ queryKey: ["clinic-services"], queryFn: clinicServiceApi.list });
-  const list = (services.data ?? []).filter((s) => s.active).sort((a, b) => a.displayOrder - b.displayOrder).slice(0, 4);
+  const list = (services.data ?? []).filter((s) => s.active).sort((a, b) => a.displayOrder - b.displayOrder);
   return (
     <section id="dich-vu-kham" className="scroll-mt-24">
       <div className="mb-5 flex items-center justify-between gap-4">
@@ -386,33 +393,24 @@ function ServiceGrid() {
           Tất cả dịch vụ <ArrowRight className="nudge size-3.5" />
         </Link>
       </div>
-      <ul data-stagger className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-        {list.map((s, i) => (
-          <li key={s.id}>
-            <Link
-              href={`/services/${s.slug}`}
-              className="lift group block rounded-3xl bg-white p-2.5 shadow-[0_4px_24px_-10px_rgba(0,0,0,0.18)]"
-            >
-              <div className="relative aspect-[16/9] overflow-hidden rounded-2xl">
-                <Image src={SERVICE_IMAGES[i % SERVICE_IMAGES.length]} alt="" fill sizes="(max-width:1024px) 50vw, 25vw" className="object-cover transition duration-500 group-hover:scale-105" />
-              </div>
-              <div className="flex items-center gap-2 px-3 py-3">
-                <div className="flex-1 text-center">
-                  <p className="font-medium text-[#2b1d14]">{s.name}</p>
-                  {s.referencePrice != null && (
-                    <p className="text-sm" style={{ color: ORANGE }}>Từ {formatPrice(s.referencePrice)}</p>
-                  )}
-                </div>
-                <span className="grid size-8 place-items-center rounded-full bg-[#f4f1ee] text-[#2b1d14] transition group-hover:bg-[#f57c1f] group-hover:text-white">
-                  <ArrowRight className="nudge size-4" />
-                </span>
-              </div>
-            </Link>
-          </li>
-        ))}
-        {services.isLoading &&
-          Array.from({ length: 4 }).map((_, i) => <li key={i} className="h-56 animate-pulse rounded-3xl bg-[#fff3e8]" />)}
-      </ul>
+      {services.isLoading ? (
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-[380px] animate-pulse rounded-3xl bg-[#fff3e8]" />)}
+        </div>
+      ) : (
+        <ServiceCarousel
+          services={list.map((s, i) => ({
+            id: s.id,
+            title: s.name,
+            description: s.description ?? "",
+            image: SERVICE_IMAGES[i % SERVICE_IMAGES.length],
+            gradient: SERVICE_GRADIENTS[i % SERVICE_GRADIENTS.length],
+            href: `/services/${s.slug}`,
+            bookHref: "/appointments/create",
+            price: s.referencePrice != null ? `Từ ${formatPrice(s.referencePrice)}` : undefined,
+          }))}
+        />
+      )}
     </section>
   );
 }

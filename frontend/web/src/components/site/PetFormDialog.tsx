@@ -110,7 +110,6 @@ export function PetFormDialog({
       open={open}
       onClose={onClose}
       title={pet ? `Sửa hồ sơ ${pet.name}` : "Thêm thú cưng"}
-      description="Bác sĩ đọc hồ sơ này trước mỗi lần khám, nên điền được bao nhiêu tốt bấy nhiêu."
       footer={
         <>
           <SiteButton variant="outline" onClick={onClose}>
@@ -128,8 +127,8 @@ export function PetFormDialog({
     >
       {/* Chưa có id thì chưa tải ảnh lên được — thú cưng mới thêm xong mở "Sửa hồ sơ" để đăng ảnh. */}
       {pet && (
-        <div className="mb-5 flex items-center gap-5">
-          <PetAvatar species={pet.species} photoUrl={pet.photoUrl} name={pet.name} small className="h-20 w-16" />
+        <div className="mb-4 flex items-center gap-4 sm:mb-5 sm:gap-5">
+          <PetAvatar species={pet.species} photoUrl={pet.photoUrl} name={pet.name} small className="h-16 w-14 sm:h-20 sm:w-16" />
           <div>
             <PhotoUploadButton
               variant="site"
@@ -137,15 +136,15 @@ export function PetFormDialog({
               upload={(file) => myPetApi.uploadPhoto(pet.id, file)}
               onUploaded={() => qc.invalidateQueries({ queryKey: ["pets"] })}
             />
-            <p className="mt-2 text-sm text-stone">JPG, PNG hoặc WebP, tối đa 5MB.</p>
+            <p className="mt-1.5 text-xs text-stone sm:mt-2 sm:text-sm">JPG, PNG hoặc WebP, tối đa 5MB.</p>
           </div>
         </div>
       )}
 
-      <form id="pet-form" onSubmit={handleSubmit((v) => save.mutate(v))} noValidate className="space-y-4">
+      <form id="pet-form" onSubmit={handleSubmit((v) => save.mutate(v))} noValidate className="space-y-3 sm:space-y-4">
         <SiteInput label="Tên gọi ở nhà" required error={errors.name?.message} {...register("name")} />
 
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4">
           <SiteInput
             label="Loài"
             required
@@ -168,7 +167,7 @@ export function PetFormDialog({
           />
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 [&>*:first-child]:col-span-2 sm:[&>*:first-child]:col-span-1">
           <SiteSelect label="Giới tính" error={errors.gender?.message} {...register("gender")}>
             <option value="UNKNOWN">Chưa rõ</option>
             <option value="MALE">Đực</option>

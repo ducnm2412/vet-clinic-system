@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarDays, ChevronLeft, Clock3, MapPin, Pill, Stethoscope } from "lucide-react";
+import { CalendarDays, CheckCircle2, ChevronLeft, ClipboardList, Clock3, FileText, MapPin, PawPrint, Pill, Stethoscope, UserRound } from "lucide-react";
 import { ApiError, bookingApi, medicalRecordApi, myPetApi } from "@/lib/api";
 import { formatDate, formatTime, todayISO } from "@/lib/utils/format";
 import type { AppointmentStatus } from "@/types";
@@ -73,79 +73,106 @@ function AppointmentDetailBody() {
   }
 
   const pet = (pets.data ?? []).find((p) => p.id === appointment.petId) ?? null;
+  const doctor = doctors.label(appointment.doctorUserId);
+  const gender = pet?.gender === "MALE" ? "♂" : pet?.gender === "FEMALE" ? "♀" : null;
 
   return (
-    <>
-      <div className="bg-mint">
-        <Container className="pt-8">
-          <Link
-            href="/user/appointments"
-            className="inline-flex items-center gap-1.5 text-[15px] text-stone hover:text-pine"
-          >
-            <ChevronLeft aria-hidden className="size-4" />
-            Lịch khám của bạn
-          </Link>
-        </Container>
+    <div className="space-y-4 md:space-y-5">
+      <Link
+        href="/user/appointments"
+        className="inline-flex items-center gap-1.5 text-[15px] text-stone hover:text-pine"
+      >
+        <ChevronLeft aria-hidden className="size-4" />
+        Lịch khám của bạn
+      </Link>
 
-        <Container className="grid gap-8 py-10 md:grid-cols-[auto_1fr] md:gap-12 md:py-14">
-          <PetAvatar species={pet?.species} className="h-44 w-34" />
-
-          <div className="min-w-0">
-            <StatusPill look={APPOINTMENT_LOOK[appointment.status]} />
-            <h1 className="t-h2 mt-4">
-              {pet ? `Lịch khám của ${pet.name}` : "Lịch khám"}
-            </h1>
-
-            <dl className="mt-8 grid max-w-3xl gap-6 sm:grid-cols-2 lg:grid-cols-4">
-              <IconItem icon={CalendarDays} label="Ngày khám" value={formatDate(appointment.date)} />
-              <IconItem
-                icon={Clock3}
-                label={appointment.slotId ? "Giờ" : "Giờ mong muốn"}
-                value={`${formatTime(appointment.startTime)} đến ${formatTime(appointment.endTime)}`}
-              />
-              {/* Phòng khám xếp bác sĩ — đây là chỗ khách biết mình được xếp cho ai (chưa xếp thì ghi vậy). */}
-              <IconItem
-                icon={Stethoscope}
-                label="Người khám"
-                value={doctors.label(appointment.doctorUserId)}
-              />
-              <IconItem icon={MapPin} label="Tại" value={CLINIC.address} />
-            </dl>
-
-            <StatusNotice appointment={appointment} doctor={doctors.label(appointment.doctorUserId)} />
-
-            {pet && (
-              <p className="mt-6 text-stone">
-                <Link href={`/user/pets/${pet.id}`} className="text-teal-deep underline underline-offset-4">
-                  Xem hồ sơ của {pet.name}
-                </Link>
-              </p>
-            )}
-          </div>
-        </Container>
+      {/* Đầu trang: trạng thái, tiêu đề, ngày giờ & địa điểm */}
+      <div className="rounded-2xl bg-white p-4 shadow-[0_2px_14px_-8px_rgba(0,0,0,0.12)] sm:p-5">
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="font-[family-name:var(--font-brand)] text-[24px] leading-tight text-pine md:text-[30px]">
+            {pet ? `Lịch khám của ${pet.name}` : "Lịch khám"}
+          </h1>
+          <StatusPill look={APPOINTMENT_LOOK[appointment.status]} />
+        </div>
+        <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-[14px] text-[#3b2a20]">
+          <Meta icon={CalendarDays}>{formatDate(appointment.date)}</Meta>
+          <Meta icon={Clock3}>
+            {formatTime(appointment.startTime)} – {formatTime(appointment.endTime)}
+            {!appointment.slotId && <span className="text-stone"> (giờ mong muốn)</span>}
+          </Meta>
+          <Meta icon={MapPin}>{CLINIC.address}</Meta>
+        </div>
+        <StatusNotice appointment={appointment} doctor={doctor} />
       </div>
 
-      <Container className="grid gap-12 py-14 lg:grid-cols-[1fr_20rem] lg:gap-16 md:py-20">
-        <div className="min-w-0 space-y-12">
-          <section>
-            <h2 className="t-h3">Lý do khám bạn đã ghi</h2>
-            <p className="measure t-body mt-3 text-stone">
-              {appointment.reason?.trim() || "Bạn không ghi lý do khi đặt lịch."}
-            </p>
-            {/* VD-21: dịch vụ đã chọn; lịch hẹn đặt trước khi có danh mục thì không có. */}
-            {appointment.serviceName && (
-              <p className="mt-3 text-[15px] text-stone">
-                Dịch vụ: <span className="text-ink">{appointment.serviceName}</span>
+      {/* Hàng 1: thú cưng · dịch vụ · bác sĩ */}
+      <div className="grid gap-4 md:grid-cols-3 md:gap-5">
+        <Card icon={PawPrint} title="Thông tin thú cưng">
+          <div className="flex items-center gap-4">
+            <PetAvatar species={pet?.species} photoUrl={pet?.photoUrl} name={pet?.name} small className="h-20 w-16 shrink-0" />
+            <div className="min-w-0 text-[13px] text-[#5b4a3e]">
+              <p className="text-[17px] font-bold text-pine">
+                {pet?.name ?? "—"} {gender && <span className="text-[#f57c1f]">{gender}</span>}
               </p>
-            )}
-          </section>
+              {pet && (
+                <>
+                  <p>
+                    {pet.species}
+                    {pet.breed ? ` · ${pet.breed}` : ""}
+                  </p>
+                  {pet.dateOfBirth && <p>Ngày sinh: {formatDate(pet.dateOfBirth)}</p>}
+                  {pet.weightKg && <p>Cân nặng: {pet.weightKg} kg</p>}
+                </>
+              )}
+            </div>
+          </div>
+        </Card>
 
-          <MedicalRecordSection appointment={appointment} />
-        </div>
+        <Card icon={ClipboardList} title="Thông tin dịch vụ">
+          <div className="flex items-center gap-4">
+            <span className="grid size-14 shrink-0 place-items-center rounded-2xl bg-[#e3f1e6] text-teal">
+              <Stethoscope aria-hidden className="size-7" />
+            </span>
+            <div className="min-w-0">
+              {/* VD-21: dịch vụ đã chọn; lịch hẹn đặt trước khi có danh mục thì không có. */}
+              <p className="text-[16px] font-bold text-pine">{appointment.serviceName ?? "Khám theo yêu cầu"}</p>
+              <p className="mt-0.5 line-clamp-3 text-[13px] text-[#5b4a3e]">
+                {appointment.reason?.trim() || "Bạn không ghi lý do khi đặt lịch."}
+              </p>
+            </div>
+          </div>
+        </Card>
 
-        <CancelPanel appointment={appointment} />
-      </Container>
-    </>
+        <Card icon={UserRound} title="Thông tin bác sĩ">
+          <div className="flex items-center gap-4">
+            <span className="grid size-14 shrink-0 place-items-center rounded-full bg-[#fff1e3] text-[#f57c1f]">
+              <Stethoscope aria-hidden className="size-7" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[16px] font-bold text-pine">{doctor}</p>
+              <p className="mt-0.5 text-[13px] text-[#5b4a3e]">
+                {appointment.doctorUserId ? "Bác sĩ phụ trách lần khám" : "Phòng khám sẽ xếp bác sĩ cho bé"}
+              </p>
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      {/* Hàng 2: kết quả khám · đơn thuốc */}
+      <MedicalRecordSection appointment={appointment} />
+
+      <CancelPanel appointment={appointment} />
+
+    </div>
+  );
+}
+
+function Meta({ icon: Icon, children }: { icon: typeof CalendarDays; children: React.ReactNode }) {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <Icon aria-hidden className="size-4 shrink-0 text-teal" />
+      <span>{children}</span>
+    </span>
   );
 }
 
@@ -164,17 +191,9 @@ function StatusNotice({ appointment: a, doctor }: { appointment: Appointment; do
       toast.error(err instanceof ApiError ? err.message : "Không xác nhận được lịch khám."),
   });
 
-  if (a.status === "AWAITING_ASSIGNMENT") {
-    return (
-      <p className="measure mt-6 rounded-[var(--radius-card)] bg-peach px-5 py-4 text-[15px]">
-        Phòng khám đã nhận yêu cầu và đang xếp bác sĩ rảnh vào giờ bạn chọn. Giờ trên đây là giờ bạn
-        mong muốn, chưa phải lịch đã chốt. Có bác sĩ thì lịch chuyển sang “Đã xác nhận”.
-      </p>
-    );
-  }
   if (a.status === "AWAITING_CUSTOMER") {
     return (
-      <div className="measure mt-6 rounded-[var(--radius-card)] bg-peach px-5 py-4 text-[15px]">
+      <div className="mt-4 rounded-xl bg-peach px-4 py-3 text-[14px]">
         <p>
           Giờ bạn chọn
           {a.preferredStartTime && a.preferredDate
@@ -198,26 +217,6 @@ function StatusNotice({ appointment: a, doctor }: { appointment: Appointment; do
   return null;
 }
 
-function IconItem({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: typeof CalendarDays;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="flex gap-3">
-      <Icon aria-hidden className="mt-0.5 size-5 shrink-0 text-teal" />
-      <div className="min-w-0">
-        <dt className="text-[15px] text-stone">{label}</dt>
-        <dd className="mt-0.5 font-medium">{value}</dd>
-      </div>
-    </div>
-  );
-}
-
 /**
  * Bệnh án của lần khám này. Khách hàng đọc được bệnh án của chính mình
  * (GET /medical-records/by-appointment/{id} của pet-service cho phép CUSTOMER), còn 404 nghĩa là
@@ -230,21 +229,20 @@ function MedicalRecordSection({ appointment }: { appointment: Appointment }) {
   });
 
   if (record.isLoading) {
-    return <div className="h-40 animate-pulse rounded-[var(--radius-card)] bg-mint" />;
+    return <div className="h-40 animate-pulse rounded-2xl bg-white" />;
   }
 
   const data = record.data;
 
   if (!data) {
     return (
-      <section>
-        <h2 className="t-h3">Kết quả khám</h2>
-        <p className="measure mt-3 text-stone">
+      <Card icon={FileText} title="Kết quả khám">
+        <p className="rounded-xl bg-[#fdf6ee] px-4 py-3 text-[14px] text-[#5b4a3e]">
           {appointment.status === "COMPLETED"
             ? "Bác sĩ chưa lập bệnh án cho lần khám này."
             : "Sau khi khám xong, chẩn đoán và đơn thuốc của bác sĩ sẽ hiện ở đây."}
         </p>
-      </section>
+      </Card>
     );
   }
 
@@ -253,58 +251,89 @@ function MedicalRecordSection({ appointment }: { appointment: Appointment }) {
 
 function RecordBody({ record }: { record: MedicalRecord }) {
   return (
-    <section>
-      <h2 className="t-h3">Kết quả khám</h2>
+    <div className="grid gap-4 md:grid-cols-[1.5fr_1fr] md:gap-5">
+      <Card icon={FileText} title="Kết quả khám">
+        <dl className="space-y-2.5">
+          <CheckRow label="Chẩn đoán" value={record.diagnosis} />
+          {record.treatment && <CheckRow label="Bác sĩ đã xử lý" value={record.treatment} />}
+          {record.notes && <CheckRow label="Lời dặn" value={record.notes} />}
+        </dl>
+      </Card>
 
-      <dl className="mt-5 space-y-6">
-        <div>
-          <dt className="text-[15px] text-stone">Chẩn đoán</dt>
-          <dd className="measure t-body mt-1">{record.diagnosis}</dd>
-        </div>
-        {record.treatment && (
-          <div>
-            <dt className="text-[15px] text-stone">Bác sĩ đã xử lý</dt>
-            <dd className="measure t-body mt-1">{record.treatment}</dd>
-          </div>
+      <Card
+        icon={Pill}
+        title="Đơn thuốc"
+        extra={record.prescriptionItems.length > 0 ? <StatusPill look={PRESCRIPTION_LOOK[record.status]} /> : undefined}
+      >
+        {record.prescriptionItems.length === 0 ? (
+          <p className="rounded-xl bg-[#fdf6ee] px-4 py-3 text-[14px] text-[#5b4a3e]">Lần khám này không kê thuốc.</p>
+        ) : (
+          <>
+            <ul className="space-y-2">
+              {record.prescriptionItems.map((item) => (
+                <li key={item.id} className="flex gap-3 rounded-xl bg-[#f4faf7] p-3">
+                  <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-white text-[#f57c1f]">
+                    <Pill aria-hidden className="size-5" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-pine">{item.medicationName}</p>
+                    <p className="text-[13px] text-[#5b4a3e]">
+                      {item.dosage}, {item.frequency}
+                      {item.durationDays ? `, trong ${item.durationDays} ngày` : ""}
+                    </p>
+                    {item.notes && <p className="mt-0.5 text-[13px] text-stone">Lưu ý: {item.notes}</p>}
+                  </div>
+                </li>
+              ))}
+            </ul>
+            {record.status === "PENDING" && (
+              <p className="mt-3 rounded-xl bg-peach px-4 py-2.5 text-[13px]">
+                Ghé quầy phòng khám trả tiền thuốc rồi nhận thuốc mang về.
+              </p>
+            )}
+          </>
         )}
-        {record.notes && (
-          <div>
-            <dt className="text-[15px] text-stone">Dặn dò</dt>
-            <dd className="measure t-body mt-1">{record.notes}</dd>
-          </div>
-        )}
-      </dl>
+      </Card>
+    </div>
+  );
+}
 
-      {record.prescriptionItems.length > 0 && (
-        <div className="mt-10">
-          <div className="flex flex-wrap items-center gap-4">
-            <h3 className="t-h3 flex items-center gap-2">
-              <Pill aria-hidden className="size-5 text-teal" />
-              Đơn thuốc
-            </h3>
-            <StatusPill look={PRESCRIPTION_LOOK[record.status]} />
-          </div>
+function CheckRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="grid grid-cols-[auto_6.5rem_1fr] items-start gap-2 text-[14px] sm:grid-cols-[auto_8rem_1fr]">
+      <CheckCircle2 aria-hidden className="mt-0.5 size-4 text-teal" />
+      <dt className="text-[#5b4a3e]">{label}</dt>
+      <dd className="text-[#2b1d14]">
+        <span className="mr-1 text-stone">:</span>
+        {value}
+      </dd>
+    </div>
+  );
+}
 
-          <ul className="mt-5 divide-y divide-mist border-y border-mist">
-            {record.prescriptionItems.map((item) => (
-              <li key={item.id} className="py-4">
-                <p className="font-medium">{item.medicationName}</p>
-                <p className="mt-1 text-stone">
-                  {item.dosage}, {item.frequency}
-                  {item.durationDays ? `, trong ${item.durationDays} ngày` : ""}
-                </p>
-                {item.notes && <p className="mt-1 text-[15px] text-stone">{item.notes}</p>}
-              </li>
-            ))}
-          </ul>
-
-          {record.status === "PENDING" && (
-            <p className="mt-5 rounded-[var(--radius-card)] bg-peach px-5 py-4 text-[15px]">
-              Ghé quầy phòng khám trả tiền thuốc rồi nhận thuốc mang về.
-            </p>
-          )}
-        </div>
-      )}
+function Card({
+  icon: Icon,
+  title,
+  extra,
+  children,
+}: {
+  icon: typeof CalendarDays;
+  title: string;
+  extra?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="rounded-2xl bg-white p-4 shadow-[0_2px_14px_-8px_rgba(0,0,0,0.12)] sm:p-5">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h2 className="flex items-center gap-2 text-[16px] font-bold text-pine">
+          <span className="grid size-7 place-items-center rounded-full bg-[#fff1e3] text-[#f57c1f]">
+            <Icon aria-hidden className="size-4" />
+          </span>
+          {title}
+        </h2>
+        {extra}
+      </div>
+      {children}
     </section>
   );
 }
@@ -330,40 +359,17 @@ function CancelPanel({ appointment }: { appointment: Appointment }) {
   const cancellable =
     OPEN_STATUSES.includes(appointment.status) && appointment.date >= todayISO();
 
-  return (
-    <aside className="lg:sticky lg:top-24 lg:self-start">
-      <div className="rounded-[var(--radius-card)] bg-mint p-6">
-        <h2 className="t-h3">Cần đổi kế hoạch?</h2>
+  if (!cancellable) return null;
 
-        {cancellable ? (
-          <>
-            <p className="mt-3 text-stone">
-              {appointment.status === "AWAITING_CUSTOMER"
-                ? "Không hợp với giờ phòng khám đề xuất thì huỷ lịch, rồi gửi yêu cầu giờ khác."
-                : "Huỷ giúp phòng khám nhường chỗ cho người khác. Muốn đổi giờ thì huỷ rồi gửi yêu cầu mới."}
-            </p>
-            <SiteButton variant="outline" className="mt-6 w-full" onClick={() => setConfirming(true)}>
-              Huỷ lịch khám
-            </SiteButton>
-            <ButtonLink href="/appointments/create" variant="teal" className="mt-3 w-full">
-              Đặt lịch khác
-            </ButtonLink>
-          </>
-        ) : (
-          <>
-            <p className="mt-3 text-stone">
-              {appointment.status === "CANCELLED"
-                ? "Lịch này đã huỷ."
-                : appointment.status === "COMPLETED"
-                  ? "Lần khám này đã xong."
-                  : "Lịch này không huỷ được nữa."}{" "}
-              Gọi {CLINIC.phone} nếu bạn cần phòng khám hỗ trợ.
-            </p>
-            <ButtonLink href="/appointments/create" className="mt-6 w-full">
-              Đặt lịch mới
-            </ButtonLink>
-          </>
-        )}
+  return (
+    <div>
+      <div className="grid grid-cols-2 gap-2.5 sm:flex sm:justify-end">
+        <SiteButton variant="outline" size="sm" onClick={() => setConfirming(true)}>
+          Huỷ lịch khám
+        </SiteButton>
+        <ButtonLink href="/appointments/create" variant="teal" size="sm">
+          Đặt lịch khác
+        </ButtonLink>
       </div>
 
       <SiteDialog
@@ -386,6 +392,6 @@ function CancelPanel({ appointment }: { appointment: Appointment }) {
           Huỷ xong giờ này nhường lại cho người khác. Bạn vẫn đặt lịch mới được bất cứ lúc nào.
         </p>
       </SiteDialog>
-    </aside>
+    </div>
   );
 }

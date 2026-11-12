@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -349,8 +350,11 @@ function MobileDrawer({
   onSignOut: () => void;
 }) {
   const [servicesOpen, setServicesOpen] = useState(false);
-  return (
-    <div className="fixed inset-0 z-50 xl:hidden">
+  // Render ra thẳng <body>: header có backdrop-blur, mà backdrop-filter biến header thành khung
+  // chứa của phần tử `fixed` con — menu sẽ bị ép vào chiều cao 72px của header.
+  if (typeof document === "undefined") return null;
+  return createPortal(
+    <div className="fixed inset-0 z-[60] xl:hidden">
       <button
         aria-label="Đóng menu"
         onClick={onClose}
@@ -443,7 +447,8 @@ function MobileDrawer({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

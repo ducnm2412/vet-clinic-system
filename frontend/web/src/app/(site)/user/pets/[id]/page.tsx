@@ -75,7 +75,7 @@ function PetProfile({ pet }: { pet: Pet }) {
 
   return (
     <>
-      <div className="bg-mint">
+      <div className="rounded-3xl border border-[#f0e6dc] bg-white shadow-[0_4px_24px_-12px_rgba(0,0,0,0.12)]">
         <Container className="pt-8">
           <Link
             href="/user/pets"
@@ -86,17 +86,19 @@ function PetProfile({ pet }: { pet: Pet }) {
           </Link>
         </Container>
 
-        <Container className="grid gap-8 py-10 md:grid-cols-[auto_1fr] md:gap-12 md:py-14">
-          <PetAvatar species={pet.species} photoUrl={pet.photoUrl} name={pet.name} className="h-52 w-40" />
+        <Container className="grid grid-cols-[5.5rem_1fr] gap-x-4 gap-y-5 py-6 md:grid-cols-[auto_1fr] md:gap-x-12 md:gap-y-0 md:py-14">
+          <PetAvatar species={pet.species} photoUrl={pet.photoUrl} name={pet.name} className="h-28 w-[5.5rem] md:row-span-2 md:h-52 md:w-40" />
 
-          <div className="min-w-0">
-            <h1 className="t-h2">{pet.name}</h1>
-            <p className="t-lede mt-3 text-stone">
+          <div className="min-w-0 self-center md:self-end">
+            <h1 className="t-h2 text-[28px] md:text-[inherit]">{pet.name}</h1>
+            <p className="mt-1 text-stone md:t-lede md:mt-3">
               {pet.species}
               {pet.breed ? ` ${pet.breed}` : ""}
             </p>
+          </div>
 
-            <dl className="mt-8 grid max-w-xl grid-cols-2 gap-x-8 gap-y-5 sm:grid-cols-3">
+          <div className="col-span-2 min-w-0 md:col-span-1 md:col-start-2">
+            <dl className="grid max-w-xl grid-cols-2 gap-2.5 sm:grid-cols-3 md:mt-6 [&>*:last-child]:col-span-2 sm:[&>*:last-child]:col-span-1">
               <Item label="Tuổi" value={formatAge(pet.dateOfBirth)} />
               <Item label="Giới tính" value={gender} />
               <Item
@@ -108,9 +110,9 @@ function PetProfile({ pet }: { pet: Pet }) {
             </dl>
 
             {(pet.allergies || pet.notes) && (
-              <div className="mt-8 max-w-xl space-y-3">
+              <div className="mt-5 max-w-xl space-y-3">
                 {pet.allergies && (
-                  <p className="flex gap-2 rounded-[var(--radius-card)] bg-white/70 p-3 text-[15px]">
+                  <p className="flex gap-2 rounded-[var(--radius-card)] bg-[#fdf6ee] p-3 text-[15px]">
                     <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0 text-coral-deep" />
                     <span>
                       <span className="font-medium">Dị ứng:</span> {pet.allergies}
@@ -121,29 +123,32 @@ function PetProfile({ pet }: { pet: Pet }) {
               </div>
             )}
 
-            <div className="mt-9 flex flex-wrap gap-3">
-              <ButtonLink href="/appointments/create">Đặt lịch khám cho bé</ButtonLink>
-              <SiteButton variant="outline" onClick={() => setEditing(true)}>
+            <div className="mt-5 flex flex-wrap gap-2 sm:gap-3 md:mt-9 max-sm:[&>*]:h-9 max-sm:[&>*]:gap-1.5 max-sm:[&>*]:px-3 max-sm:[&>*]:text-[13px]">
+              <ButtonLink href="/appointments/create" size="sm">
+                <CalendarDays aria-hidden className="size-4" />
+                Đặt lịch khám
+              </ButtonLink>
+              <SiteButton variant="outline" size="sm" onClick={() => setEditing(true)}>
                 <Pencil aria-hidden className="size-4" />
                 Sửa hồ sơ
+              </SiteButton>
+              <SiteButton
+                variant="outline"
+                size="sm"
+                onClick={() => setConfirmDelete(true)}
+                className="hover:!border-coral-deep hover:!text-coral-deep"
+              >
+                <Trash2 aria-hidden className="size-4" />
+                Xoá hồ sơ
               </SiteButton>
             </div>
           </div>
         </Container>
       </div>
 
-      <Container className="py-14 md:py-20">
+      <Container className="py-8 md:py-20">
         <PetAppointments petId={pet.id} petName={pet.name} />
 
-        <div className="mt-16 border-t border-mist pt-8">
-          <button
-            onClick={() => setConfirmDelete(true)}
-            className="inline-flex items-center gap-2 text-[15px] text-stone underline underline-offset-4 hover:text-coral-deep"
-          >
-            <Trash2 aria-hidden className="size-4" />
-            Xoá hồ sơ {pet.name}
-          </button>
-        </div>
       </Container>
 
       {editing && (
@@ -176,9 +181,9 @@ function PetProfile({ pet }: { pet: Pet }) {
 
 function Item({ label, value }: { label: string; value: string }) {
   return (
-    <div>
-      <dt className="text-[15px] text-stone">{label}</dt>
-      <dd className="mt-0.5 font-medium">{value}</dd>
+    <div className="rounded-xl bg-[#fdf6ee] px-3.5 py-2.5">
+      <dt className="text-[13px] text-stone">{label}</dt>
+      <dd className="mt-0.5 font-semibold">{value}</dd>
     </div>
   );
 }
@@ -210,7 +215,7 @@ function PetAppointments({ petId, petName }: { petId: string; petName: string })
 
   return (
     <section>
-      <h2 className="t-h2">Những lần {petName} đã đến</h2>
+      <h2 className="truncate font-[family-name:var(--font-brand)] text-[20px] leading-tight tracking-[-0.015em] text-pine sm:text-[28px] md:text-[2.5rem]">Những lần {petName} đã đến</h2>
 
       {appointments.isLoading ? (
         <div className="mt-8 space-y-3" aria-hidden>
@@ -232,7 +237,7 @@ function PetAppointments({ petId, petName }: { petId: string; petName: string })
           </div>
         </div>
       ) : (
-        <ul className="mt-8 divide-y divide-mist border-y border-mist">
+        <ul className="mt-5 space-y-2.5 md:mt-8">
           {list.map((a) => (
             <AppointmentRow
               key={a.id}
@@ -260,33 +265,34 @@ function AppointmentRow({
     <li>
       <Link
         href={`/user/appointments/${a.id}`}
-        className="block py-5 transition-colors hover:bg-mint/60"
+        className="flex gap-3.5 rounded-2xl border border-mist bg-white p-3.5 transition-colors hover:border-teal/40 hover:bg-mint/40 sm:gap-5 sm:p-4"
       >
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-          <div className="min-w-40">
-            <p className="font-medium">{formatDate(a.date)}</p>
-            <p className="tnum text-[15px] text-stone">
-              {formatTime(a.startTime)} đến {formatTime(a.endTime)}
-            </p>
-          </div>
-          <p className="min-w-44 text-[15px] text-stone">{doctor}</p>
-          <p className="min-w-0 flex-1 truncate text-stone">
-            {a.reason?.trim() || "Không ghi lý do khám"}
-          </p>
-          <StatusPill look={APPOINTMENT_LOOK[a.status]} />
+        <div className="grid w-14 shrink-0 place-content-center rounded-xl bg-[#fdf6ee] py-2 text-center">
+          <p className="tnum text-xl font-bold leading-none text-pine">{a.date.slice(8, 10)}</p>
+          <p className="tnum mt-1 text-[11px] text-stone">{a.date.slice(5, 7)}/{a.date.slice(0, 4)}</p>
         </div>
-
-        {record && (
-          <p className="mt-2 max-w-3xl text-[15px] text-pine">
-            Chẩn đoán: {record.diagnosis}
-            {record.prescriptionItems.length > 0 && (
-              <span className="text-stone">
-                {" · "}
-                {record.prescriptionItems.length} loại thuốc
-              </span>
-            )}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-2">
+            <p className="truncate font-semibold">{a.reason?.trim() || "Không ghi lý do khám"}</p>
+            <span className="hidden shrink-0 sm:block">
+              <StatusPill look={APPOINTMENT_LOOK[a.status]} />
+            </span>
+          </div>
+          <p className="tnum mt-0.5 truncate text-[13px] text-stone">
+            {formatTime(a.startTime)} – {formatTime(a.endTime)} · {doctor}
           </p>
-        )}
+          {record && (
+            <p className="mt-1 line-clamp-2 text-[13px] text-pine">
+              Chẩn đoán: {record.diagnosis}
+              {record.prescriptionItems.length > 0 && (
+                <span className="text-stone"> · {record.prescriptionItems.length} loại thuốc</span>
+              )}
+            </p>
+          )}
+          <div className="mt-2 origin-left scale-90 sm:hidden">
+            <StatusPill look={APPOINTMENT_LOOK[a.status]} />
+          </div>
+        </div>
       </Link>
     </li>
   );
@@ -294,13 +300,13 @@ function AppointmentRow({
 
 function PetSkeleton() {
   return (
-    <div className="bg-mint">
+    <div className="rounded-3xl border border-[#f0e6dc] bg-white">
       <Container className="grid gap-8 py-14 md:grid-cols-[auto_1fr] md:gap-12">
-        <div className="arch h-52 w-40 animate-pulse bg-white/60" />
+        <div className="arch h-52 w-40 animate-pulse bg-mint" />
         <div className="space-y-4 pt-2">
-          <div className="h-10 w-1/3 animate-pulse rounded bg-white/60" />
-          <div className="h-5 w-1/4 animate-pulse rounded bg-white/60" />
-          <div className="h-24 w-full max-w-xl animate-pulse rounded bg-white/60" />
+          <div className="h-10 w-1/3 animate-pulse rounded bg-mint" />
+          <div className="h-5 w-1/4 animate-pulse rounded bg-mint" />
+          <div className="h-24 w-full max-w-xl animate-pulse rounded bg-mint" />
         </div>
       </Container>
     </div>

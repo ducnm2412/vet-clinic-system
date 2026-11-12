@@ -60,6 +60,9 @@ export const mockAppointments: Appointment[] = [
   appt("ap-3", "pet-1", "2026-11-03", "14:30:00", "15:00:00", "Tiêm phòng", "COMPLETED"),
   appt("ap-4", "pet-2", "2026-10-18", "10:00:00", "10:30:00", "Spa & grooming", "COMPLETED"),
   appt("ap-5", "pet-1", "2026-09-30", "08:30:00", "09:00:00", "Xét nghiệm máu", "COMPLETED"),
+  appt("ap-6", "pet-2", "2026-11-25", "10:30:00", "11:00:00", "Siêu âm", "AWAITING_ASSIGNMENT"),
+  appt("ap-7", "pet-1", "2026-10-05", "16:00:00", "16:30:00", "Khám răng miệng", "CANCELLED"),
+  appt("ap-8", "pet-2", "2026-09-12", "09:30:00", "10:00:00", "Khám tổng quát", "NO_SHOW"),
 ];
 
 function order(code: string, status: OrderSummary["status"], items: number, total: number, date: string, paid: boolean): OrderSummary {
@@ -166,3 +169,49 @@ export function mockProductImage(productId: string): string | null {
 
 /** Họ tên: hồ sơ khách chưa có trường này. */
 export const mockFullName: string | null = MOCK_ACCOUNT_ENABLED ? "Nguyễn Thị Lan" : null;
+
+/* ---------------- Giỏ hàng mẫu (MOCK-TẠM) — giữ trong bộ nhớ để bấm +/−/xoá vẫn chạy ---------------- */
+import type { Cart, CartItem } from "@/types";
+
+let mockCartLines: Array<{ productId: string; quantity: number }> = [
+  { productId: "p1", quantity: 2 },
+  { productId: "p2", quantity: 1 },
+  { productId: "p3", quantity: 3 },
+  { productId: "p5", quantity: 1 },
+];
+
+function buildMockCart(): Cart {
+  const items: CartItem[] = mockCartLines.flatMap(({ productId, quantity }) => {
+    const p = mockProducts.find((x) => x.id === productId);
+    if (!p) return [];
+    const available = p.stockQuantity >= quantity;
+    return [{
+      productId, sku: p.sku, name: p.name, unit: p.unit, price: p.price, quantity,
+      lineTotal: p.price * quantity, available,
+      unavailableReason: available ? null : `Kho chỉ còn ${p.stockQuantity} ${p.unit}.`,
+    }];
+  });
+  return {
+    items,
+    totalItems: items.reduce((a, i) => a + i.quantity, 0),
+    subtotal: items.reduce((a, i) => a + i.lineTotal, 0),
+    checkoutable: items.length > 0 && items.every((i) => i.available),
+  };
+}
+
+export const mockCart = {
+  get: () => buildMockCart(),
+  add: (productId: string, quantity: number) => {
+    const line = mockCartLines.find((l) => l.productId === productId);
+    if (line) line.quantity += quantity;
+    else mockCartLines.push({ productId, quantity });
+    return buildMockCart();
+  },
+  update: (productId: string, quantity: number) => {
+    mockCartLines = quantity <= 0
+      ? mockCartLines.filter((l) => l.productId !== productId)
+      : mockCartLines.map((l) => (l.productId === productId ? { ...l, quantity } : l));
+    return buildMockCart();
+  },
+  clear: () => { mockCartLines = []; },
+};
