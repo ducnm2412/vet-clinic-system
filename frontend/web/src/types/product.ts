@@ -71,6 +71,8 @@ export interface StockAdjustmentRequest {
 
 export interface ProductFilter {
   keyword?: string;
+  /** Trang quản lý: "all" = cả hàng đang bán lẫn đã ẩn, "hidden" = chỉ hàng đã ẩn. Khách luôn chỉ thấy hàng đang bán. */
+  visibility?: "active" | "all" | "hidden";
   categoryId?: string;
   minPrice?: number;
   maxPrice?: number;

@@ -41,13 +41,14 @@ public class ProductService {
 
     @Transactional(readOnly = true)
     public PageResponse<ProductResponse> search(UUID categoryId, String keyword, BigDecimal minPrice,
-                                                BigDecimal maxPrice, boolean activeOnly, Pageable pageable) {
+                                                BigDecimal maxPrice, boolean activeOnly, boolean hiddenOnly,
+                                                Pageable pageable) {
         // Không lọc theo tên thì truyền chuỗi rỗng (khớp mọi bản ghi), không truyền null —
         // xem ghi chú kiểu tham số ở ProductRepository.search.
         String normalizedKeyword = (keyword == null || keyword.isBlank()) ? "" : keyword.trim();
 
         Page<ProductResponse> page = productRepository
-                .search(categoryId, normalizedKeyword, minPrice, maxPrice, activeOnly, pageable)
+                .search(categoryId, normalizedKeyword, minPrice, maxPrice, activeOnly, hiddenOnly, pageable)
                 .map(this::toResponse);
 
         return PageResponse.from(page);

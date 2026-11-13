@@ -49,12 +49,14 @@ public interface ProductRepository extends JpaRepository<Product, UUID> {
               and (:minPrice is null or p.price >= :minPrice)
               and (:maxPrice is null or p.price <= :maxPrice)
               and (:activeOnly = false or p.active = true)
+              and (:hiddenOnly = false or p.active = false)
             """)
     Page<Product> search(@Param("categoryId") UUID categoryId,
                          @Param("keyword") String keyword,
                          @Param("minPrice") BigDecimal minPrice,
                          @Param("maxPrice") BigDecimal maxPrice,
                          @Param("activeOnly") boolean activeOnly,
+                         @Param("hiddenOnly") boolean hiddenOnly,
                          Pageable pageable);
 
     /** CN-30: cảnh báo sắp hết hàng. */
