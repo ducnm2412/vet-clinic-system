@@ -171,10 +171,22 @@ services:
       # Link xác thực trong email phải là URL trình duyệt người dùng mở được — KHÔNG dùng tên
       # service nội bộ Docker ("frontend"), phải là host thật (localhost khi dev, domain thật khi prod).
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      # Thông báo trong app (chuông) lưu trong notification-db; JWT_SECRET chung để tự verify token.
+      DB_HOST: notification-db
+      DB_PORT: 5432
+      DB_NAME: notification_db
+      DB_USERNAME: ${NOTIFICATION_DB_USER:-postgres}
+      DB_PASSWORD: ${NOTIFICATION_DB_PASSWORD:?NOTIFICATION_DB_PASSWORD is required}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
     depends_on:
-      - eureka-server
-      - rabbitmq
-      - mailhog
+      notification-db:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
+      mailhog:
+        condition: service_started
 
   mailhog:
     image: mailhog/mailhog
@@ -490,6 +502,22 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+  notification-db:
+    image: postgres:16
+    container_name: notification-db
+    ports:
+      - "5441:5432"
+    environment:
+      POSTGRES_DB: notification_db
+      POSTGRES_USER: ${NOTIFICATION_DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${NOTIFICATION_DB_PASSWORD:?NOTIFICATION_DB_PASSWORD is required}
+    volumes:
+      - notification-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${NOTIFICATION_DB_USER:-postgres} -d notification_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
   staff-db:
     image: postgres:16
     container_name: staff-db
@@ -509,6 +537,7 @@ services:
       retries: 10
 
 volumes:
+  notification-db-data:
   staff-db-data:
   pet-db-data:
   auth-db-data:

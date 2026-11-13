@@ -74,6 +74,7 @@ class AppointmentNotificationEventsTest {
 
         AppointmentNotificationEvent e = only(Type.REQUEST_RECEIVED);
         assertThat(e.appointmentId()).isEqualTo(r.id());
+        assertThat(e.customerUserId()).isEqualTo(customer);
         assertThat(e.customerEmail()).isEqualTo("khach@example.com");
         assertThat(e.petName()).isEqualTo("Milo");
         assertThat(e.date()).isEqualTo(day);
@@ -140,12 +141,14 @@ class AppointmentNotificationEventsTest {
     }
 
     @Test
-    void withoutAnEmailOnFile_nothingIsSent() {
+    void withoutAnEmailOnFile_theEventIsStillSentSoTheCustomerSeesItInTheApp() {
         AppointmentResponse r = request(null, NINE);
 
         assignment.assign(r.id(), doctor);
 
-        assertThat(events.stream(AppointmentNotificationEvent.class).count()).isZero();
+        AppointmentNotificationEvent e = only(Type.CONFIRMED);
+        assertThat(e.customerEmail()).isNull();
+        assertThat(e.customerUserId()).isEqualTo(customer);
     }
 
     // ---- helpers ----

@@ -15,6 +15,10 @@ import java.util.UUID;
 public record AppointmentNotificationEvent(
         Type type,
         UUID appointmentId,
+        // Chủ lịch, để notification-service lưu thông báo trong app cho đúng người. Không phụ thuộc
+        // customerEmail: lịch không có email vẫn có người nhận trong app.
+        UUID customerUserId,
+        // Có thể null (lịch cũ, tạo hộ tại quầy): khi đó chỉ bỏ qua thư email.
         String customerEmail,
         String petName,
         String serviceName,

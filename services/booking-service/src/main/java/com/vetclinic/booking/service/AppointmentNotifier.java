@@ -11,11 +11,12 @@ import org.springframework.stereotype.Component;
 import java.util.UUID;
 
 /**
- * Báo khách qua email về những bước của lịch đặt theo yêu cầu.
+ * Báo khách về những bước của lịch đặt theo yêu cầu (email và thông báo trong app).
  *
  * Sự kiện chỉ thật sự gửi đi sau khi transaction commit ({@code AppointmentEventPublisher}), nên
- * thao tác bị rollback không bao giờ gửi thư. Lịch không có email (đặt kiểu cũ, tạo hộ tại quầy)
- * thì bỏ qua — không có địa chỉ để gửi.
+ * thao tác bị rollback không bao giờ gửi thông báo. Lịch không có email (đặt kiểu cũ, tạo hộ tại
+ * quầy) vẫn phát sự kiện — thông báo trong app không cần email; notification-service tự bỏ qua
+ * phần gửi thư.
  */
 @Component
 @RequiredArgsConstructor
@@ -45,10 +46,8 @@ public class AppointmentNotifier {
     }
 
     private void publish(Type type, Appointment a, String doctorName) {
-        if (a.getCustomerEmail() == null || a.getCustomerEmail().isBlank()) {
-            return;
-        }
-        events.publishEvent(new AppointmentNotificationEvent(type, a.getId(), a.getCustomerEmail(), a.getPetName(),
+        events.publishEvent(new AppointmentNotificationEvent(type, a.getId(), a.getCustomerUserId(),
+                a.getCustomerEmail(), a.getPetName(),
                 a.getService() == null ? null : a.getService().getName(), a.getReason(), doctorName,
                 a.effectiveDate(), a.effectiveStartTime(), a.effectiveEndTime(),
                 a.getPreferredDate(), a.getPreferredTime()));

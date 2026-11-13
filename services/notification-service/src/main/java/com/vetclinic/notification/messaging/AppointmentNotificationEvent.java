@@ -12,6 +12,8 @@ import java.util.UUID;
 public record AppointmentNotificationEvent(
         String type,
         UUID appointmentId,
+        // Chủ lịch, để lưu thông báo trong app. Null khi booking-service bản cũ chưa gửi trường này.
+        UUID customerUserId,
         String customerEmail,
         String petName,
         String serviceName,

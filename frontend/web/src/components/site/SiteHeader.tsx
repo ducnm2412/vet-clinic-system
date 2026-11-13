@@ -11,6 +11,7 @@ import { useAuth } from "@/lib/auth";
 import { useCart } from "@/lib/useCart";
 import { cn } from "@/lib/utils/cn";
 import { BrandLockup } from "./Brand";
+import { NotificationBell } from "./NotificationBell";
 import { ButtonLink } from "./primitives";
 
 type NavLink = { href: string; label: string };
@@ -112,6 +113,7 @@ export function SiteHeader() {
 
         <div className="ml-auto flex items-center gap-2">
           {isCustomer && <HeaderSearch />}
+          <NotificationBell />
           {hasCart && (
             <Link
               href="/cart"

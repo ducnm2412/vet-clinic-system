@@ -9,6 +9,7 @@ import { z } from "zod";
 import { ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { homeFor, isNextAllowedForRoles } from "@/config/nav";
+import { landingFor } from "@/lib/landing";
 import {
   DEMO_ACCOUNTS,
   DEMO_PASSWORD,

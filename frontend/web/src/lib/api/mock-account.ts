@@ -50,6 +50,7 @@ function appt(id: string, petId: string, date: string, start: string, end: strin
     id, slotId: `slot-${id}`, doctorUserId: "demo-doctor", date, startTime: start, endTime: end,
     customerUserId: OWNER, petId, serviceId: null, serviceName: service, reason: service,
     status, createdAt: NOW, updatedAt: NOW,
+    proposedDate: null, proposedStartTime: null, preferredDate: null, preferredStartTime: null,
   };
 }
 
@@ -110,7 +111,7 @@ export function mockPetHistory(petId: string): MedicalRecord[] {
   return mockAppointments
     .filter((a) => a.petId === petId && a.status === "COMPLETED")
     .map((a, i) => ({
-      id: `mr-${a.id}`, appointmentId: a.id, petId, customerUserId: OWNER, doctorUserId: a.doctorUserId,
+      id: `mr-${a.id}`, appointmentId: a.id, petId, customerUserId: OWNER, doctorUserId: a.doctorUserId ?? "demo-doctor",
       diagnosis: i === 0 ? "Sức khoẻ tốt, đã tiêm nhắc mũi 7 bệnh" : "Viêm da nhẹ do nấm",
       treatment: i === 0 ? "Tiêm vắc-xin 7 bệnh, hẹn nhắc lại sau 12 tháng" : "Thuốc bôi kháng nấm 7 ngày",
       notes: null, status: "RECEIVED", prescriptionItems: [], createdAt: `${a.date}T${a.startTime}`, updatedAt: NOW,
