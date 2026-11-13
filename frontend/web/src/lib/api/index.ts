@@ -18,6 +18,7 @@ export { productApi, categoryApi } from "./products";
 export { cartApi, orderApi, orderManageApi, nextActions } from "./orders";
 export { bookingApi, clinicServiceApi, suggestionsFrom } from "./bookings";
 export { paymentApi } from "./payments";
+export { notificationApi } from "./notifications";
 export { reportingApi, type ReportRange } from "./reporting";
 export { attendanceApi, shiftApi, type DateRange } from "./staff";
 export { MISSING, type MissingEndpoint, type MissingKey } from "./missing";

@@ -16,7 +16,7 @@ spring:
     enabled: true
     # db/seed = dữ liệu mẫu (danh mục thuốc, đơn mẫu). Tách khỏi db/migration vì test chạy Flyway trên
     # pet_db_test và nhiều test giả định bảng trống; pom.xml ghi đè lại chỉ còn db/migration khi test.
-    # Số phiên bản dùng chung cho cả hai thư mục: migration schema mới phải bắt đầu từ V9 (V7, V8 của seed).
+    # Số phiên bản dùng chung cho cả hai thư mục: migration schema mới phải bắt đầu từ V11 (V7-V10 của seed).
     locations: classpath:db/migration,classpath:db/seed
   servlet:
     multipart:

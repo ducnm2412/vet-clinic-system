@@ -51,6 +51,7 @@ function appt(id: string, petId: string, date: string, start: string, end: strin
     customerUserId: OWNER, petId, serviceId: null, serviceName: service, reason: service,
     proposedDate: null, proposedStartTime: null, preferredDate: null, preferredStartTime: null,
     status, createdAt: NOW, updatedAt: NOW,
+    proposedDate: null, proposedStartTime: null, preferredDate: null, preferredStartTime: null,
   };
 }
 

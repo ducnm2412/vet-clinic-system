@@ -15,18 +15,61 @@
     <artifactId>notification-service</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>notification-service</name>
-    <description>Notification Service - worker lắng nghe RabbitMQ, gửi email khi có lịch/đơn hàng/nhắc tái khám, không có DB riêng</description>
+    <description>Notification Service - lắng nghe RabbitMQ, gửi email và lưu thông báo trong app (chuông) cho khách</description>
 
     <properties>
         <java.version>17</java.version>
         <spring-cloud.version>2023.0.3</spring-cloud.version>
+        <jjwt.version>0.12.6</jjwt.version>
     </properties>
 
     <dependencies>
-        <!-- Chỉ để có actuator/health cho Eureka đăng ký; service này không expose REST API nghiệp vụ -->
+        <!-- REST API thông báo trong app (GET /notifications...) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <!-- Lưu thông báo trong app: database riêng notification_db, schema do Flyway quản lý -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
+        </dependency>
+
+        <!-- Tự verify JWT do auth-service phát hành, giống booking-service -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-api</artifactId>
+            <version>${jjwt.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-impl</artifactId>
+            <version>${jjwt.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-jackson</artifactId>
+            <version>${jjwt.version}</version>
+            <scope>runtime</scope>
         </dependency>
 
         <!-- Messaging: lắng nghe sự kiện từ booking-service/payment-service/... (chưa có publisher nào code) -->
@@ -67,6 +110,11 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <dependencyManagement>
@@ -101,9 +149,16 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
                     <!-- VD-25: múi giờ cố định, nếu không Windows chạy "Asia/Saigon" và mọi test
-                         liên quan ngày giờ đều lệch. Service này không có database nên không cần
-                         chốt chặn VD-12. -->
+                         liên quan ngày giờ đều lệch. -->
                     <argLine>-Duser.timezone=Asia/Ho_Chi_Minh</argLine>
+                    <systemPropertyVariables>
+                        <!-- JWT_SECRET chỉ để test tự ký token; production đọc từ biến môi trường. -->
+                        <JWT_SECRET>test-only-secret-khong-dung-o-moi-truong-that-32-ky-tu</JWT_SECRET>
+                        <!-- VD-12: test luôn chạy vào database riêng *_test, TestDatabaseGuard chặn
+                             lần nữa lúc chạy. -->
+                        <DB_PORT>5441</DB_PORT>
+                        <DB_NAME>notification_db_test</DB_NAME>
+                    </systemPropertyVariables>
                 </configuration>
             </plugin>
         </plugins>
