@@ -49,13 +49,18 @@ public class ProductController {
             @RequestParam(required = false) BigDecimal maxPrice,
             // Mặc định chỉ trả hàng đang bán; STAFF/ADMIN muốn xem cả hàng ẩn thì truyền activeOnly=false.
             @RequestParam(defaultValue = "true") boolean activeOnly,
+            // Chỉ lấy hàng đã ẩn (trang quản lý xem lại những gì đã ẩn). Chỉ STAFF/ADMIN dùng được.
+            @RequestParam(defaultValue = "false") boolean hiddenOnly,
             @PageableDefault(size = 20, sort = "name", direction = Sort.Direction.ASC) Pageable pageable,
             Authentication authentication) {
         // VD-01: endpoint này công khai, nên `activeOnly` do client gửi không được tin. Trước đây
         // ai cũng thêm ?activeOnly=false là liệt kê được hàng đã ngừng bán. Giờ chỉ người quản
         // lý kho mới được tắt bộ lọc; khách vãng lai và khách hàng luôn bị ép về hàng đang bán.
-        boolean effectiveActiveOnly = activeOnly || !canSeeInactive(authentication);
-        return productService.search(categoryId, keyword, minPrice, maxPrice, effectiveActiveOnly, pageable);
+        boolean manager = canSeeInactive(authentication);
+        boolean effectiveActiveOnly = activeOnly || !manager;
+        boolean effectiveHiddenOnly = hiddenOnly && manager && !effectiveActiveOnly;
+        return productService.search(categoryId, keyword, minPrice, maxPrice, effectiveActiveOnly,
+                effectiveHiddenOnly, pageable);
     }
 
     /**

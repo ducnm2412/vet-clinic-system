@@ -266,3 +266,124 @@ body {
     animation: none;
   }
 }
+
+/* ===== Motion trang chủ (skill motion-design) =====
+   Tính cách: Playful nhẹ. Easing chữ ký (0.2,0,0,1) cho 80% chuyển động, ease-out-back cho điểm nhấn.
+   Bảng thời lượng: nhanh 150ms (bấm/hover) · chuẩn 300ms (thẻ) · chậm 600ms (section/hero).
+   Kiểu vào: trồi lên 24px + hiện dần. */
+:root {
+  --ease-sig: cubic-bezier(0.2, 0, 0, 1);
+  --ease-pop: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+/* Section hiện khi cuộn tới; con có [data-stagger] trồi lên lần lượt, mỗi con trễ 60ms (tối đa ~400ms). */
+.reveal { opacity: 0; transform: translateY(24px); transition: opacity 600ms var(--ease-sig), transform 600ms var(--ease-sig); }
+.reveal.is-in { opacity: 1; transform: none; }
+.reveal [data-stagger] > * { opacity: 0; transform: translateY(16px); transition: opacity 300ms var(--ease-sig), transform 300ms var(--ease-sig); }
+.reveal.is-in [data-stagger] > * { opacity: 1; transform: none; }
+.reveal.is-in [data-stagger] > *:nth-child(2) { transition-delay: 60ms; }
+.reveal.is-in [data-stagger] > *:nth-child(3) { transition-delay: 120ms; }
+.reveal.is-in [data-stagger] > *:nth-child(4) { transition-delay: 180ms; }
+.reveal.is-in [data-stagger] > *:nth-child(5) { transition-delay: 240ms; }
+.reveal.is-in [data-stagger] > *:nth-child(n + 6) { transition-delay: 300ms; }
+
+/* Hero: badge → tiêu đề → mô tả → nút, mỗi lớp trễ 100ms khi slide đổi (tổng 300ms). */
+.hero-seq > * { opacity: 0; transform: translateY(18px); }
+.hero-seq.on > * { animation: hero-rise 600ms var(--ease-sig) forwards; }
+.hero-seq.on > *:nth-child(2) { animation-delay: 100ms; }
+.hero-seq.on > *:nth-child(3) { animation-delay: 200ms; }
+.hero-seq.on > *:nth-child(4) { animation-delay: 300ms; }
+@keyframes hero-rise { to { opacity: 1; transform: none; } }
+
+/* Lớp nền: dấu chân trôi nhẹ (sine, lặp liền mạch), mỗi chiếc lệch pha. */
+.float-amb { animation: float-amb 5s ease-in-out infinite; }
+.float-amb:nth-of-type(2n) { animation-duration: 6.5s; animation-delay: -2s; }
+@keyframes float-amb { 0%, 100% { translate: 0 0; } 50% { translate: 0 -10px; } }
+
+/* Nút: nhấn co 0.97 trong 150ms, thả nảy lại bằng ease-out-back. */
+.press { transition: transform 250ms var(--ease-pop), box-shadow 150ms var(--ease-sig); }
+.press:active { transform: scale(0.97); transition-duration: 120ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal, .reveal [data-stagger] > * { transform: none !important; transition-duration: 200ms !important; transition-delay: 0ms !important; }
+  .hero-seq > * { transform: none; }
+  .hero-seq.on > * { animation: hero-fade 200ms ease-out forwards; animation-delay: 0ms !important; }
+  .float-amb { animation: none; }
+  .press:active { transform: none; }
+}
+@keyframes hero-fade { to { opacity: 1; } }
+
+@keyframes hero-zoom { from { transform: scale(1.08); } to { transform: scale(1); } }
+
+/* --- Motion bổ sung --- */
+/* Icon bước quy trình: nảy (ease-out-back) khi section hiện ra, sau khi thẻ đã trồi lên. */
+.reveal .pop-in { transform: scale(0.6); opacity: 0; transition: transform 450ms var(--ease-pop), opacity 200ms var(--ease-sig); }
+.reveal.is-in .pop-in { transform: none; opacity: 1; transition-delay: 250ms; }
+/* Mũi tên trong nút/thẻ trượt sang khi hover. */
+.group:hover .nudge, a:hover > .nudge { transform: translateX(4px); }
+.nudge { transition: transform 150ms var(--ease-sig); }
+/* Ảnh trong thẻ phóng nhẹ khi hover. */
+.zoom-media img { transition: transform 500ms var(--ease-sig); }
+.group:hover .zoom-media img { transform: scale(1.06); }
+/* Thẻ nổi lên khi hover. */
+.lift { transition: transform 300ms var(--ease-sig), box-shadow 300ms var(--ease-sig); }
+.lift:hover { transform: translateY(-6px); box-shadow: 0 18px 36px -16px rgba(245, 124, 31, 0.45); }
+@media (prefers-reduced-motion: reduce) {
+  .reveal .pop-in { transform: none; }
+  .nudge, .zoom-media img, .lift { transition: none; transform: none !important; }
+}
+
+/* ===== Hero slider toàn màn hình ===== */
+/* Ảnh mới mở ra theo vòng tròn từ phía phải (900ms, ease chữ ký). */
+.slide-in { animation: slide-reveal 900ms var(--ease-sig) both; }
+@keyframes slide-reveal { from { clip-path: circle(0% at 72% 45%); } to { clip-path: circle(150% at 72% 45%); } }
+/* Ken Burns: phóng chậm suốt thời gian slide. */
+.ken-burns { animation: ken-burns 7s ease-out both; }
+@keyframes ken-burns { from { transform: scale(1.08) translateX(1%); } to { transform: scale(1.02) translateX(0); } }
+/* Chữ trồi lên khỏi mặt nạ. */
+.word-in { animation: word-in 700ms var(--ease-sig) both; }
+@keyframes word-in { from { transform: translateY(110%) rotate(4deg); opacity: 0; } to { transform: none; opacity: 1; } }
+/* Nút: vệt sáng quét qua định kỳ. */
+.shine::after { content: ""; position: absolute; inset: 0; background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.45) 50%, transparent 70%); transform: translateX(-120%); animation: shine 3.2s var(--ease-sig) 1.4s infinite; }
+@keyframes shine { 0% { transform: translateX(-120%); } 35%, 100% { transform: translateX(120%); } }
+/* Thanh tiến trình slide. */
+.progress { animation-name: progress; animation-timing-function: linear; animation-fill-mode: both; }
+@keyframes progress { from { width: 0; } to { width: 100%; } }
+/* Dấu chân bước lần lượt. */
+.paw-step { opacity: 0; animation: paw-step 3.6s ease-in-out infinite; }
+@keyframes paw-step { 0% { opacity: 0; scale: 0.6; } 12% { opacity: 0.85; scale: 1; } 55% { opacity: 0.85; } 75%, 100% { opacity: 0; } }
+/* Blob nền lượn. */
+.blob-a { border-radius: 58% 42% 55% 45% / 48% 60% 40% 52%; animation: blob 16s ease-in-out infinite alternate; }
+.blob-b { border-radius: 45% 55% 40% 60% / 55% 45% 60% 40%; animation: blob 20s ease-in-out infinite alternate-reverse; }
+@keyframes blob { 0% { transform: translate(0, 0) rotate(0deg); border-radius: 58% 42% 55% 45% / 48% 60% 40% 52%; } 100% { transform: translate(40px, -30px) rotate(25deg); border-radius: 40% 60% 45% 55% / 60% 40% 55% 45%; } }
+/* Thẻ dịch vụ: trồi lên lần lượt; hover nhấc + nền cam quét lên + icon lắc. */
+.card-rise { animation: card-rise 600ms var(--ease-pop) both; }
+@keyframes card-rise { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: none; } }
+.svc-card { transition: transform 300ms var(--ease-sig), box-shadow 300ms var(--ease-sig); }
+.svc-card:hover { transform: translateY(-8px); box-shadow: 0 28px 48px -20px rgba(245,124,31,0.6); }
+.svc-fill { transform: translateY(101%); transition: transform 400ms var(--ease-sig); }
+.svc-card:hover .svc-fill { transform: none; }
+.svc-card:hover .svc-icon { animation: wiggle 500ms var(--ease-sig); }
+@keyframes wiggle { 0%, 100% { rotate: 0deg; } 25% { rotate: -12deg; } 60% { rotate: 8deg; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .slide-in { animation: hero-fade 300ms ease-out both; }
+  .ken-burns, .shine::after, .paw-step, .blob-a, .blob-b { animation: none; }
+  .paw-step { opacity: 0.5; }
+  .word-in, .card-rise { animation: hero-fade 200ms ease-out both; animation-delay: 0ms !important; }
+  .svc-card:hover { transform: none; }
+  .svc-card:hover .svc-icon { animation: none; }
+}
+
+/* Header trong suốt đè lên hero trang chủ: chữ/icon trắng, có bóng chữ để đọc rõ trên ảnh. */
+.header-overlay { background: linear-gradient(180deg, rgba(10, 20, 16, 0.55), transparent); }
+.header-overlay nav a, .header-overlay nav button, .header-overlay > div > a:first-child,
+.header-overlay > div > a:first-child *, .header-overlay .ml-auto > a:not([href="/appointments/create"]),
+.header-overlay .ml-auto > button, .header-overlay .ml-auto > div > button {
+  color: #fff !important; text-shadow: 0 1px 6px rgba(0, 0, 0, 0.35);
+}
+.header-overlay nav a[aria-current="page"] { background: rgba(255, 255, 255, 0.18) !important; }
+.header-overlay nav a:hover, .header-overlay nav button:hover { background: rgba(255, 255, 255, 0.15) !important; }
+/* Vừa cuộn qua: header trượt xuống nhẹ khi đổi sang nền trắng. */
+.header-solid { animation: header-drop 350ms var(--ease-sig); }
+@keyframes header-drop { from { transform: translateY(-100%); } to { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .header-solid { animation: none; } }

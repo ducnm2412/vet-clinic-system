@@ -25,7 +25,7 @@ export function CareBanner({
   extra?: React.ReactNode;
 }) {
   return (
-    <section className="relative overflow-hidden bg-[linear-gradient(100deg,#fffaf4_0%,#fff0e2_45%,#ffe2c6_100%)] pb-12 pt-6 md:pb-16 md:pt-10">
+    <section className="relative overflow-hidden bg-[linear-gradient(100deg,#fffaf4_0%,#fff0e2_45%,#ffe2c6_100%)] pb-10 pt-4 md:pb-16 md:pt-10">
       <div aria-hidden className="absolute -bottom-16 -left-16 size-56 rounded-full bg-[radial-gradient(circle,#ffc894,#ffb36b)] opacity-70" />
       <div aria-hidden className="absolute -right-24 -top-24 size-72 rounded-full bg-[radial-gradient(circle,#ffd7ad,transparent_70%)]" />
       <div
@@ -38,28 +38,28 @@ export function CareBanner({
           WebkitMaskImage: "linear-gradient(100deg, transparent 0%, #000 45%, #000 100%)",
         }}
       />
-      <Paw className="left-[4%] top-8 size-8 -rotate-12 text-[#f9a55c]" />
+      <Paw className="right-[6%] top-6 size-7 sm:left-[4%] sm:right-auto sm:top-8 sm:size-8 -rotate-12 text-[#f9a55c]" />
       <Paw className="right-[3%] bottom-16 hidden size-10 -rotate-12 text-white/90 md:block" />
       <Paw className="right-[45%] top-[30%] hidden size-6 rotate-[25deg] text-[#f9a55c]/80 lg:block" />
       <Paw className="left-[40%] top-6 hidden size-9 rotate-12 text-[#f9a55c] md:block" />
       <Paw className="left-[36%] bottom-20 hidden size-5 rotate-45 text-[#fbb983] md:block" />
       <Heart aria-hidden className="absolute left-[40%] top-[58%] hidden size-12 md:block" strokeWidth={1.75} style={{ color: ORANGE }} />
 
-      <div className="relative mx-auto flex max-w-[1440px] flex-col items-center gap-6 px-4 sm:px-6 md:flex-row md:justify-between">
-        <div className="relative z-10 py-10 md:pl-20">
-          <h2 className="text-[30px] font-extrabold leading-tight text-[#2b1d14] sm:text-[36px]">{title}</h2>
-          <p className="mt-3 text-sm text-[#3b2a20]">{subtitle}</p>
+      <div className="relative mx-auto flex max-w-[1440px] flex-col items-center gap-4 px-4 sm:px-6 md:flex-row md:justify-between">
+        <div className="relative z-10 w-full py-4 md:w-auto md:py-10 md:pl-20">
+          <h2 className="text-[22px] font-extrabold leading-snug text-[#2b1d14] sm:text-[36px] sm:leading-tight max-sm:[&_br]:hidden">{title}</h2>
+          <p className="mt-1.5 text-[13px] text-[#3b2a20] sm:mt-3 sm:text-sm">{subtitle}</p>
           {extra && <div>{extra}</div>}
           <Link
             href={cta.href}
-            className="mt-6 inline-flex h-10 items-center gap-2 rounded-full px-5 text-sm font-semibold text-white shadow-[0_6px_14px_-6px_rgba(245,124,31,0.8)]"
+            className="mt-4 inline-flex h-10 sm:mt-6 items-center gap-2 rounded-full px-5 text-sm font-semibold text-white shadow-[0_6px_14px_-6px_rgba(245,124,31,0.8)]"
             style={{ background: ORANGE }}
           >
             {cta.label} <ArrowRight className="size-4" />
           </Link>
         </div>
 
-        <div className="relative w-full shrink-0 md:mr-16" style={{ maxWidth: image.displayWidth ?? image.width }}>
+        <div className="relative w-[85%] shrink-0 sm:w-full md:mr-16" style={{ maxWidth: image.displayWidth ?? image.width }}>
           {/* Mảng cam hữu cơ + vòng nét đứt phía sau ảnh */}
           <div aria-hidden className="absolute -inset-x-10 -inset-y-8 rounded-[58%_42%_55%_45%/48%_60%_40%_52%] bg-[linear-gradient(135deg,#ffcf9f,#f7a65a)] opacity-80" />
           <div aria-hidden className="absolute -right-14 -top-12 size-32 rounded-full border-2 border-dashed border-[#f57c1f]/50" />

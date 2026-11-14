@@ -7,8 +7,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Minus, Plus, Trash2 } from "lucide-react";
-import { ApiError, cartApi, customerApi, orderApi } from "@/lib/api";
+import { ChevronRight, Minus, PawPrint, Plus, ShoppingBag, Trash2 } from "lucide-react";
+import { Paw } from "@/components/site/Decor";
+import { ApiError, cartApi, customerApi, orderApi, productApi } from "@/lib/api";
 import { useCart } from "@/lib/useCart";
 import { formatAddress, formatPrice } from "@/lib/utils/format";
 import { goToPaymentUrl } from "@/lib/utils/payment";
@@ -17,6 +18,11 @@ import type { CartItem } from "@/types";
 import { ArchPlaceholder, ButtonLink, Container, SiteButton } from "@/components/site/primitives";
 import { CustomerOnly } from "@/components/site/CustomerOnly";
 import { SiteInput, SiteTextarea } from "@/components/site/fields";
+
+const ORANGE = "#f26b1d";
+const GREEN = "#1f4a3c";
+const INK = "#2b1d14";
+const ORANGE_BTN = "!rounded-full !bg-[#f26b1d] !text-white hover:!bg-[#e05a10] !border-0";
 
 const schema = z.object({
   recipientName: z.string().min(1, "Nhập tên người nhận").max(200),
@@ -69,18 +75,33 @@ function CartBody() {
   if (!data || data.items.length === 0) return <EmptyCart />;
 
   return (
-    <Container className="py-12 md:py-16">
-      <h1 className="t-h2">Giỏ hàng</h1>
-      <p className="mt-3 text-stone">
-        {data.totalItems} món đang chờ bạn đặt. Giá và tồn kho được hỏi lại phòng khám mỗi lần
-        mở trang này.
-      </p>
+    <div className="relative overflow-hidden bg-[#fdf1e4] pb-24 md:pb-28">
+      <Paw className="left-[2%] top-[22rem] size-9 rotate-12 text-[#f9c99a]/70" />
+      <Paw className="right-[2%] top-[40rem] size-8 -rotate-12 text-[#f9c99a]/70" />
+      <div className="mx-auto max-w-[1440px] px-4 sm:px-6">
+        <nav className="flex flex-wrap items-center gap-2 pt-8 text-sm text-[#6b5a4e]">
+          <Link href="/" className="hover:underline">Trang chủ</Link>
+          <span>/</span>
+          <span style={{ color: ORANGE }}>Giỏ hàng</span>
+        </nav>
 
-      <div className="mt-10 grid gap-12 lg:grid-cols-[1fr_23rem] lg:gap-16">
-        <CartItems items={data.items} />
-        <CheckoutPanel subtotal={data.subtotal} checkoutable={data.checkoutable} />
+        <section className="relative mt-4 overflow-hidden rounded-[32px] bg-[radial-gradient(120%_140%_at_0%_0%,#fffaf4_0%,#ffeedd_45%,#ffd9b3_100%)] px-6 py-8 sm:px-10">
+          <Paw className="right-[8%] top-6 size-12 rotate-12 text-[#f9a55c]" />
+          <Paw className="bottom-5 right-[22%] size-8 -rotate-12 text-[#fbb983]" />
+          <h1 className="flex items-center gap-3 text-[32px] font-extrabold sm:text-[40px]" style={{ color: GREEN }}>
+            <ShoppingBag className="size-9" style={{ color: ORANGE }} /> Giỏ hàng của bạn
+          </h1>
+          <p className="mt-2 text-[16px]" style={{ color: INK }}>
+            <b style={{ color: ORANGE }}>{data.totalItems} món</b> đang chờ bạn đặt. Giá và tồn kho được hỏi lại phòng khám mỗi lần mở trang này.
+          </p>
+        </section>
+
+        <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_26rem] lg:gap-10">
+          <CartItems items={data.items} />
+          <CheckoutPanel subtotal={data.subtotal} checkoutable={data.checkoutable} />
+        </div>
       </div>
-    </Container>
+    </div>
   );
 }
 
@@ -110,32 +131,24 @@ function CartItems({ items }: { items: CartItem[] }) {
 
   return (
     <div>
-      <ul className="divide-y divide-mist border-y border-mist">
+      <ul className="space-y-4">
         {items.map((item) => (
-          <li key={item.productId} className="py-6">
+          <li key={item.productId} className="rounded-3xl bg-[#fffaf3] p-4 shadow-[0_8px_24px_-16px_rgba(160,90,30,0.45)] sm:p-5">
             <div className="flex gap-5">
-              {/*
-                CartItem không có ảnh — order-service chỉ chụp lại tên, giá và đơn vị lúc
-                thêm vào giỏ. Nên đây là mái vòm màu, cùng mô-típ với cả trang.
-              */}
-              <ArchPlaceholder
-                small
-                tone={item.sku.length}
-                className="h-24 w-20 shrink-0"
-              />
+              <ItemThumb productId={item.productId} sku={item.sku} />
 
               <div className="min-w-0 flex-1">
-                <h2 className="font-[family-name:var(--font-brand)] text-[19px] font-semibold leading-snug">
-                  <Link href={`/products/${item.productId}`} className="hover:text-teal-deep">
+                <h2 className="text-[18px] font-bold leading-snug" style={{ color: GREEN }}>
+                  <Link href={`/products/${item.productId}`} className="hover:text-[#f26b1d]">
                     {item.name}
                   </Link>
                 </h2>
-                <p className="tnum mt-1 text-stone">
+                <p className="tnum mt-1 text-[#6b5a4e]">
                   {formatPrice(item.price)} mỗi {item.unit}
                 </p>
 
                 <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-3">
-                  <div className="flex items-center gap-1 rounded-full border border-mist p-1">
+                  <div className="flex items-center gap-2">
                     <StepButton
                       label={`Bớt một ${item.name}`}
                       disabled={busy === item.productId}
@@ -145,7 +158,7 @@ function CartItems({ items }: { items: CartItem[] }) {
                     >
                       <Minus aria-hidden className="size-4" />
                     </StepButton>
-                    <span className="tnum w-9 text-center font-medium">{item.quantity}</span>
+                    <span className="tnum grid h-10 w-11 place-items-center rounded-full bg-white font-semibold" style={{ color: INK }}>{item.quantity}</span>
                     <StepButton
                       label={`Thêm một ${item.name}`}
                       disabled={busy === item.productId}
@@ -160,7 +173,7 @@ function CartItems({ items }: { items: CartItem[] }) {
                   <button
                     onClick={() => change.mutate({ productId: item.productId, quantity: 0 })}
                     disabled={busy === item.productId}
-                    className="inline-flex items-center gap-1.5 text-[15px] text-stone underline underline-offset-4 hover:text-coral-deep"
+                    className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[15px] text-[#6b5a4e] transition hover:bg-[#fde0d6] hover:text-[#c2410c]"
                   >
                     <Trash2 aria-hidden className="size-4" />
                     Bỏ khỏi giỏ
@@ -168,7 +181,7 @@ function CartItems({ items }: { items: CartItem[] }) {
                 </div>
               </div>
 
-              <p className="tnum shrink-0 text-right text-[17px] font-semibold">
+              <p className="tnum shrink-0 text-right text-[19px] font-extrabold" style={{ color: ORANGE }}>
                 {formatPrice(item.lineTotal)}
               </p>
             </div>
@@ -183,17 +196,33 @@ function CartItems({ items }: { items: CartItem[] }) {
       </ul>
 
       <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
-        <Link href="/products" className="text-[15px] text-teal-deep underline underline-offset-4">
-          Mua thêm món khác
+        <Link href="/products" className="inline-flex items-center gap-1.5 font-semibold" style={{ color: ORANGE }}>
+          <PawPrint className="size-4 fill-current" /> Mua thêm món khác <ChevronRight className="size-4" />
         </Link>
         <button
           onClick={() => clear.mutate()}
-          className="text-[15px] text-stone underline underline-offset-4 hover:text-coral-deep"
+          className="text-[15px] text-[#6b5a4e] underline underline-offset-4 hover:text-[#c2410c]"
         >
           Xoá sạch giỏ hàng
         </button>
       </div>
     </div>
+  );
+}
+
+/** CartItem không có ảnh, nên hỏi product-service theo id (dùng chung cache với trang sản phẩm). */
+function ItemThumb({ productId, sku }: { productId: string; sku: string }) {
+  const product = useQuery({ queryKey: ["products", productId], queryFn: () => productApi.byId(productId) });
+  const url = product.data?.imageUrl;
+  return (
+    <Link href={`/products/${productId}`} className="relative grid size-24 shrink-0 place-items-center overflow-hidden rounded-2xl bg-[#fbd9b8] sm:size-28">
+      {url ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={url} alt="" className="size-[85%] object-contain mix-blend-multiply" />
+      ) : (
+        <ArchPlaceholder small tone={sku.length} className="h-20 w-16" />
+      )}
+    </Link>
   );
 }
 
@@ -213,7 +242,7 @@ function StepButton({
       aria-label={label}
       disabled={disabled}
       onClick={onClick}
-      className="grid size-10 place-items-center rounded-full text-pine transition-colors hover:bg-mint disabled:opacity-35"
+      className="grid size-10 place-items-center rounded-full bg-[#f26b1d] text-white transition hover:brightness-95 disabled:opacity-35"
     >
       {children}
     </button>
@@ -286,9 +315,11 @@ function CheckoutPanel({ subtotal, checkoutable }: { subtotal: number; checkouta
       <form
         onSubmit={handleSubmit((v) => checkout.mutate(v))}
         noValidate
-        className="rounded-[var(--radius-card)] border border-mist bg-mint p-6"
+        className="rounded-3xl bg-[#fffaf3] p-6 shadow-[0_10px_40px_-20px_rgba(160,90,30,0.45)] [&_input]:bg-white [&_textarea]:bg-white"
       >
-        <h2 className="t-h3">Giao tới đâu</h2>
+        <h2 className="flex items-center gap-2 text-[22px] font-extrabold" style={{ color: GREEN }}>
+          <PawPrint className="size-6 fill-current" style={{ color: ORANGE }} /> Giao tới đâu
+        </h2>
 
         <div className="mt-5 space-y-4">
           <SiteInput
@@ -318,10 +349,10 @@ function CheckoutPanel({ subtotal, checkoutable }: { subtotal: number; checkouta
                     onClick={() =>
                       setValue("shippingAddress", formatAddress(a), { shouldValidate: true })
                     }
-                    className="rounded-full border border-mist bg-white px-3 py-1.5 text-left text-[15px] text-pine transition-colors hover:border-teal"
+                    className="rounded-2xl border border-[#f0d9bf] bg-white px-3 py-1.5 text-left text-[15px] text-[#2b1d14] transition-colors hover:border-[#f26b1d]"
                   >
                     {formatAddress(a)}
-                    {a.isDefault && <span className="ml-1.5 text-teal">· mặc định</span>}
+                    {a.isDefault && <span className="ml-1.5 text-[#f26b1d]">· mặc định</span>}
                   </button>
                 ))}
               </div>
@@ -346,14 +377,14 @@ function CheckoutPanel({ subtotal, checkoutable }: { subtotal: number; checkouta
           />
         </div>
 
-        <fieldset className="mt-6 border-t border-mist pt-5">
+        <fieldset className="mt-6 border-t border-[#f0e2d2] pt-5">
           <legend className="mb-3 text-[15px] font-medium">Cách thanh toán</legend>
           <div className="space-y-2">
             {PAY_OPTIONS.map((o) => (
               <label
                 key={o.value}
                 className={`flex cursor-pointer gap-3 rounded-[var(--radius-card)] border bg-white p-4 transition-colors ${
-                  method === o.value ? "border-teal" : "border-mist hover:border-teal"
+                  method === o.value ? "border-[#f26b1d] bg-[#fff3e8]" : "border-[#f0e2d2] hover:border-[#f26b1d]"
                 }`}
               >
                 <input
@@ -362,7 +393,7 @@ function CheckoutPanel({ subtotal, checkoutable }: { subtotal: number; checkouta
                   value={o.value}
                   checked={method === o.value}
                   onChange={() => setMethod(o.value)}
-                  className="mt-1 size-4 accent-teal"
+                  className="mt-1 size-4 accent-[#f26b1d]"
                 />
                 <span>
                   <span className="block font-medium">{o.label}</span>
@@ -373,23 +404,23 @@ function CheckoutPanel({ subtotal, checkoutable }: { subtotal: number; checkouta
           </div>
         </fieldset>
 
-        <dl className="mt-6 space-y-2 border-t border-mist pt-5">
+        <dl className="mt-6 space-y-2 rounded-2xl bg-[#dcebc9] px-5 py-4">
           <div className="flex justify-between">
-            <dt className="text-stone">Tạm tính</dt>
-            <dd className="tnum font-semibold">{formatPrice(subtotal)}</dd>
+            <dt className="font-semibold" style={{ color: GREEN }}>Tạm tính</dt>
+            <dd className="tnum text-[20px] font-extrabold" style={{ color: ORANGE }}>{formatPrice(subtotal)}</dd>
           </div>
           {/*
             Không đoán phí giao. order-service chỉ tính `shippingFee` lúc tạo đơn, nên nói
             đúng như vậy còn hơn hiện một con số rồi lệch với đơn thật.
           */}
-          <div className="flex justify-between text-[15px] text-stone">
+          <div className="flex justify-between gap-4 text-[14px] text-[#3b2a20]">
             <dt>Phí giao hàng</dt>
             <dd>Tính khi phòng khám nhận đơn</dd>
           </div>
         </dl>
 
         {!checkoutable && (
-          <p className="mt-5 rounded-[var(--radius-card)] bg-white px-4 py-3 text-[15px] text-coral-deep">
+          <p className="mt-5 rounded-2xl bg-[#fde0d6] px-4 py-3 text-[15px] text-coral-deep">
             Có món trong giỏ hiện không mua được. Bỏ hoặc giảm số lượng món đó rồi đặt lại.
           </p>
         )}
@@ -397,7 +428,7 @@ function CheckoutPanel({ subtotal, checkoutable }: { subtotal: number; checkouta
         <SiteButton
           type="submit"
           size="lg"
-          className="mt-6 w-full"
+          className={`mt-6 w-full ${ORANGE_BTN}`}
           disabled={!checkoutable}
           loading={checkout.isPending}
         >
@@ -416,14 +447,16 @@ function CheckoutPanel({ subtotal, checkoutable }: { subtotal: number; checkouta
 
 function EmptyCart() {
   return (
-    <Container className="py-20 text-center md:py-28">
-      <ArchPlaceholder className="mx-auto h-56 w-44" />
-      <h1 className="t-h2 mt-10">Giỏ hàng đang trống</h1>
-      <p className="measure mx-auto mt-4 text-stone">
+    <Container className="py-20 pb-28 text-center md:py-28">
+      <div className="mx-auto grid size-40 place-items-center rounded-full bg-[#fde4cc]">
+        <ShoppingBag className="size-16" style={{ color: ORANGE }} />
+      </div>
+      <h1 className="mt-8 text-[32px] font-extrabold" style={{ color: GREEN }}>Giỏ hàng đang trống</h1>
+      <p className="mx-auto mt-4 max-w-md text-[#6b5a4e]">
         Chọn vài món cho bé nhà bạn. Hạt, sữa tắm, vòng cổ đều có sẵn tại phòng khám.
       </p>
       <div className="mt-8">
-        <ButtonLink href="/products" size="lg">
+        <ButtonLink href="/products" size="lg" className={ORANGE_BTN}>
           Xem sản phẩm
         </ButtonLink>
       </div>

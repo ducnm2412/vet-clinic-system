@@ -65,7 +65,7 @@ export const bookingApi = {
   acceptProposal: (id: string) =>
     http.put<Appointment>(`/booking/appointments/${id}/accept-proposal`),
 
-  mine: () => http.get<Appointment[]>("/booking/appointments/me"),
+  mine: () => devMock(http.get<Appointment[]>("/booking/appointments/me"), () => mockAppointments), // MOCK-TẠM
 
   /**
    * CN-19: lễ tân đặt lịch hộ khách đang đứng ở quầy. Backend đối chiếu con vật có đúng của khách

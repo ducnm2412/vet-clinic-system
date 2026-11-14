@@ -29,30 +29,36 @@ import {
   HeartHandshake,
   CheckCircle2,
 } from "lucide-react";
+import { ServiceCarousel } from "@/components/ui/services-card";
 import { clinicServiceApi, productApi } from "@/lib/api";
 import { formatPrice } from "@/lib/utils/format";
 import { CLINIC } from "@/config/clinic";
 import { Leaf, Paw } from "@/components/site/Decor";
-import { ProductImage } from "@/components/site/ProductCard";
+import { ShopCard } from "@/components/site/ShopCard";
 import { CareBanner } from "@/components/site/CareBanner";
+import { Reveal } from "@/components/site/Reveal";
+import { CountUp } from "@/components/site/CountUp";
+import { FullHero } from "@/components/site/FullHero";
+import { CareProcess, EmergencyBanner, PromoBanners } from "@/components/site/HomeSections";
 
 const ORANGE = "#f57c1f";
 const GREEN = "#1f4a3c";
-const SERVICE_IMAGES = ["/img/meo.jpg", "/img/cho-con.jpg", "/img/hero.jpg", "/img/cham-soc.jpg"];
-const BLOBS = ["#d7f0ea", "#ffe7d2", "#ffe0d6", "#d9efe9", "#ffe9c9"];
-
 export default function HomePage() {
   return (
     <div className="bg-white">
-      <div className="mx-auto max-w-[1440px] space-y-10 px-4 pb-0 pt-4 sm:px-6">
+      <FullHero />
+      <div id="noi-dung" className="mx-auto mt-4 max-w-[1440px] scroll-mt-24 space-y-10 px-4 pb-0 sm:px-6">
         <Hero />
-        <KidStuff />
-        <QuickBooking />
-        <About />
-        <ServiceGrid />
-        <AboutCompany />
+        <Reveal><KidStuff /></Reveal>
+        <Reveal><QuickBooking /></Reveal>
+        <Reveal><About /></Reveal>
+        <Reveal><ServiceGrid /></Reveal>
+        <Reveal><PromoBanners /></Reveal>
+        <Reveal><CareProcess /></Reveal>
+        <Reveal><AboutCompany /></Reveal>
+        <Reveal><EmergencyBanner /></Reveal>
       </div>
-      <OpenHours />
+      <Reveal><OpenHours /></Reveal>
     </div>
   );
 }
@@ -131,7 +137,7 @@ function Hero() {
         <div
           key={sl.image}
           aria-hidden={i !== index}
-          className={`absolute bottom-0 right-[6%] hidden aspect-[460/338] h-[92%] transition-all duration-700 ease-out motion-reduce:transition-none md:block ${
+          className={`absolute bottom-0 right-[6%] hidden aspect-[460/338] h-[92%] transition-all duration-700 ease-[var(--ease-sig)] motion-reduce:transition-none md:block ${
             i === index ? "scale-100 opacity-100" : "scale-[1.04] opacity-0"
           }`}
           style={{ maskImage: IMG_MASK, WebkitMaskImage: IMG_MASK }}
@@ -142,9 +148,9 @@ function Hero() {
 
       <Leaf className="bottom-10 right-3 hidden h-24 w-10 rotate-[30deg] bg-[linear-gradient(135deg,#7cc36b,#3f8f3a)] md:block" />
       <Leaf className="bottom-24 right-10 hidden h-16 w-7 rotate-[60deg] bg-[linear-gradient(135deg,#8fd07c,#4b9a45)] md:block" />
-      <Paw className="right-6 top-[38%] hidden size-10 rotate-12 text-white md:block" />
-      <Paw className="left-[44%] top-10 size-9 rotate-[-15deg] text-[#f9a55c]" />
-      <Paw className="left-[42%] bottom-16 hidden size-7 rotate-12 text-[#f9a55c] md:block" />
+      <Paw className="float-amb right-6 top-[38%] hidden size-10 rotate-12 text-white md:block" />
+      <Paw className="float-amb left-[44%] top-10 size-9 rotate-[-15deg] text-[#f9a55c]" />
+      <Paw className="float-amb left-[42%] bottom-16 hidden size-7 rotate-12 text-[#f9a55c] md:block" />
 
       <a
         href={`tel:${CLINIC.phone.replace(/\s/g, "")}`}
@@ -169,32 +175,23 @@ function Hero() {
                 key={sl.title}
                 aria-hidden={!on}
                 inert={!on}
-                className={`[grid-area:1/1] transition-all duration-700 ease-out motion-reduce:transition-none ${
-                  on ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-4 opacity-0"
-                }`}
+                className={`hero-seq [grid-area:1/1] ${on ? "on" : "pointer-events-none"}`}
               >
                 <span className="inline-block rounded-full bg-[#ffe1c7] px-4 py-1.5 text-sm font-medium text-[#3b2a20]">{sl.badge}</span>
-                {i === 0 ? (
-                  <h1 className="mt-5 text-[38px] font-extrabold leading-[1.1] sm:text-[48px]" style={{ color: GREEN }}>
-                    {sl.title}
-                    <br />
-                    <span style={{ color: ORANGE }}>{sl.accent}</span>
-                  </h1>
-                ) : (
-                  <p className="mt-5 text-[38px] font-extrabold leading-[1.1] sm:text-[48px]" style={{ color: GREEN }}>
-                    {sl.title}
-                    <br />
-                    <span style={{ color: ORANGE }}>{sl.accent}</span>
-                  </p>
-                )}
+                {/* h1 của trang nằm ở FullHero phía trên */}
+                <p className="mt-5 text-[38px] font-extrabold leading-[1.1] sm:text-[48px]" style={{ color: GREEN }}>
+                  {sl.title}
+                  <br />
+                  <span style={{ color: ORANGE }}>{sl.accent}</span>
+                </p>
                 <p className="mt-4 max-w-md text-[15px] text-[#2b1d14]">{sl.desc}</p>
                 <div className="mt-7 flex flex-wrap gap-3">
                   <Link
                     href={sl.cta.href}
-                    className="inline-flex h-12 items-center gap-2 rounded-full px-6 text-sm font-semibold text-white shadow-[0_8px_18px_-8px_rgba(245,124,31,0.9)]"
+                    className="press inline-flex h-12 items-center gap-2 rounded-full px-6 text-sm font-semibold text-white shadow-[0_8px_18px_-8px_rgba(245,124,31,0.9)] hover:shadow-[0_12px_24px_-8px_rgba(245,124,31,0.9)]"
                     style={{ background: ORANGE }}
                   >
-                    <CalendarDays className="size-4" /> {sl.cta.label} <ArrowRight className="size-4" />
+                    <CalendarDays className="size-4" /> {sl.cta.label} <ArrowRight className="nudge size-4" />
                   </Link>
                   <a
                     href="#dich-vu-kham"
@@ -286,25 +283,18 @@ function KidStuff() {
         title="Đồ cho bé"
         action={
           <Link href="/products" className="inline-flex h-8 items-center gap-1 rounded-full px-3 text-xs font-semibold text-white" style={{ background: GREEN }}>
-            Tất cả sản phẩm <ArrowRight className="size-3.5" />
+            Tất cả sản phẩm <ArrowRight className="nudge size-3.5" />
           </Link>
         }
       />
-      <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-        {(products.data?.content ?? []).map((p, i) => (
-          <li key={p.id} className="flex flex-col items-center rounded-3xl bg-white p-5 text-center shadow-[0_4px_24px_-10px_rgba(0,0,0,0.15)]">
-            <span className="grid size-24 place-items-center overflow-hidden rounded-full" style={{ background: BLOBS[i % BLOBS.length] }}>
-              <ProductImage product={p} className="size-20 !rounded-full !bg-transparent [&_img]:object-contain" />
-            </span>
-            <p className="mt-4 line-clamp-2 min-h-[2.5rem] text-sm text-[#2b1d14]">{p.name}</p>
-            <p className="mt-1 text-sm font-semibold" style={{ color: ORANGE }}>{formatPrice(p.price)}</p>
-            <Link href={`/products/${p.id}`} className="mt-3 inline-flex h-7 items-center gap-1 rounded-full bg-[#f3f6f4] px-3 text-xs" style={{ color: GREEN }}>
-              Xem chi tiết <ArrowRight className="size-3" />
-            </Link>
+      <ul data-stagger className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+        {(products.data?.content ?? []).map((p) => (
+          <li key={p.id}>
+            <ShopCard product={p} />
           </li>
         ))}
         {products.isLoading &&
-          Array.from({ length: 5 }).map((_, i) => <li key={i} className="h-56 animate-pulse rounded-3xl bg-[#fff3e8]" />)}
+          Array.from({ length: 5 }).map((_, i) => <li key={i} className="h-[320px] animate-pulse rounded-3xl bg-[#fff3e8]" />)}
       </ul>
     </section>
   );
@@ -315,7 +305,7 @@ function KidStuff() {
 function QuickBooking() {
   return (
     <section className="relative">
-      <Paw className="-left-2 top-1/2 hidden size-8 -translate-y-1/2 -rotate-12 text-[#f9a55c] lg:block" />
+      <Paw className="float-amb -left-2 top-1/2 hidden size-8 -translate-y-1/2 -rotate-12 text-[#f9a55c] lg:block" />
       <div className="mx-auto flex max-w-[1300px] flex-col gap-4 rounded-[28px] px-5 py-4 text-white lg:flex-row lg:items-center" style={{ background: `linear-gradient(90deg, ${GREEN} 0%, ${GREEN} 60%, #ffe4cc 100%)` }}>
         <div className="flex flex-1 items-center gap-4">
           <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-white" style={{ color: ORANGE }}>
@@ -338,7 +328,7 @@ function QuickBooking() {
           href="/appointments/create"
           className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#ff8a2a] to-[#f2661b] px-10 text-base font-bold text-white shadow-[0_8px_18px_-8px_rgba(245,124,31,0.9)]"
         >
-          Đặt lịch online <ArrowRight className="size-4" />
+          Đặt lịch online <ArrowRight className="nudge size-4" />
         </Link>
       </div>
     </section>
@@ -359,7 +349,7 @@ function About() {
           Đội ngũ bác sĩ thú y giàu kinh nghiệm, trang thiết bị hiện đại, mang đến dịch vụ chăm sóc sức khoẻ tốt nhất cho thú cưng của bạn.
         </p>
         <Link href="/" className="mt-3 inline-flex items-center gap-1 text-sm font-semibold" style={{ color: ORANGE }}>
-          Đọc thêm <ArrowRight className="size-4" />
+          Đọc thêm <ArrowRight className="nudge size-4" />
         </Link>
       </div>
       <div className="grid grid-cols-2 gap-4 px-6 pb-6 md:mr-6 md:px-0 md:pb-0">
@@ -381,9 +371,17 @@ function About() {
 
 /* ---------- Dịch vụ khám ---------- */
 
+const SERVICE_IMAGES = ["/img/meo.jpg", "/img/cho-con.jpg", "/img/hero.jpg", "/img/cham-soc.jpg"];
+const SERVICE_GRADIENTS = [
+  "from-[#ffe1c7] to-[#ffc999]",
+  "from-[#e3f1e6] to-[#c5e3cc]",
+  "from-[#fde7e3] to-[#f8cbc2]",
+  "from-[#fff1d6] to-[#ffe0a3]",
+];
+
 function ServiceGrid() {
   const services = useQuery({ queryKey: ["clinic-services"], queryFn: clinicServiceApi.list });
-  const list = (services.data ?? []).filter((s) => s.active).sort((a, b) => a.displayOrder - b.displayOrder).slice(0, 4);
+  const list = (services.data ?? []).filter((s) => s.active).sort((a, b) => a.displayOrder - b.displayOrder);
   return (
     <section id="dich-vu-kham" className="scroll-mt-24">
       <div className="mb-5 flex items-center justify-between gap-4">
@@ -392,36 +390,27 @@ function ServiceGrid() {
           <h2 className="text-2xl font-extrabold text-[#2b1d14]">Dịch vụ khám</h2>
         </div>
         <Link href="/services" className="inline-flex h-8 items-center gap-1 rounded-full px-3 text-xs font-semibold text-white" style={{ background: ORANGE }}>
-          Tất cả dịch vụ <ArrowRight className="size-3.5" />
+          Tất cả dịch vụ <ArrowRight className="nudge size-3.5" />
         </Link>
       </div>
-      <ul className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-        {list.map((s, i) => (
-          <li key={s.id}>
-            <Link
-              href={`/services/${s.slug}`}
-              className="group block rounded-3xl bg-white p-2.5 shadow-[0_4px_24px_-10px_rgba(0,0,0,0.18)] transition hover:-translate-y-0.5"
-            >
-              <div className="relative aspect-[16/9] overflow-hidden rounded-2xl">
-                <Image src={SERVICE_IMAGES[i % SERVICE_IMAGES.length]} alt="" fill sizes="(max-width:1024px) 50vw, 25vw" className="object-cover transition duration-500 group-hover:scale-105" />
-              </div>
-              <div className="flex items-center gap-2 px-3 py-3">
-                <div className="flex-1 text-center">
-                  <p className="font-medium text-[#2b1d14]">{s.name}</p>
-                  {s.referencePrice != null && (
-                    <p className="text-sm" style={{ color: ORANGE }}>Từ {formatPrice(s.referencePrice)}</p>
-                  )}
-                </div>
-                <span className="grid size-8 place-items-center rounded-full bg-[#f4f1ee] text-[#2b1d14] transition group-hover:bg-[#f57c1f] group-hover:text-white">
-                  <ArrowRight className="size-4" />
-                </span>
-              </div>
-            </Link>
-          </li>
-        ))}
-        {services.isLoading &&
-          Array.from({ length: 4 }).map((_, i) => <li key={i} className="h-56 animate-pulse rounded-3xl bg-[#fff3e8]" />)}
-      </ul>
+      {services.isLoading ? (
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-[380px] animate-pulse rounded-3xl bg-[#fff3e8]" />)}
+        </div>
+      ) : (
+        <ServiceCarousel
+          services={list.map((s, i) => ({
+            id: s.id,
+            title: s.name,
+            description: s.description ?? "",
+            image: SERVICE_IMAGES[i % SERVICE_IMAGES.length],
+            gradient: SERVICE_GRADIENTS[i % SERVICE_GRADIENTS.length],
+            href: `/services/${s.slug}`,
+            bookHref: "/appointments/create",
+            price: s.referencePrice != null ? `Từ ${formatPrice(s.referencePrice)}` : undefined,
+          }))}
+        />
+      )}
     </section>
   );
 }
@@ -444,8 +433,8 @@ const VALUES = [
 function AboutCompany() {
   return (
     <section className="relative overflow-hidden rounded-[32px] bg-[radial-gradient(120%_140%_at_100%_0%,#fffaf4_0%,#ffeedd_45%,#ffd9b3_100%)] px-6 py-12 sm:px-12 md:py-16">
-      <Paw className="right-[8%] top-8 size-9 rotate-12 text-[#f9a55c]" />
-      <Paw className="bottom-10 left-[46%] hidden size-7 -rotate-12 text-[#fbb983] md:block" />
+      <Paw className="float-amb right-[8%] top-8 size-9 rotate-12 text-[#f9a55c]" />
+      <Paw className="float-amb bottom-10 left-[46%] hidden size-7 -rotate-12 text-[#fbb983] md:block" />
       <Heart aria-hidden className="absolute right-[4%] bottom-14 hidden size-12 md:block" strokeWidth={1.75} style={{ color: ORANGE }} />
 
       <div className="relative grid items-center gap-12 lg:grid-cols-[1fr_1.1fr]">
@@ -505,7 +494,7 @@ function AboutCompany() {
           <dl className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
             {MILESTONES.map((m) => (
               <div key={m.label} className="rounded-2xl bg-white/80 px-3 py-4 text-center shadow-sm">
-                <dt className="text-2xl font-extrabold" style={{ color: ORANGE }}>{m.value}</dt>
+                <dt className="text-2xl font-extrabold" style={{ color: ORANGE }}><CountUp value={m.value} /></dt>
                 <dd className="mt-1 text-xs text-[#6b5a4e]">{m.label}</dd>
               </div>
             ))}
@@ -514,10 +503,10 @@ function AboutCompany() {
           <div className="mt-8 flex flex-wrap items-center gap-4">
             <Link
               href="/appointments/create"
-              className="inline-flex h-12 items-center gap-2 rounded-full px-6 text-sm font-semibold text-white shadow-[0_8px_18px_-8px_rgba(245,124,31,0.9)]"
+              className="press inline-flex h-12 items-center gap-2 rounded-full px-6 text-sm font-semibold text-white shadow-[0_8px_18px_-8px_rgba(245,124,31,0.9)] hover:shadow-[0_12px_24px_-8px_rgba(245,124,31,0.9)]"
               style={{ background: ORANGE }}
             >
-              Đặt lịch khám <ArrowRight className="size-4" />
+              Đặt lịch khám <ArrowRight className="nudge size-4" />
             </Link>
             <p className="flex items-center gap-2 text-sm text-[#3b2a20]">
               <CheckCircle2 className="size-5" style={{ color: GREEN }} /> {CLINIC.address}

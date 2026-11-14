@@ -2,10 +2,13 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import {
+  ArrowRight,
   CalendarDays,
+  Headset,
   ChevronRight,
   LayoutGrid,
   LogOut,
@@ -149,10 +152,13 @@ export function UserSidebar() {
   return (
     <>
       {/* Desktop */}
-      <aside className={cn(card, "hidden h-fit p-5 lg:sticky lg:top-24 lg:block")}>
-        <UserProfileCard />
-        <NavList />
-      </aside>
+      <div className="hidden h-fit space-y-5 lg:sticky lg:top-24 lg:block">
+        <aside className={cn(card, "p-5")}>
+          <UserProfileCard />
+          <NavList />
+        </aside>
+        <SidebarPromo />
+      </div>
 
       {/* Mobile / tablet */}
       <button
@@ -196,5 +202,28 @@ export function UserSidebar() {
         </div>
       )}
     </>
+  );
+}
+
+/** Banner nhỏ dưới sidebar: mời đặt lịch + số hotline hỗ trợ. */
+function SidebarPromo() {
+  return (
+    <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#fff1e3] to-[#ffd9b5] p-5">
+      <div className="relative z-10 max-w-[62%]">
+        <p className="flex items-center gap-2 text-[15px] font-bold text-[#2b1d14]">
+          <Headset aria-hidden className="size-5 text-[#1f4a3c]" /> Cần hỗ trợ?
+        </p>
+        <p className="mt-1.5 text-[13px] leading-snug text-[#5b4a3e]">Đặt lịch khám cho bé chỉ trong 1 phút, bác sĩ tư vấn tận tình.</p>
+        <Link
+          href="/appointments/create"
+          className="press mt-4 inline-flex h-9 items-center gap-1.5 rounded-full bg-[#f57c1f] px-4 text-[13px] font-bold text-white shadow-[0_8px_18px_-8px_rgba(245,124,31,0.9)] hover:bg-[#e06a10]"
+        >
+          <CalendarDays aria-hidden className="size-4" /> Đặt lịch <ArrowRight aria-hidden className="nudge size-3.5" />
+        </Link>
+      </div>
+      <div aria-hidden className="absolute -bottom-6 -right-6 size-36 overflow-hidden rounded-full border-4 border-white/70">
+        <Image src="/img/cho-con.jpg" alt="" fill sizes="144px" className="object-cover" />
+      </div>
+    </div>
   );
 }

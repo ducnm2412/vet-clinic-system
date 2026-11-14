@@ -1,5 +1,5 @@
 import { http, qs } from "./client";
-import { devMock, mockOrderDetail, mockOrderHistory, mockOrderPage } from "./mock-account"; // MOCK-TẠM
+import { devMock, mockCart, mockOrderDetail, mockOrderHistory, mockOrderPage } from "./mock-account"; // MOCK-TẠM
 import type {
   AddToCartRequest,
   Cart,
@@ -17,12 +17,15 @@ import type {
 
 /** Giỏ hàng chỉ dành cho CUSTOMER — backend chặn các role khác ở /cart/**. */
 export const cartApi = {
-  get: () => http.get<Cart>("/cart"),
-  addItem: (body: AddToCartRequest) => http.post<Cart>("/cart/items", body),
+  // MOCK-TẠM: khi chạy dev mà backend lỗi thì dùng giỏ mẫu trong bộ nhớ.
+  get: () => devMock(http.get<Cart>("/cart"), mockCart.get),
+  addItem: (body: AddToCartRequest) =>
+    devMock(http.post<Cart>("/cart/items", body), () => mockCart.add(body.productId, body.quantity)),
   updateItem: (productId: string, quantity: number) =>
-    http.put<Cart>(`/cart/items/${productId}`, { quantity }),
-  removeItem: (productId: string) => http.del<Cart>(`/cart/items/${productId}`),
-  clear: () => http.del<void>("/cart"),
+    devMock(http.put<Cart>(`/cart/items/${productId}`, { quantity }), () => mockCart.update(productId, quantity)),
+  removeItem: (productId: string) =>
+    devMock(http.del<Cart>(`/cart/items/${productId}`), () => mockCart.update(productId, 0)),
+  clear: () => devMock(http.del<void>("/cart"), mockCart.clear),
 };
 
 export const orderApi = {

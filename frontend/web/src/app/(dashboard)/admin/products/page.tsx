@@ -34,7 +34,8 @@ export default function AdminProductsPage() {
   const [page, setPage] = useState(0);
   const [keyword, setKeyword] = useState("");
   const [categoryId, setCategoryId] = useState("");
-  const [applied, setApplied] = useState({ keyword: "", categoryId: "" });
+  const [visibility, setVisibility] = useState<"all" | "active" | "hidden">("all");
+  const [applied, setApplied] = useState({ keyword: "", categoryId: "", visibility: "all" as "all" | "active" | "hidden" });
 
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
@@ -158,7 +159,7 @@ export default function AdminProductsPage() {
         onSubmit={(e) => {
           e.preventDefault();
           setPage(0);
-          setApplied({ keyword, categoryId });
+          setApplied({ keyword, categoryId, visibility });
         }}
         className="mb-4 flex flex-wrap items-end gap-3"
       >
@@ -190,6 +191,21 @@ export default function AdminProductsPage() {
                 {c.name}
               </option>
             ))}
+          </select>
+        </div>
+        <div className="min-w-40">
+          <label htmlFor="vis" className="mb-1.5 block text-sm font-medium">
+            Trạng thái bán
+          </label>
+          <select
+            id="vis"
+            value={visibility}
+            onChange={(e) => setVisibility(e.target.value as typeof visibility)}
+            className={`${controlClass} h-9`}
+          >
+            <option value="all">Tất cả</option>
+            <option value="active">Đang bán</option>
+            <option value="hidden">Đã ẩn</option>
           </select>
         </div>
         <Button type="submit" variant="secondary">

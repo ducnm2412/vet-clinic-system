@@ -61,7 +61,6 @@ export default function MyAppointmentsPage() {
     <>
       <PageHeader
         title="Lịch hẹn của tôi"
-        description="Theo dõi các lần khám sắp tới và lịch sử khám của thú cưng."
         crumbs={[{ label: "Lịch hẹn của tôi" }]}
         action={
           <Link href="/appointments/create" className={btnPrimary}>

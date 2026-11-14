@@ -48,7 +48,6 @@ export default function AccountSettingsPage() {
     <>
       <PageHeader
         title="Cài đặt tài khoản"
-        description="Quản lý thông tin cá nhân, địa chỉ giao hàng và bảo mật tài khoản."
         crumbs={[{ label: "Cài đặt tài khoản" }]}
       />
       <div className={cn(card, "p-5 sm:p-7")}>
@@ -307,14 +306,14 @@ function AddressSection() {
 
   return (
     <section>
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="flex items-center justify-between gap-3">
         <h2 className="text-lg font-bold text-[#1f4a3c]">Sổ địa chỉ</h2>
-        <SiteButton variant="outline" onClick={() => setAdding(true)}>
+        <SiteButton variant="outline" size="sm" className="max-sm:h-9 max-sm:px-3 max-sm:text-[13px]" onClick={() => setAdding(true)}>
           <Plus aria-hidden className="size-4" />
           Thêm địa chỉ
         </SiteButton>
       </div>
-      <p className="measure mt-3 text-stone">
+      <p className="measure mt-2 text-sm text-stone">
         Khai sẵn ở đây thì lúc đặt hàng chỉ cần chọn, không phải gõ lại.
       </p>
 
@@ -329,22 +328,45 @@ function AddressSection() {
           </p>
         </div>
       ) : (
-        <ul className="mt-8 divide-y divide-mist border-y border-mist">
+        <ul className="mt-5 space-y-2.5">
           {list.map((a) => (
-            <li key={a.id} className="flex flex-wrap items-start gap-4 py-5">
+            <li
+              key={a.id}
+              className={cn(
+                "flex items-start gap-3 rounded-2xl border p-3.5",
+                a.isDefault ? "border-[#f7b98a] bg-[#fff8f1]" : "border-mist bg-white",
+              )}
+            >
+              <span className="grid size-9 shrink-0 place-items-center rounded-full bg-[#fff1e3] text-[#f57c1f]">
+                <MapPin aria-hidden className="size-4" />
+              </span>
               <div className="min-w-0 flex-1">
-                <p className="font-medium">{formatAddress(a)}</p>
-                {a.isDefault && <p className="mt-1 text-[15px] text-teal">Địa chỉ mặc định</p>}
+                <p className="text-[15px] font-medium leading-snug">{formatAddress(a)}</p>
+                {a.isDefault && (
+                  <span className="mt-1.5 inline-block rounded-full bg-[#e3f1e6] px-2.5 py-0.5 text-xs font-semibold text-[#1f7a4d]">
+                    Mặc định
+                  </span>
+                )}
               </div>
-              <div className="flex gap-2">
-                <SiteButton variant="outline" onClick={() => setEditing(a)}>
+              <div className="flex shrink-0 gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setEditing(a)}
+                  aria-label="Sửa địa chỉ"
+                  title="Sửa"
+                  className="grid size-9 place-items-center rounded-full border border-mist text-pine transition hover:border-teal hover:bg-mint"
+                >
                   <Pencil aria-hidden className="size-4" />
-                  Sửa
-                </SiteButton>
-                <SiteButton variant="outline" onClick={() => setConfirmDelete(a)}>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmDelete(a)}
+                  aria-label="Xoá địa chỉ"
+                  title="Xoá"
+                  className="grid size-9 place-items-center rounded-full border border-mist text-pine transition hover:border-coral-deep hover:text-coral-deep"
+                >
                   <Trash2 aria-hidden className="size-4" />
-                  Xoá
-                </SiteButton>
+                </button>
               </div>
             </li>
           ))}

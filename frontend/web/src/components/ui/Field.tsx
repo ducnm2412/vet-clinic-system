@@ -1,6 +1,7 @@
 "use client";
 
-import { forwardRef, useId, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
+import { forwardRef, useId, useState, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 
 export const controlClass =
@@ -61,19 +62,41 @@ interface BaseProps {
 export const TextField = forwardRef<
   HTMLInputElement,
   BaseProps & InputHTMLAttributes<HTMLInputElement>
->(function TextField({ label, hint, error, className, id, ...props }, ref) {
+>(function TextField({ label, hint, error, className, id, type, ...props }, ref) {
   const auto = useId();
   const fieldId = id ?? auto;
+  // Ô mật khẩu có nút con mắt để xem/ẩn nội dung đang gõ.
+  const isPassword = type === "password";
+  const [show, setShow] = useState(false);
+  const input = (
+    <input
+      ref={ref}
+      id={fieldId}
+      type={isPassword && show ? "text" : type}
+      aria-invalid={error ? true : undefined}
+      aria-describedby={error ? `${fieldId}-error` : hint ? `${fieldId}-hint` : undefined}
+      className={cn(controlClass, "h-9", isPassword && "pr-10", error && "border-danger", className)}
+      {...props}
+    />
+  );
   return (
     <Field label={label} hint={hint} error={error} required={props.required} htmlFor={fieldId}>
-      <input
-        ref={ref}
-        id={fieldId}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={error ? `${fieldId}-error` : hint ? `${fieldId}-hint` : undefined}
-        className={cn(controlClass, "h-9", error && "border-danger", className)}
-        {...props}
-      />
+      {isPassword ? (
+        <div className="relative">
+          {input}
+          <button
+            type="button"
+            onClick={() => setShow((v) => !v)}
+            aria-label={show ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+            aria-pressed={show}
+            className="absolute inset-y-0 right-0 grid w-10 place-items-center text-bark hover:text-ink"
+          >
+            {show ? <EyeOff aria-hidden className="size-4" /> : <Eye aria-hidden className="size-4" />}
+          </button>
+        </div>
+      ) : (
+        input
+      )}
     </Field>
   );
 });

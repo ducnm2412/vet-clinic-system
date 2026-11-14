@@ -26,8 +26,11 @@ export const productApi = {
         page: filter.page ?? 0,
         size: filter.size ?? 20,
         sort: filter.sort,
+        activeOnly: filter.visibility && filter.visibility !== "active" ? false : undefined,
+        hiddenOnly: filter.visibility === "hidden" ? true : undefined,
       })}`,
-      true,
+      // Trang quản lý (có visibility) phải gửi token, nếu không backend coi là khách và giấu hàng đã ẩn.
+      !filter.visibility,
     ), () => mockProductPage(filter)), // MOCK-TẠM
 
   /**
