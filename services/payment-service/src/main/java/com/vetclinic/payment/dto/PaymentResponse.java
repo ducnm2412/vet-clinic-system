@@ -14,6 +14,8 @@ public record PaymentResponse(
         UUID appointmentId,
         UUID customerUserId,
         BigDecimal amount,
+        String serviceName,
+        BigDecimal serviceAmount,
         PaymentMethod method,
         PaymentStatus status,
         Instant paidAt,

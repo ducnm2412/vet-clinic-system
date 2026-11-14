@@ -102,6 +102,12 @@ export interface ProposeTimeRequest {
 
 /** Bản chi tiết kèm hồ sơ thú cưng, dùng cho màn hình khám của bác sĩ. */
 export interface AppointmentDetail extends Appointment {
+  /**
+   * Dịch vụ và giá (VND) dùng để tính tiền khám: dịch vụ khách chọn, không chọn thì dịch vụ khám mặc định.
+   * Không dùng để hiển thị "khách đã chọn gì" — đó là `serviceName`.
+   */
+  billingServiceName?: string | null;
+  billingServicePrice?: number | null;
   pet: Pet | null;
 }
 

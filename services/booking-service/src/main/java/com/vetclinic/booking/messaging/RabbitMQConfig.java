@@ -23,6 +23,26 @@ public class RabbitMQConfig {
         return new TopicExchange(BOOKING_EVENTS_EXCHANGE, true, false);
     }
 
+    // pet-service phát prescription.created khi bác sĩ lưu bệnh án lần đầu: lịch hẹn đó đã khám xong nên
+    // booking-service tự chuyển sang COMPLETED. Thuộc tính exchange (durable, không autoDelete) phải khớp bên pet-service.
+    public static final String PET_EVENTS_EXCHANGE = "pet.events";
+    public static final String PRESCRIPTION_CREATED_QUEUE = "booking.prescription-created";
+
+    @Bean
+    public TopicExchange petEventsExchange() {
+        return new TopicExchange(PET_EVENTS_EXCHANGE, true, false);
+    }
+
+    @Bean
+    public Queue prescriptionCreatedQueue() {
+        return new Queue(PRESCRIPTION_CREATED_QUEUE, true);
+    }
+
+    @Bean
+    public Binding prescriptionCreatedBinding(Queue prescriptionCreatedQueue, TopicExchange petEventsExchange) {
+        return BindingBuilder.bind(prescriptionCreatedQueue).to(petEventsExchange).with("prescription.created");
+    }
+
     // CN-08: auth-service phát user.locked / user.unlocked. Khai exchange ở cả hai bên (idempotent).
     public static final String USER_EVENTS_EXCHANGE = "user.events";
     public static final String USER_STATUS_QUEUE = "booking.user-status-changed";

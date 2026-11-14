@@ -20,12 +20,13 @@ export const medicationApi = {
   update: (id: string, body: MedicationRequest) => http.put<Medication>(`/medications/${id}`, body),
   /** "Xoá" là ẩn khỏi gợi ý, không xoá cứng — đơn mẫu trỏ vào thuốc. Gọi lại nhiều lần không lỗi. */
   hide: (id: string) => http.del<void>(`/medications/${id}`),
-  /** Bật lại bằng PUT: backend ghi đè unit/caution theo body nên phải gửi lại đủ các trường. */
+  /** Bật lại bằng PUT: backend ghi đè unit/caution/giá theo body nên phải gửi lại đủ các trường. */
   unhide: (m: Medication) =>
     http.put<Medication>(`/medications/${m.id}`, {
       name: m.name,
       unit: m.unit ?? undefined,
       caution: m.caution ?? undefined,
+      unitPrice: m.unitPrice ?? undefined,
       active: true,
     } satisfies MedicationRequest),
 };

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { BookTemplate, History, TriangleAlert } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError, bookingApi, medicalRecordApi } from "@/lib/api";
@@ -231,6 +231,7 @@ function RecordEditor({
 }) {
   const qc = useQueryClient();
   const toast = useToast();
+  const router = useRouter();
 
   const [diagnosis, setDiagnosis] = useState(record?.diagnosis ?? "");
   const [treatment, setTreatment] = useState(record?.treatment ?? "");
@@ -290,6 +291,8 @@ function RecordEditor({
           ? "Đã lưu bệnh án, phiếu thu tiền thuốc đã gửi sang quầy"
           : "Đã lưu bệnh án",
       );
+      // Khám xong thì về danh sách ca khám để tiếp ca sau.
+      router.push("/doctor/appointments");
     },
     onError: (err) => toast.error(err instanceof ApiError ? err.message : "Không lưu được bệnh án."),
   });

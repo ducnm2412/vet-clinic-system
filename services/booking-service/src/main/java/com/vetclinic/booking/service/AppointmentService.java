@@ -22,6 +22,7 @@ import com.vetclinic.booking.repository.BlockedDoctorRepository;
 import com.vetclinic.booking.repository.AppointmentSlotRepository;
 import feign.FeignException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -34,6 +35,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AppointmentService {
@@ -198,6 +200,25 @@ public class AppointmentService {
         return toResponse(appointment);
     }
 
+    /**
+     * Bác sĩ vừa lập bệnh án cho lịch này: đánh dấu đã khám xong. Chỉ đổi lịch đang CONFIRMED (hoặc PENDING
+     * kiểu cũ chưa tiếp nhận); lịch đã huỷ, vắng mặt, đã hoàn thành hay còn chờ xếp bác sĩ thì giữ nguyên.
+     * Gọi từ consumer RabbitMQ nên không ném lỗi với dữ liệu lạ và gọi lại nhiều lần vô hại.
+     */
+    @Transactional
+    public void completeAfterExam(UUID appointmentId) {
+        Appointment appointment = appointmentRepository.findById(appointmentId).orElse(null);
+        if (appointment == null) {
+            log.warn("prescription.created cho lịch hẹn không có thật: {}", appointmentId);
+            return;
+        }
+        if (appointment.getStatus() == AppointmentStatus.CONFIRMED || appointment.getStatus() == AppointmentStatus.PENDING) {
+            appointment.setStatus(AppointmentStatus.COMPLETED);
+            appointmentRepository.saveAndFlush(appointment);
+            log.info("Lịch {} đã khám xong (bác sĩ lập bệnh án) -> COMPLETED", appointmentId);
+        }
+    }
+
     private Appointment getAppointmentOrThrow(UUID appointmentId) {
         return appointmentRepository.findById(appointmentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Appointment not found: " + appointmentId));
@@ -243,11 +264,14 @@ public class AppointmentService {
     private AppointmentDetailResponse toDetailResponse(Appointment appointment, PetResponse pet) {
         AppointmentSlot slot = appointment.getSlot();
         ClinicService service = appointment.getService();
+        ClinicService billing = service != null ? service : clinicServiceCatalog.defaultBillingService().orElse(null);
         return new AppointmentDetailResponse(appointment.getId(), slot == null ? null : slot.getId(),
                 slot == null ? null : slot.getDoctorUserId(), appointment.effectiveDate(),
                 appointment.effectiveStartTime(), appointment.effectiveEndTime(), appointment.getCustomerUserId(),
                 appointment.getPetId(), service == null ? null : service.getId(),
-                service == null ? null : service.getName(), appointment.getReason(), appointment.getStatus(),
+                service == null ? null : service.getName(),
+                billing == null ? null : billing.getName(), billing == null ? null : billing.getReferencePrice(),
+                appointment.getReason(), appointment.getStatus(),
                 appointment.getCreatedAt(), appointment.getUpdatedAt(), appointment.getProposedDate(),
                 appointment.getProposedTime(), appointment.getPreferredDate(), appointment.getPreferredTime(), pet);
     }

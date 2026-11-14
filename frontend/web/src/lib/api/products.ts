@@ -30,6 +30,20 @@ export const productApi = {
       true,
     ), () => mockProductPage(filter)), // MOCK-TẠM
 
+  /**
+   * Tìm sản phẩm cho quầy: CHỈ dữ liệu thật, không rơi về dữ liệu mẫu. Quầy gửi id sản phẩm lên hoá đơn và
+   * trừ kho thật, nên hiện sản phẩm giả khi product-service tắt chỉ làm hoá đơn bị từ chối (id không phải
+   * UUID) — thà báo lỗi ngay lúc tìm.
+   */
+  searchLive: (filter: ProductFilter = {}) =>
+    http.get<PageResponse<Product>>(
+      `/products${qs({ keyword: filter.keyword, page: filter.page ?? 0, size: filter.size ?? 20 })}`,
+      true,
+    ),
+
+  /** Như `searchLive`: lấy lại một sản phẩm thật, lỗi thì ném (không trả sản phẩm mẫu đầu danh sách). */
+  byIdLive: (id: string) => http.get<Product>(`/products/${id}`, true),
+
   byId: (id: string) => withMock(http.get<Product>(`/products/${id}`, true), () => mockProducts.find((x) => x.id === id) ?? mockProducts[0]), // MOCK-TẠM
 
   create: (body: ProductRequest) => http.post<Product>("/products", body),

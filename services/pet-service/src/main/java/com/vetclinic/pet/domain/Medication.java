@@ -14,6 +14,7 @@ import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -39,6 +40,10 @@ public class Medication {
     private String searchName;
 
     private String unit;
+
+    /** Giá bán một {@link #unit} (VND); null = chưa có giá. */
+    @Column(name = "unit_price", precision = 12, scale = 2)
+    private BigDecimal unitPrice;
 
     @Column(columnDefinition = "TEXT")
     private String caution;

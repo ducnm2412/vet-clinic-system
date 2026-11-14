@@ -6,6 +6,8 @@ import com.vetclinic.payment.domain.PaymentMethod;
 import com.vetclinic.payment.domain.PaymentStatus;
 import com.vetclinic.payment.dto.PaymentItemResponse;
 import com.vetclinic.payment.dto.PaymentResponse;
+import com.vetclinic.payment.dto.SetItemsRequest;
+import com.vetclinic.payment.exception.InvalidPaymentRequestException;
 import com.vetclinic.payment.exception.InvalidPaymentStateException;
 import com.vetclinic.payment.exception.ResourceNotFoundException;
 import com.vetclinic.payment.messaging.PaymentAmountSetEvent;
@@ -18,8 +20,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Instant;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @Slf4j
@@ -40,17 +47,73 @@ public class PaymentService {
                 .toList();
     }
 
-    // Staff nhập số tiền cần thu (chưa có price catalog nên không tự tính được) — chỉ hợp lệ khi
+    // Staff nhập thẳng một con số tổng (đường cũ; đường chính giờ là setItems) — chỉ hợp lệ khi
     // đang chờ nhập tiền, tránh sửa amount ngầm sau khi khách đã được yêu cầu thanh toán số cũ.
     @Transactional
     public PaymentResponse setAmount(UUID id, BigDecimal amount) {
-        Payment payment = getOrThrow(id);
+        Payment payment = getAwaitingAmountOrThrow(id);
+        return confirmAmount(payment, amount);
+    }
 
+    // Quầy chốt theo từng dòng: thành tiền = đơn giá x số lượng, tổng = tiền dịch vụ + cộng các dòng. Đơn giá và số
+    // lượng lưu lại trên dòng để phiếu thu truy được số tiền từ đâu ra. Phải gửi đủ MỌI dòng của phiếu
+    // (mỗi dòng đúng một lần): thiếu một dòng là quên tính tiền thuốc đó.
+    @Transactional
+    public PaymentResponse setItems(UUID id, SetItemsRequest request) {
+        Payment payment = getAwaitingAmountOrThrow(id);
+        List<SetItemsRequest.Line> lines = request.items();
+
+        Map<UUID, PaymentItem> byId = new HashMap<>();
+        payment.getItems().forEach(item -> byId.put(item.getId(), item));
+
+        Set<UUID> seen = new HashSet<>();
+        for (SetItemsRequest.Line line : lines) {
+            if (!byId.containsKey(line.itemId())) {
+                throw new InvalidPaymentRequestException("Dòng thuốc " + line.itemId() + " không thuộc phiếu này");
+            }
+            if (!seen.add(line.itemId())) {
+                throw new InvalidPaymentRequestException("Dòng thuốc " + line.itemId() + " bị gửi hai lần");
+            }
+        }
+        if (seen.size() != byId.size()) {
+            throw new InvalidPaymentRequestException(
+                    "Phiếu có " + byId.size() + " dòng thuốc nhưng chỉ nhận được " + seen.size() + " dòng");
+        }
+
+        if (request.serviceAmount() != null) {
+            payment.setServiceAmount(request.serviceAmount());
+        }
+        if (request.serviceName() != null && !request.serviceName().isBlank()) {
+            payment.setServiceName(request.serviceName().strip());
+        }
+
+        // Tổng = tiền dịch vụ + tiền thuốc. Sản phẩm mua thêm không nằm ở đây: nó được cộng lúc lập hoá đơn quầy.
+        BigDecimal total = payment.getServiceAmount() == null ? BigDecimal.ZERO : payment.getServiceAmount();
+        for (SetItemsRequest.Line line : lines) {
+            PaymentItem item = byId.get(line.itemId());
+            BigDecimal lineAmount = line.unitPrice().multiply(BigDecimal.valueOf(line.quantity()))
+                    .setScale(2, RoundingMode.HALF_UP);
+            item.setUnitPrice(line.unitPrice());
+            item.setQuantity(line.quantity());
+            item.setLineAmount(lineAmount);
+            total = total.add(lineAmount);
+        }
+        if (total.signum() <= 0) {
+            throw new InvalidPaymentRequestException("Tổng tiền phải lớn hơn 0");
+        }
+        return confirmAmount(payment, total);
+    }
+
+    private Payment getAwaitingAmountOrThrow(UUID id) {
+        Payment payment = getOrThrow(id);
         if (payment.getStatus() != PaymentStatus.PENDING_AMOUNT) {
             throw new InvalidPaymentStateException(
                     "Payment " + id + " is not awaiting amount (status=" + payment.getStatus() + ")");
         }
+        return payment;
+    }
 
+    private PaymentResponse confirmAmount(Payment payment, BigDecimal amount) {
         payment.setAmount(amount);
         payment.setStatus(PaymentStatus.PENDING_PAYMENT);
         paymentRepository.saveAndFlush(payment);
@@ -146,7 +209,8 @@ public class PaymentService {
 
     private PaymentResponse toResponse(Payment payment) {
         return new PaymentResponse(payment.getId(), payment.getMedicalRecordId(), payment.getAppointmentId(),
-                payment.getCustomerUserId(), payment.getAmount(), payment.getMethod(), payment.getStatus(),
+                payment.getCustomerUserId(), payment.getAmount(), payment.getServiceName(), payment.getServiceAmount(),
+                payment.getMethod(), payment.getStatus(),
                 payment.getPaidAt(), payment.getItems().stream().map(this::toItemResponse).toList(),
                 payment.getCreatedAt(), payment.getUpdatedAt());
     }

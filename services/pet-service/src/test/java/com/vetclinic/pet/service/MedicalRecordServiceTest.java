@@ -4,6 +4,7 @@ import com.vetclinic.pet.client.BookingServiceClient;
 import com.vetclinic.pet.domain.PrescriptionStatus;
 import com.vetclinic.pet.dto.MedicalRecordRequest;
 import com.vetclinic.pet.dto.MedicalRecordResponse;
+import com.vetclinic.pet.dto.MedicationRequest;
 import com.vetclinic.pet.dto.PetRequest;
 import com.vetclinic.pet.dto.PetResponse;
 import com.vetclinic.pet.dto.PrescriptionItemRequest;
@@ -11,6 +12,7 @@ import com.vetclinic.pet.exception.BookingUnavailableException;
 import com.vetclinic.pet.exception.PetHasMedicalRecordsException;
 import com.vetclinic.pet.exception.PrescriptionNotPaidException;
 import com.vetclinic.pet.exception.ResourceNotFoundException;
+import com.vetclinic.pet.messaging.PrescriptionCreatedEvent;
 import feign.FeignException;
 import feign.Request;
 import feign.RequestTemplate;
@@ -20,8 +22,11 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.event.ApplicationEvents;
+import org.springframework.test.context.event.RecordApplicationEvents;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.List;
@@ -40,12 +45,15 @@ import static org.mockito.Mockito.when;
  */
 @SpringBootTest(properties = "eureka.client.enabled=false")
 @Transactional
+@RecordApplicationEvents
 class MedicalRecordServiceTest {
 
     private static final String TOKEN = "Bearer test";
 
     @Autowired private MedicalRecordService medicalRecordService;
     @Autowired private PetService petService;
+    @Autowired private MedicationService medicationService;
+    @Autowired private ApplicationEvents events;
 
     @MockBean private BookingServiceClient bookingServiceClient;
 
@@ -98,6 +106,37 @@ class MedicalRecordServiceTest {
         assertThat(saved.doctorUserId()).isEqualTo(doctor);
         assertThat(saved.status()).isEqualTo(PrescriptionStatus.PENDING);
         assertThat(saved.prescriptionItems()).hasSize(1);
+    }
+
+    @Test
+    void firstSave_sendsCatalogPricePerMedication_andNullForUnknownOrUnpricedOnes() {
+        medicationService.create(new MedicationRequest("Thuoc Co Gia Test", "viên", null, null, new BigDecimal("8000")));
+        medicationService.create(new MedicationRequest("Thuoc Chua Gia Test", "viên", null, null));
+        UUID appointmentId = givenAppointment();
+
+        // Gõ không dấu, khác hoa/thường vẫn khớp danh mục như lúc tìm gợi ý.
+        medicalRecordService.createOrUpdate(appointmentId, request("Viêm da",
+                thuoc("thuốc có giá test"), thuoc("Thuoc Chua Gia Test"), thuoc("Thuoc Ngoai Danh Muc")), TOKEN);
+
+        PrescriptionCreatedEvent event = events.stream(PrescriptionCreatedEvent.class).findFirst().orElseThrow();
+        assertThat(event.items()).extracting(PrescriptionCreatedEvent.Item::unitPrice)
+                .satisfiesExactly(
+                        p -> assertThat(p).isEqualByComparingTo("8000"),
+                        p -> assertThat(p).isNull(),
+                        p -> assertThat(p).isNull());
+    }
+
+    @Test
+    void firstSave_sendsTheAppointmentsServiceAndPriceForTheBill() {
+        UUID appointmentId = UUID.randomUUID();
+        when(bookingServiceClient.getAppointment(any(), any())).thenReturn(new BookingServiceClient.AppointmentRef(
+                appointmentId, pet.id(), owner, doctor, "COMPLETED", "Siêu âm", new BigDecimal("250000")));
+
+        medicalRecordService.createOrUpdate(appointmentId, request("Viêm da", thuoc("Amoxicillin")), TOKEN);
+
+        PrescriptionCreatedEvent event = events.stream(PrescriptionCreatedEvent.class).findFirst().orElseThrow();
+        assertThat(event.serviceName()).isEqualTo("Siêu âm");
+        assertThat(event.servicePrice()).isEqualByComparingTo("250000");
     }
 
     @Test

@@ -2,6 +2,7 @@ package com.vetclinic.pet.service;
 
 import com.vetclinic.pet.client.BookingServiceClient;
 import com.vetclinic.pet.domain.MedicalRecord;
+import com.vetclinic.pet.domain.Medication;
 import com.vetclinic.pet.domain.PrescriptionItem;
 import com.vetclinic.pet.domain.PrescriptionStatus;
 import com.vetclinic.pet.dto.MedicalRecordRequest;
@@ -12,6 +13,7 @@ import com.vetclinic.pet.exception.PrescriptionNotPaidException;
 import com.vetclinic.pet.exception.ResourceNotFoundException;
 import com.vetclinic.pet.messaging.PrescriptionCreatedEvent;
 import com.vetclinic.pet.repository.MedicalRecordRepository;
+import com.vetclinic.pet.repository.MedicationRepository;
 import com.vetclinic.pet.repository.PetRepository;
 import feign.FeignException;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +22,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -39,6 +42,7 @@ public class MedicalRecordService {
 
     private final MedicalRecordRepository medicalRecordRepository;
     private final PetRepository petRepository;
+    private final MedicationRepository medicationRepository;
     private final BookingServiceClient bookingServiceClient;
     private final ApplicationEventPublisher applicationEventPublisher;
 
@@ -53,7 +57,10 @@ public class MedicalRecordService {
         // Bác sĩ nào cũng lập và sửa được, y như bản cũ bên booking-service: trong phòng khám nhỏ
         // bác sĩ trực thay nhau là chuyện thường. Người khám vẫn là bác sĩ ghi trong lịch hẹn
         // (doctorUserId chép từ đó), không phải người bấm lưu.
-        MedicalRecord record = existing.orElseGet(() -> newRecordFor(appointmentId, bearerToken));
+        // Lịch hẹn chỉ được hỏi ở lần tạo đầu: giữ lại để lấy dịch vụ cho phiếu thu.
+        BookingServiceClient.AppointmentRef newAppointment =
+                existing.isPresent() ? null : fetchAppointment(appointmentId, bearerToken);
+        MedicalRecord record = existing.orElseGet(() -> newRecordFor(appointmentId, newAppointment));
 
         record.setDiagnosis(request.diagnosis().trim());
         record.setTreatment(request.treatment());
@@ -79,15 +86,25 @@ public class MedicalRecordService {
         // Chỉ yêu cầu thanh toán ở lần tạo mới: bác sĩ sửa lại đơn khi khách còn chưa trả tiền
         // không được bắn thêm một phiếu thu trùng.
         if (existing.isEmpty()) {
-            applicationEventPublisher.publishEvent(PrescriptionCreatedEvent.of(record));
+            applicationEventPublisher.publishEvent(PrescriptionCreatedEvent.of(record, this::catalogPrice,
+                    newAppointment.billingServiceName(), newAppointment.billingServicePrice()));
         }
 
         return toResponse(record);
     }
 
+    /**
+     * Giá trong danh mục của thuốc bác sĩ vừa gõ. Đơn lưu tên thuốc dạng chữ (không trỏ id), nên khớp
+     * theo tên đã bỏ dấu như lúc tìm gợi ý; thuốc ngoài danh mục hoặc chưa có giá thì null.
+     */
+    private BigDecimal catalogPrice(String medicationName) {
+        return medicationRepository.findBySearchName(TextNormalizer.normalize(medicationName))
+                .map(Medication::getUnitPrice)
+                .orElse(null);
+    }
+
     /** Lịch hẹn phải có thật, và con vật trong lịch hẹn phải là con service này đang giữ hồ sơ. */
-    private MedicalRecord newRecordFor(UUID appointmentId, String bearerToken) {
-        BookingServiceClient.AppointmentRef appointment = fetchAppointment(appointmentId, bearerToken);
+    private MedicalRecord newRecordFor(UUID appointmentId, BookingServiceClient.AppointmentRef appointment) {
 
         if (!petRepository.existsById(appointment.petId())) {
             throw new ResourceNotFoundException("Không tìm thấy thú cưng: " + appointment.petId());

@@ -13,6 +13,12 @@ const schema = z.object({
   name: z.string().trim().min(1, "Nhập tên thuốc").max(255, "Tối đa 255 ký tự"),
   unit: z.string().trim().max(50, "Tối đa 50 ký tự").optional(),
   caution: z.string().max(2000, "Tối đa 2000 ký tự").optional(),
+  // Giữ dạng chuỗi để phân biệt "để trống" (chưa có giá) với 0; đổi sang số lúc gửi.
+  unitPrice: z
+    .string()
+    .trim()
+    .optional()
+    .refine((v) => !v || (Number.isFinite(Number(v)) && Number(v) >= 0), "Đơn giá phải là số không âm"),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -45,13 +51,19 @@ export function MedicationFormDialog({
       name: editing?.name ?? "",
       unit: editing?.unit ?? "",
       caution: editing?.caution ?? "",
+      unitPrice: editing?.unitPrice != null ? String(editing.unitPrice) : "",
     },
   });
 
   const save = useMutation({
     mutationFn: (v: FormValues) => {
       // Ô trống gửi là undefined: backend lưu null, "chưa có lưu ý" khác "lưu ý rỗng".
-      const body = { name: v.name, unit: v.unit || undefined, caution: v.caution || undefined };
+      const body = {
+        name: v.name,
+        unit: v.unit || undefined,
+        caution: v.caution || undefined,
+        unitPrice: v.unitPrice ? Number(v.unitPrice) : undefined,
+      };
       return editing ? medicationApi.update(editing.id, body) : medicationApi.create(body);
     },
     onSuccess: () => {
@@ -99,6 +111,18 @@ export function MedicationFormDialog({
           placeholder="viên, gói, ml…"
           error={errors.unit?.message}
           {...register("unit")}
+        />
+
+        <TextField
+          label="Đơn giá (VND / đơn vị)"
+          type="number"
+          min={0}
+          step={500}
+          inputMode="numeric"
+          placeholder="VD: 12000"
+          hint="Phiếu thu tiền thuốc tự điền giá này; để trống thì quầy nhập tay. Đổi giá không làm đổi phiếu đã tạo."
+          error={errors.unitPrice?.message}
+          {...register("unitPrice")}
         />
 
         <TextAreaField

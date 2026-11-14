@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -89,6 +90,22 @@ class MedicationServiceTest {
         assertThat(names("thuoc an test")).isEmpty();
         assertThat(medicationService.search("thuoc an test", true, null))
                 .extracting(MedicationResponse::name).containsExactly("Thuoc An Test");
+    }
+
+    @Test
+    void unitPriceIsStoredAndCanBeChangedOrCleared() {
+        MedicationResponse created = medicationService.create(
+                new MedicationRequest("Thuoc Gia Test", "viên", null, null, new BigDecimal("12500")));
+        assertThat(created.unitPrice()).isEqualByComparingTo("12500");
+
+        MedicationResponse repriced = medicationService.update(created.id(),
+                new MedicationRequest("Thuoc Gia Test", "viên", null, null, new BigDecimal("15000")));
+        assertThat(repriced.unitPrice()).isEqualByComparingTo("15000");
+
+        // Ô giá để trống = chưa có giá (quầy nhập tay), không phải 0 đồng.
+        MedicationResponse cleared = medicationService.update(created.id(),
+                new MedicationRequest("Thuoc Gia Test", "viên", null, null, null));
+        assertThat(cleared.unitPrice()).isNull();
     }
 
     @Test

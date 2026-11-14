@@ -26,7 +26,19 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class ClinicServiceCatalog {
 
+    /**
+     * Dịch vụ tính tiền khi lịch hẹn không chọn dịch vụ nào (lịch cũ, tạo hộ tại quầy): lượt khám đã có bệnh
+     * án thì ít nhất là một lượt khám, tính theo giá dịch vụ này. Mã khớp V8__seed_clinic_services.sql.
+     */
+    public static final String DEFAULT_BILLING_SLUG = "kham-dieu-tri";
+
     private final ClinicServiceRepository clinicServiceRepository;
+
+    /** Rỗng nếu admin đã đổi mã hoặc xoá dịch vụ mặc định — khi đó quầy nhập tiền dịch vụ tay. */
+    @Transactional(readOnly = true)
+    public java.util.Optional<ClinicService> defaultBillingService() {
+        return clinicServiceRepository.findBySlug(DEFAULT_BILLING_SLUG);
+    }
 
     /** Trang chủ và trang đặt lịch chỉ thấy dịch vụ đang cung cấp; quản trị thấy cả dịch vụ đã ẩn. */
     @Transactional(readOnly = true)

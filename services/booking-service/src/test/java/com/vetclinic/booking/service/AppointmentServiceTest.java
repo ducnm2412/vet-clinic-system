@@ -253,6 +253,80 @@ class AppointmentServiceTest {
 
     @Test
     @Transactional
+    void completeAfterExam_marksAConfirmedAppointmentDone_andLeavesOtherStatesAlone() {
+        when(petServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
+        LocalDate date = LocalDate.of(2026, 12, 9);
+        AppointmentResponse confirmed = bookAt(date, LocalTime.of(9, 0));
+        AppointmentResponse cancelled = bookAt(date, LocalTime.of(10, 0));
+        appointmentService.updateStatus(confirmed.id(), AppointmentStatus.CONFIRMED);
+        appointmentService.updateStatus(cancelled.id(), AppointmentStatus.CANCELLED);
+
+        appointmentService.completeAfterExam(confirmed.id());
+        appointmentService.completeAfterExam(cancelled.id());
+        // Gọi lại (RabbitMQ at-least-once) và id lạ đều không ném lỗi.
+        appointmentService.completeAfterExam(confirmed.id());
+        appointmentService.completeAfterExam(UUID.randomUUID());
+
+        assertThat(appointmentRepository.findById(confirmed.id()).orElseThrow().getStatus())
+                .isEqualTo(AppointmentStatus.COMPLETED);
+        assertThat(appointmentRepository.findById(cancelled.id()).orElseThrow().getStatus())
+                .isEqualTo(AppointmentStatus.CANCELLED);
+    }
+
+    private AppointmentResponse bookAt(LocalDate date, LocalTime time) {
+        appointmentSlotRepository.saveAndFlush(AppointmentSlot.builder()
+                .doctorUserId(UUID.randomUUID()).date(date).startTime(time).endTime(time.plusMinutes(30)).build());
+        return appointmentService.createAppointment(UUID.randomUUID(), "Bearer t",
+                new AppointmentRequest(UUID.randomUUID(), date, time, null, "Khám"));
+    }
+
+    @Test
+    @Transactional
+    void getAppointmentDetail_carriesTheServicesReferencePriceForBilling() {
+        when(petServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
+        when(petServiceClient.getPetById(any(), any())).thenReturn(dummyPet());
+
+        LocalDate date = LocalDate.of(2026, 12, 6);
+        LocalTime time = LocalTime.of(9, 0);
+        appointmentSlotRepository.saveAndFlush(AppointmentSlot.builder()
+                .doctorUserId(UUID.randomUUID()).date(date).startTime(time).endTime(time.plusMinutes(30)).build());
+        ClinicService tiemPhong = clinicServiceRepository.findBySlug("tiem-phong").orElseThrow();
+        AppointmentResponse created = appointmentService.createAppointment(UUID.randomUUID(), "Bearer t",
+                new AppointmentRequest(UUID.randomUUID(), date, time, tiemPhong.getId(), null));
+
+        AppointmentDetailResponse detail = appointmentService.getAppointmentDetail(created.id(), "Bearer staff");
+
+        assertThat(detail.serviceName()).isEqualTo(tiemPhong.getName());
+        assertThat(detail.billingServiceName()).isEqualTo(tiemPhong.getName());
+        assertThat(detail.billingServicePrice()).isEqualByComparingTo(tiemPhong.getReferencePrice());
+    }
+
+    @Test
+    @Transactional
+    void getAppointmentDetail_withoutAChosenService_isBilledAsTheDefaultExamButDoesNotClaimItWasChosen() {
+        when(petServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
+        when(petServiceClient.getPetById(any(), any())).thenReturn(dummyPet());
+
+        LocalDate date = LocalDate.of(2026, 12, 7);
+        LocalTime time = LocalTime.of(9, 0);
+        appointmentSlotRepository.saveAndFlush(AppointmentSlot.builder()
+                .doctorUserId(UUID.randomUUID()).date(date).startTime(time).endTime(time.plusMinutes(30)).build());
+        AppointmentResponse created = appointmentService.createAppointment(UUID.randomUUID(), "Bearer t",
+                new AppointmentRequest(UUID.randomUUID(), date, time, null, "Ngứa tai"));
+        ClinicService defaultExam = clinicServiceRepository.findBySlug(ClinicServiceCatalog.DEFAULT_BILLING_SLUG)
+                .orElseThrow();
+
+        AppointmentDetailResponse detail = appointmentService.getAppointmentDetail(created.id(), "Bearer staff");
+
+        // Khách không chọn dịch vụ nên màn hình khách không hiện tên dịch vụ nào...
+        assertThat(detail.serviceName()).isNull();
+        // ...nhưng tiền khám vẫn tính theo dịch vụ khám mặc định.
+        assertThat(detail.billingServiceName()).isEqualTo(defaultExam.getName());
+        assertThat(detail.billingServicePrice()).isEqualByComparingTo(defaultExam.getReferencePrice());
+    }
+
+    @Test
+    @Transactional
     void getAppointmentDetail_enrichesWithPetFromPetService() {
         when(petServiceClient.getMyPet(any(), any())).thenReturn(dummyPet());
         when(petServiceClient.getPetById(any(), any())).thenReturn(dummyPet());

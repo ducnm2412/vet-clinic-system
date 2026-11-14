@@ -1,5 +1,5 @@
 import { http } from "./client";
-import type { Payment, SetAmountRequest } from "@/types";
+import type { Payment, SetAmountRequest, SetItemsRequest } from "@/types";
 
 /**
  * Thu tiền mặt tại quầy cho đơn thuốc. Toàn bộ nhánh này chỉ STAFF/ADMIN dùng được —
@@ -12,6 +12,10 @@ export const paymentApi = {
   /** Nhân viên nhập số tiền sau khi tính theo đơn thuốc. */
   setAmount: (id: string, body: SetAmountRequest) =>
     http.put<Payment>(`/payment/payments/${id}/amount`, body),
+
+  /** Chốt tiền theo từng dòng thuốc (đơn giá x số lượng); backend tự cộng tổng. */
+  setItems: (id: string, body: SetItemsRequest) =>
+    http.put<Payment>(`/payment/payments/${id}/items`, body),
 
   /**
    * API vẫn giữ: thu tiền mặt trực tiếp, không qua hoá đơn quầy. Giao diện không còn nút này;

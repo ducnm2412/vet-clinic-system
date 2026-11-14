@@ -32,6 +32,8 @@ public class PrescriptionCreatedEventListener {
                 .appointmentId(event.appointmentId())
                 .customerUserId(event.customerUserId())
                 .status(PaymentStatus.PENDING_AMOUNT)
+                .serviceName(event.serviceName())
+                .serviceAmount(event.servicePrice())
                 .build();
 
         List<PaymentItem> items = event.items().stream()
@@ -41,6 +43,7 @@ public class PrescriptionCreatedEventListener {
                         .dosage(item.dosage())
                         .frequency(item.frequency())
                         .durationDays(item.durationDays())
+                        .unitPrice(item.unitPrice())
                         .build())
                 .toList();
         payment.setItems(items);

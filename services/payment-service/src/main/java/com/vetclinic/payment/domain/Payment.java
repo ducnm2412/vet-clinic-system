@@ -52,6 +52,13 @@ public class Payment {
     @Column(precision = 12, scale = 2)
     private BigDecimal amount;
 
+    // Dịch vụ khách đã đặt và tiền dịch vụ (giá tham khảo lúc kê, quầy sửa được); amount = service_amount + thuốc.
+    @Column(name = "service_name", length = 120)
+    private String serviceName;
+
+    @Column(name = "service_amount", precision = 12, scale = 2)
+    private BigDecimal serviceAmount;
+
     // NULL cho tới khi khách hàng/staff chọn phương thức lúc thanh toán.
     @Enumerated(EnumType.STRING)
     @Column(length = 20)

@@ -47,6 +47,7 @@ public class MedicationService {
                 .searchName(searchName)
                 .unit(blankToNull(request.unit()))
                 .caution(blankToNull(request.caution()))
+                .unitPrice(request.unitPrice())
                 .active(request.active() == null || request.active())
                 .build();
         return MedicationResponse.from(medicationRepository.save(medication));
@@ -64,6 +65,7 @@ public class MedicationService {
         medication.setSearchName(searchName);
         medication.setUnit(blankToNull(request.unit()));
         medication.setCaution(blankToNull(request.caution()));
+        medication.setUnitPrice(request.unitPrice());
         if (request.active() != null) {
             medication.setActive(request.active());
         }

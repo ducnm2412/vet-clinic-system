@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -37,7 +38,8 @@ class PrescriptionCreatedEventListenerTest {
         UUID appointmentId = UUID.randomUUID();
         UUID customerUserId = UUID.randomUUID();
         PrescriptionCreatedEvent event = new PrescriptionCreatedEvent(medicalRecordId, appointmentId, customerUserId,
-                List.of(new PrescriptionCreatedEvent.Item("Amoxicillin", "250mg", "2x/day", 7)));
+                List.of(new PrescriptionCreatedEvent.Item("Amoxicillin", "250mg", "2x/day", 7, new BigDecimal("12000"))),
+                "Khám, tư vấn & điều trị bệnh", new BigDecimal("150000"));
 
         listener.onPrescriptionCreated(event);
 
@@ -52,13 +54,19 @@ class PrescriptionCreatedEventListenerTest {
         assertThat(found.get().getItems().get(0).getDosage()).isEqualTo("250mg");
         assertThat(found.get().getItems().get(0).getFrequency()).isEqualTo("2x/day");
         assertThat(found.get().getItems().get(0).getDurationDays()).isEqualTo(7);
+        // Giá chốt theo lúc kê; số lượng để quầy nhập.
+        assertThat(found.get().getItems().get(0).getUnitPrice()).isEqualByComparingTo("12000");
+        assertThat(found.get().getItems().get(0).getQuantity()).isNull();
+        // Tiền dịch vụ đi kèm phiếu, cạnh tiền thuốc.
+        assertThat(found.get().getServiceName()).isEqualTo("Khám, tư vấn & điều trị bệnh");
+        assertThat(found.get().getServiceAmount()).isEqualByComparingTo("150000");
     }
 
     @Test
     void onPrescriptionCreated_redelivered_doesNotCreateDuplicatePayment() {
         UUID medicalRecordId = UUID.randomUUID();
         PrescriptionCreatedEvent event = new PrescriptionCreatedEvent(medicalRecordId, UUID.randomUUID(),
-                UUID.randomUUID(), List.of(new PrescriptionCreatedEvent.Item("DrugA", "1 tab", "1x/day", 5)));
+                UUID.randomUUID(), List.of(new PrescriptionCreatedEvent.Item("DrugA", "1 tab", "1x/day", 5, null)), null, null);
 
         // RabbitMQ là at-least-once — giả lập redelivery bằng cách gọi listener 2 lần với event
         // giống hệt nhau (cùng medicalRecordId).

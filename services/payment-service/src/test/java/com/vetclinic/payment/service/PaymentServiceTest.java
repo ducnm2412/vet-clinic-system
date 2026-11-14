@@ -1,9 +1,12 @@
 package com.vetclinic.payment.service;
 
 import com.vetclinic.payment.domain.Payment;
+import com.vetclinic.payment.domain.PaymentItem;
 import com.vetclinic.payment.domain.PaymentMethod;
 import com.vetclinic.payment.domain.PaymentStatus;
 import com.vetclinic.payment.dto.PaymentResponse;
+import com.vetclinic.payment.dto.SetItemsRequest;
+import com.vetclinic.payment.exception.InvalidPaymentRequestException;
 import com.vetclinic.payment.exception.InvalidPaymentStateException;
 import com.vetclinic.payment.exception.ResourceNotFoundException;
 import com.vetclinic.payment.messaging.PaymentAmountSetEvent;
@@ -219,6 +222,155 @@ class PaymentServiceTest {
         assertThat(paymentRepository.findById(ready.getId()).orElseThrow().getStatus())
                 .isEqualTo(PaymentStatus.PENDING_PAYMENT);
         assertThat(events.stream(PaymentCompletedEvent.class)).isEmpty();
+    }
+
+    // ---- setItems: chốt tiền theo từng dòng thuốc ----
+
+    @Test
+    void setItems_computesLineAmountsAndTotal_andMovesToPendingPayment() {
+        Payment payment = seedPaymentWithItems(2);
+        PaymentItem a = payment.getItems().get(0);
+        PaymentItem b = payment.getItems().get(1);
+
+        PaymentResponse updated = setItems(payment.getId(), List.of(
+                new SetItemsRequest.Line(a.getId(), new BigDecimal("12000"), 10),
+                new SetItemsRequest.Line(b.getId(), new BigDecimal("3500.50"), 3)));
+
+        assertThat(updated.status()).isEqualTo(PaymentStatus.PENDING_PAYMENT);
+        // 12000 x 10 + 3500,50 x 3 = 130501,50
+        assertThat(updated.amount()).isEqualByComparingTo("130501.50");
+        assertThat(updated.items()).extracting("lineAmount", BigDecimal.class)
+                .usingElementComparator(BigDecimal::compareTo)
+                .containsExactlyInAnyOrder(new BigDecimal("120000"), new BigDecimal("10501.50"));
+        assertThat(updated.items()).extracting("quantity").containsExactlyInAnyOrder(10, 3);
+    }
+
+    @Test
+    void setItems_publishesAmountSetEventWithTheTotal() {
+        Payment payment = seedPaymentWithItems(1);
+
+        setItems(payment.getId(), List.of(
+                new SetItemsRequest.Line(payment.getItems().get(0).getId(), new BigDecimal("5000"), 4)));
+
+        assertThat(events.stream(PaymentAmountSetEvent.class)).singleElement()
+                .satisfies(e -> assertThat(e.amount()).isEqualByComparingTo("20000"));
+    }
+
+    @Test
+    void setItems_missingALine_isRejectedAndChangesNothing() {
+        Payment payment = seedPaymentWithItems(2);
+
+        assertThatThrownBy(() -> setItems(payment.getId(), List.of(
+                new SetItemsRequest.Line(payment.getItems().get(0).getId(), new BigDecimal("1000"), 1))))
+                .isInstanceOf(InvalidPaymentRequestException.class);
+
+        assertThat(paymentRepository.findById(payment.getId()).orElseThrow().getStatus())
+                .isEqualTo(PaymentStatus.PENDING_AMOUNT);
+        assertThat(events.stream(PaymentAmountSetEvent.class)).isEmpty();
+    }
+
+    @Test
+    void setItems_foreignOrDuplicatedLine_isRejected() {
+        Payment payment = seedPaymentWithItems(1);
+        UUID mine = payment.getItems().get(0).getId();
+
+        assertThatThrownBy(() -> setItems(payment.getId(), List.of(
+                new SetItemsRequest.Line(mine, new BigDecimal("1000"), 1),
+                new SetItemsRequest.Line(UUID.randomUUID(), new BigDecimal("1000"), 1))))
+                .isInstanceOf(InvalidPaymentRequestException.class);
+        assertThatThrownBy(() -> setItems(payment.getId(), List.of(
+                new SetItemsRequest.Line(mine, new BigDecimal("1000"), 1),
+                new SetItemsRequest.Line(mine, new BigDecimal("1000"), 1))))
+                .isInstanceOf(InvalidPaymentRequestException.class);
+    }
+
+    @Test
+    void setItems_zeroTotal_isRejected() {
+        Payment payment = seedPaymentWithItems(1);
+
+        assertThatThrownBy(() -> setItems(payment.getId(), List.of(
+                new SetItemsRequest.Line(payment.getItems().get(0).getId(), BigDecimal.ZERO, 5))))
+                .isInstanceOf(InvalidPaymentRequestException.class);
+    }
+
+    @Test
+    void setItems_whenNotAwaitingAmount_isConflict() {
+        Payment payment = seedPaymentWithItems(1);
+        paymentService.setAmount(payment.getId(), new BigDecimal("50000"));
+
+        assertThatThrownBy(() -> setItems(payment.getId(), List.of(
+                new SetItemsRequest.Line(payment.getItems().get(0).getId(), new BigDecimal("1000"), 1))))
+                .isInstanceOf(InvalidPaymentStateException.class);
+    }
+
+    // ---- tiền dịch vụ + tiền thuốc ----
+
+    @Test
+    void setItems_addsTheServiceFeeToTheDrugTotal() {
+        Payment payment = seedPaymentWithItems(1);
+        payment.setServiceName("Khám, tư vấn & điều trị bệnh");
+        payment.setServiceAmount(new BigDecimal("150000"));
+        paymentRepository.saveAndFlush(payment);
+
+        PaymentResponse updated = setItems(payment.getId(), List.of(
+                new SetItemsRequest.Line(payment.getItems().get(0).getId(), new BigDecimal("2000"), 10)));
+
+        // 150000 (dịch vụ) + 2000 x 10 (thuốc)
+        assertThat(updated.amount()).isEqualByComparingTo("170000");
+        assertThat(updated.serviceAmount()).isEqualByComparingTo("150000");
+        assertThat(updated.serviceName()).isEqualTo("Khám, tư vấn & điều trị bệnh");
+    }
+
+    @Test
+    void setItems_staffCanCorrectTheServiceFee() {
+        Payment payment = seedPaymentWithItems(1);
+        payment.setServiceAmount(new BigDecimal("150000"));
+        paymentRepository.saveAndFlush(payment);
+
+        PaymentResponse updated = paymentService.setItems(payment.getId(), new SetItemsRequest(List.of(
+                new SetItemsRequest.Line(payment.getItems().get(0).getId(), new BigDecimal("1000"), 1)),
+                new BigDecimal("200000"), "Siêu âm"));
+
+        assertThat(updated.amount()).isEqualByComparingTo("201000");
+        assertThat(updated.serviceName()).isEqualTo("Siêu âm");
+    }
+
+    @Test
+    void setItems_serviceOnly_whenNoDrugWasPrescribed() {
+        Payment payment = seedPaymentWithItems(0);
+        payment.setServiceAmount(new BigDecimal("150000"));
+        paymentRepository.saveAndFlush(payment);
+
+        PaymentResponse updated = setItems(payment.getId(), List.of());
+
+        assertThat(updated.status()).isEqualTo(PaymentStatus.PENDING_PAYMENT);
+        assertThat(updated.amount()).isEqualByComparingTo("150000");
+    }
+
+    @Test
+    void setItems_noServiceAndNoDrug_isRejectedAsZeroTotal() {
+        Payment payment = seedPaymentWithItems(0);
+
+        assertThatThrownBy(() -> setItems(payment.getId(), List.of()))
+                .isInstanceOf(InvalidPaymentRequestException.class);
+    }
+
+    private PaymentResponse setItems(UUID id, List<SetItemsRequest.Line> lines) {
+        return paymentService.setItems(id, new SetItemsRequest(lines, null, null));
+    }
+
+    private Payment seedPaymentWithItems(int count) {
+        Payment payment = Payment.builder()
+                .medicalRecordId(UUID.randomUUID())
+                .appointmentId(UUID.randomUUID())
+                .customerUserId(UUID.randomUUID())
+                .status(PaymentStatus.PENDING_AMOUNT)
+                .build();
+        for (int i = 0; i < count; i++) {
+            payment.getItems().add(PaymentItem.builder()
+                    .payment(payment).medicationName("Thuoc " + i).dosage("1 viên").frequency("2 lần/ngày").build());
+        }
+        return paymentRepository.saveAndFlush(payment);
     }
 
     private Payment seedPayment(PaymentStatus status, BigDecimal amount) {

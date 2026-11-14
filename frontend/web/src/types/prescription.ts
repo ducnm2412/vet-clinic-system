@@ -13,12 +13,16 @@ export interface Medication {
   caution: string | null;
   /** false = đã ẩn khỏi gợi ý (không xoá cứng). */
   active: boolean;
+  /** Giá bán một đơn vị (VND); null = chưa có giá, quầy nhập tay lúc thu tiền. */
+  unitPrice: number | null;
 }
 
 export interface MedicationRequest {
   name: string;
   unit?: string;
   caution?: string;
+  /** Để trống = chưa có giá. Khi sửa, để trống sẽ xoá giá cũ. */
+  unitPrice?: number;
   /** Để trống khi sửa thì backend giữ nguyên trạng thái hiện tại. */
   active?: boolean;
 }

@@ -5,6 +5,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 import { Eye, EyeOff, Pencil, Plus, Search } from "lucide-react";
 import { ApiError, MEDICATION_MAX_LIMIT, medicationApi } from "@/lib/api";
 import { useDebouncedValue } from "@/lib/useDebouncedValue";
+import { formatPrice } from "@/lib/utils/format";
 import type { Medication } from "@/types";
 import { PageHeader } from "@/components/layout/DashboardShell";
 import { MedicationFormDialog } from "@/components/medical/MedicationFormDialog";
@@ -75,6 +76,13 @@ export function MedicationCatalog() {
       header: "Đơn vị",
       hideBelow: "sm",
       cell: (m) => m.unit || <span className="text-bark">—</span>,
+    },
+    {
+      key: "price",
+      header: "Đơn giá",
+      numeric: true,
+      hideBelow: "sm",
+      cell: (m) => (m.unitPrice == null ? <span className="text-bark">—</span> : formatPrice(m.unitPrice)),
     },
     {
       key: "caution",

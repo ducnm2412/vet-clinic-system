@@ -5,6 +5,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestHeader;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 /**
@@ -25,7 +26,13 @@ public interface BookingServiceClient {
     AppointmentRef getAppointment(@PathVariable("appointmentId") UUID appointmentId,
                                  @RequestHeader("Authorization") String bearerToken);
 
-    /** Chỉ lấy những trường bệnh án cần; các trường khác của booking-service Jackson bỏ qua. */
-    record AppointmentRef(UUID id, UUID petId, UUID customerUserId, UUID doctorUserId, String status) {
+    /** Chỉ lấy những trường bệnh án và phiếu thu cần (kèm tên và giá dịch vụ của lịch); các trường khác của booking-service Jackson bỏ qua. */
+    record AppointmentRef(UUID id, UUID petId, UUID customerUserId, UUID doctorUserId, String status,
+                          String billingServiceName, BigDecimal billingServicePrice) {
+
+        /** Chỗ không quan tâm dịch vụ (test, lịch cũ không chọn dịch vụ). */
+        public AppointmentRef(UUID id, UUID petId, UUID customerUserId, UUID doctorUserId, String status) {
+            this(id, petId, customerUserId, doctorUserId, status, null, null);
+        }
     }
 }

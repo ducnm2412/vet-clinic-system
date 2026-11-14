@@ -23,6 +23,8 @@ import { TransferQr } from "@/components/payment/TransferQr";
 
 type CounterMethod = CounterInvoiceRequest["paymentMethod"];
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 interface Line {
   product: Product;
   quantity: number;
@@ -69,10 +71,22 @@ export function CounterInvoiceView({ initialPaymentId }: { initialPaymentId?: st
     refetchOnWindowFocus: false,
   });
 
+  // Sản phẩm mẫu (id không phải UUID) lọt vào từ lúc kho tắt: backend sẽ từ chối CẢ hoá đơn nếu còn một dòng
+  // như vậy, nên tự gỡ và báo rõ thay vì để quầy bấm thu rồi nhận lỗi 400 khó hiểu.
+  useEffect(() => {
+    const bad = lines.filter((l) => !UUID_RE.test(l.product.id));
+    if (bad.length === 0) return;
+    toast.error(`Đã gỡ ${bad.length} sản phẩm không có trong kho thật (${bad.map((l) => l.product.name).join(", ")}). Hãy tìm lại.`);
+    const good = lines.filter((l) => UUID_RE.test(l.product.id));
+    setLines(good);
+    if (draft?.status === "PENDING") void syncItems(draft.id, good);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lines]);
+
   const debounced = useDebounced(keyword.trim(), 300);
   const found = useQuery({
     queryKey: ["products", "counter-search", debounced],
-    queryFn: () => productApi.search({ keyword: debounced, size: 8 }),
+    queryFn: () => productApi.searchLive({ keyword: debounced, size: 8 }),
     enabled: debounced.length >= 2,
   });
   const results = (found.data?.content ?? []).filter((p) => p.active);
@@ -87,7 +101,7 @@ export function CounterInvoiceView({ initialPaymentId }: { initialPaymentId?: st
   async function hydrateLines(order: Order): Promise<Line[]> {
     return Promise.all(order.items.map(async (it) => {
       try {
-        const product = await productApi.byId(it.productId);
+        const product = await productApi.byIdLive(it.productId);
         return { product, quantity: it.quantity };
       } catch {
         return { product: productFromItem(it), quantity: it.quantity };
@@ -349,6 +363,10 @@ export function CounterInvoiceView({ initialPaymentId }: { initialPaymentId?: st
                 <div className="p-3">
                   <Spinner />
                 </div>
+              ) : found.isError ? (
+                <p className="p-3 text-sm text-danger">
+                  Không tải được danh sách sản phẩm (kho hàng chưa sẵn sàng). Thử lại sau ít phút.
+                </p>
               ) : results.length === 0 ? (
                 <p className="p-3 text-sm text-bark">Không tìm thấy sản phẩm nào đang bán.</p>
               ) : (

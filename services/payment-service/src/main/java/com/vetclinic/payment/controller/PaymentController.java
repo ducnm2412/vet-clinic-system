@@ -3,6 +3,7 @@ package com.vetclinic.payment.controller;
 import com.vetclinic.payment.dto.PaymentDailyStatsResponse;
 import com.vetclinic.payment.dto.PaymentResponse;
 import com.vetclinic.payment.dto.SetAmountRequest;
+import com.vetclinic.payment.dto.SetItemsRequest;
 import com.vetclinic.payment.service.PaymentService;
 import com.vetclinic.payment.service.PaymentStatsService;
 import jakarta.validation.Valid;
@@ -44,6 +45,13 @@ public class PaymentController {
     @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
     public PaymentResponse setAmount(@PathVariable UUID id, @Valid @RequestBody SetAmountRequest request) {
         return paymentService.setAmount(id, request.amount());
+    }
+
+    // Chốt tiền theo từng dòng thuốc: tổng = cộng (đơn giá x số lượng). Thay cho nhập một con số tổng.
+    @PutMapping("/payment/payments/{id}/items")
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
+    public PaymentResponse setItems(@PathVariable UUID id, @Valid @RequestBody SetItemsRequest request) {
+        return paymentService.setItems(id, request);
     }
 
     @PutMapping("/payment/payments/{id}/confirm-cash")

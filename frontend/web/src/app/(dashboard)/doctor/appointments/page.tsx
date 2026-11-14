@@ -48,8 +48,12 @@ export default function DoctorAppointmentsPage() {
       toast.error(err instanceof ApiError ? err.message : "Không tiếp nhận được ca khám."),
   });
 
-  const rows = [...(appointments.data ?? [])].sort((a, b) =>
-    `${a.date}${a.startTime}`.localeCompare(`${b.date}${b.startTime}`),
+  // Ca còn phải khám lên trước, ca đã xong (hoàn thành, huỷ, vắng) xuống cuối; trong mỗi nhóm theo giờ.
+  const isOpen = (s: Appointment["status"]) => s === "PENDING" || s === "CONFIRMED";
+  const rows = [...(appointments.data ?? [])].sort(
+    (a, b) =>
+      Number(isOpen(b.status)) - Number(isOpen(a.status)) ||
+      `${a.date}${a.startTime}`.localeCompare(`${b.date}${b.startTime}`),
   );
 
   const columns: Column<Appointment>[] = [
@@ -91,7 +95,7 @@ export default function DoctorAppointmentsPage() {
             </Button>
           )}
           <Button size="sm" variant="secondary" onClick={() => router.push(`/doctor/appointments/${a.id}`)}>
-            Mở hồ sơ
+            {isOpen(a.status) ? "Mở hồ sơ" : "Xem hồ sơ"}
           </Button>
         </div>
       ),
