@@ -18,12 +18,18 @@ public interface NotificationRepository extends JpaRepository<Notification, UUID
 
     long countByUserIdAndReadAtIsNull(UUID userId);
 
+    boolean existsByUserIdAndType(UUID userId, String type);
+
     /** Lọc theo cả userId để không ai đánh dấu hoặc đọc thông báo của người khác. */
     Optional<Notification> findByIdAndUserId(UUID id, UUID userId);
 
     @Modifying
     @Query("update Notification n set n.readAt = :now where n.userId = :userId and n.readAt is null")
     int markAllRead(@Param("userId") UUID userId, @Param("now") Instant now);
+
+    @Modifying
+    @Query("delete from Notification n where n.userId = :userId and n.type = :type")
+    int deleteByUserIdAndType(@Param("userId") UUID userId, @Param("type") String type);
 
     @Modifying
     @Query("delete from Notification n where n.createdAt < :before")

@@ -31,6 +31,7 @@ import com.vetclinic.order.exception.StockServiceUnavailableException;
 import com.vetclinic.order.messaging.InvoicePaidEvent;
 import com.vetclinic.order.messaging.OrderCancelledEvent;
 import com.vetclinic.order.messaging.OrderCompletedEvent;
+import com.vetclinic.order.messaging.OrderPlacedEvents;
 import com.vetclinic.order.payment.GatewayUnavailableException;
 import com.vetclinic.order.payment.OnlinePaymentGateway;
 import com.vetclinic.order.repository.CartRepository;
@@ -163,6 +164,11 @@ public class OrderService {
 
         log.info("Đã tạo đơn {} cho user {} — {} dòng hàng, tổng {}",
                 order.getOrderCode(), userId, items.size(), order.getTotal());
+
+        // Đơn online chưa trả thì nhân viên chưa xác nhận được: báo khi tiền về (OnlinePaymentService).
+        if (order.getPaymentMethod() != PaymentMethod.ONLINE) {
+            eventPublisher.publishEvent(OrderPlacedEvents.of(order));
+        }
 
         return toResponse(order);
     }

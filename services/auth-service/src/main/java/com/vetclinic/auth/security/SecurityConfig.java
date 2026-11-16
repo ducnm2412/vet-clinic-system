@@ -20,6 +20,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
+    private final InternalApiKeyFilter internalApiKeyFilter;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -42,11 +43,13 @@ public class SecurityConfig {
                         // im lặng không có tác dụng — mọi rule quyền ở đây phải khai bằng matcher.
                         .requestMatchers(HttpMethod.POST, "/auth/customers").hasAnyRole("STAFF", "ADMIN")
                         .requestMatchers(HttpMethod.GET, "/auth/customers", "/auth/customers/*").hasAnyRole("STAFF", "ADMIN")
+                        .requestMatchers("/internal/**").hasRole("INTERNAL")
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated())
                 .exceptionHandling(ex -> ex.authenticationEntryPoint((request, response, authException) ->
                         response.sendError(HttpStatus.UNAUTHORIZED.value(), "Unauthorized")))
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(internalApiKeyFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

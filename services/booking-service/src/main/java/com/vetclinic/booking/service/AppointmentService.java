@@ -164,6 +164,9 @@ public class AppointmentService {
         }
 
         if (appointment.getStatus() != AppointmentStatus.CANCELLED) {
+            // Chỉ lịch CONFIRMED mới có bác sĩ đã nhận; lịch chờ xếp hoặc đang đề xuất thì bác sĩ chưa
+            // được báo gì nên cũng không cần báo huỷ.
+            boolean doctorHadIt = appointment.getStatus() == AppointmentStatus.CONFIRMED && appointment.getSlot() != null;
             appointment.setStatus(AppointmentStatus.CANCELLED);
             AppointmentSlot slot = appointment.getSlot();
             // Lịch còn chờ xếp bác sĩ chưa giữ slot nào, không có gì để trả lại.
@@ -176,7 +179,9 @@ public class AppointmentService {
             appointmentRepository.saveAndFlush(appointment);
             // Khách tự huỷ thì họ vừa bấm, không cần thư. Phòng khám huỷ thì khách phải được biết.
             if (privileged && !appointment.getCustomerUserId().equals(callerUserId)) {
-                notifier.cancelledByClinic(appointment);
+                notifier.cancelledByClinic(appointment, doctorHadIt);
+            } else if (doctorHadIt) {
+                notifier.cancelledByCustomer(appointment);
             }
         }
 

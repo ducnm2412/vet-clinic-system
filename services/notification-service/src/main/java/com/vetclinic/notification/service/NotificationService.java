@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.UUID;
 
 @Service
@@ -32,6 +33,33 @@ public class NotificationService {
                 .message(truncate(message, 1000))
                 .link(truncate(link, 300))
                 .build());
+    }
+
+    /**
+     * Tạo thông báo loại này cho người này nếu họ chưa có — cho thông báo chỉ gửi một lần trong đời
+     * (nhắc cập nhật hồ sơ), an toàn khi RabbitMQ giao lại cùng một sự kiện.
+     *
+     * @return {@code true} nếu vừa tạo mới
+     */
+    @Transactional
+    public boolean createOnce(UUID userId, String type, String title, String message, String link) {
+        if (repository.existsByUserIdAndType(userId, type)) {
+            return false;
+        }
+        create(userId, type, title, message, link);
+        return true;
+    }
+
+    /** Gỡ mọi thông báo loại này của người này (việc được nhắc đã làm xong). @return số thông báo đã gỡ */
+    @Transactional
+    public int removeByType(UUID userId, String type) {
+        return repository.deleteByUserIdAndType(userId, type);
+    }
+
+    /** Cùng một thông báo cho nhiều người, trong một transaction: lỗi giữa chừng thì không ai có bản nào, thử lại không nhân đôi. */
+    @Transactional
+    public void createForAll(Collection<UUID> userIds, String type, String title, String message, String link) {
+        userIds.forEach(userId -> create(userId, type, title, message, link));
     }
 
     @Transactional(readOnly = true)

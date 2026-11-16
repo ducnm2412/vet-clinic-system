@@ -12,6 +12,7 @@ import com.vetclinic.payment.exception.InvalidPaymentStateException;
 import com.vetclinic.payment.exception.ResourceNotFoundException;
 import com.vetclinic.payment.messaging.PaymentAmountSetEvent;
 import com.vetclinic.payment.messaging.PaymentCompletedEvent;
+import com.vetclinic.payment.messaging.PrescriptionDispensedEvent;
 import com.vetclinic.payment.repository.PaymentRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -192,6 +193,16 @@ public class PaymentService {
         // event payment.completed đã được gửi ở lần hoàn tất đầu tiên rồi.
         applicationEventPublisher.publishEvent(
                 new PaymentCompletedEvent(payment.getId(), payment.getMedicalRecordId(), payment.getAppointmentId()));
+
+        // Thuốc quầy đã phát cho khách (số lượng nhân viên chốt trên phiếu thu) → product-service trừ kho thuốc.
+        // Dòng chưa có số lượng thì bỏ qua: không biết trừ bao nhiêu.
+        List<PrescriptionDispensedEvent.Line> dispensed = payment.getItems().stream()
+                .filter(item -> item.getQuantity() != null && item.getQuantity() > 0)
+                .map(item -> new PrescriptionDispensedEvent.Line(item.getMedicationName(), item.getQuantity()))
+                .toList();
+        if (!dispensed.isEmpty()) {
+            applicationEventPublisher.publishEvent(new PrescriptionDispensedEvent(payment.getId(), dispensed));
+        }
 
         log.info("Payment {} confirmed as {}", payment.getId(), method);
     }

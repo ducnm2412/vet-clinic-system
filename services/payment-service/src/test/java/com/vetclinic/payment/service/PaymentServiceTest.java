@@ -11,6 +11,7 @@ import com.vetclinic.payment.exception.InvalidPaymentStateException;
 import com.vetclinic.payment.exception.ResourceNotFoundException;
 import com.vetclinic.payment.messaging.PaymentAmountSetEvent;
 import com.vetclinic.payment.messaging.PaymentCompletedEvent;
+import com.vetclinic.payment.messaging.PrescriptionDispensedEvent;
 import com.vetclinic.payment.repository.PaymentRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -177,6 +178,35 @@ class PaymentServiceTest {
             assertThat(e.paymentId()).isEqualTo(payment.getId());
             assertThat(e.medicalRecordId()).isEqualTo(payment.getMedicalRecordId());
         });
+    }
+
+    @Test
+    void completing_announcesTheDispensedMedicationsWithTheirQuantities_forTheStockDeduction() {
+        Payment payment = seedPaymentWithItems(0);
+        payment.getItems().add(PaymentItem.builder().payment(payment).medicationName("Doxycycline")
+                .dosage("x").frequency("1 lần/ngày").quantity(16).build());
+        payment.getItems().add(PaymentItem.builder().payment(payment).medicationName("Chua Nhap So Luong")
+                .dosage("x").frequency("1 lần/ngày").build());
+        payment.setStatus(PaymentStatus.PENDING_PAYMENT);
+        payment.setAmount(new BigDecimal("100000"));
+        paymentRepository.saveAndFlush(payment);
+
+        paymentService.confirmCash(payment.getId());
+
+        assertThat(events.stream(PrescriptionDispensedEvent.class)).singleElement().satisfies(e -> {
+            assertThat(e.paymentId()).isEqualTo(payment.getId());
+            // Dòng chưa có số lượng không biết trừ bao nhiêu nên không đưa vào.
+            assertThat(e.lines()).containsExactly(new PrescriptionDispensedEvent.Line("Doxycycline", 16));
+        });
+    }
+
+    @Test
+    void completing_aPaymentWithNoDrugs_announcesNoDispensing() {
+        Payment payment = seedPayment(PaymentStatus.PENDING_PAYMENT, new BigDecimal("150000"));
+
+        paymentService.confirmCash(payment.getId());
+
+        assertThat(events.stream(PrescriptionDispensedEvent.class)).isEmpty();
     }
 
     @Test

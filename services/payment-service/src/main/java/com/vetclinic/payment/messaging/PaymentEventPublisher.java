@@ -14,6 +14,7 @@ public class PaymentEventPublisher {
 
     private static final String ROUTING_KEY_PAYMENT_COMPLETED = "payment.completed";
     private static final String ROUTING_KEY_AMOUNT_SET = "payment.amount-set";
+    private static final String ROUTING_KEY_DISPENSED = "payment.dispensed";
 
     private final RabbitTemplate rabbitTemplate;
 
@@ -32,5 +33,12 @@ public class PaymentEventPublisher {
     public void onAmountSet(PaymentAmountSetEvent event) {
         rabbitTemplate.convertAndSend(RabbitMQConfig.PAYMENT_EVENTS_EXCHANGE, ROUTING_KEY_AMOUNT_SET, event);
         log.info("Published payment.amount-set event for paymentId={}, amount={}", event.paymentId(), event.amount());
+    }
+
+    // AFTER_COMMIT: chỉ báo product-service trừ kho thuốc khi phiếu thu đã thật sự chốt đã thu.
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onPrescriptionDispensed(PrescriptionDispensedEvent event) {
+        rabbitTemplate.convertAndSend(RabbitMQConfig.PAYMENT_EVENTS_EXCHANGE, ROUTING_KEY_DISPENSED, event);
+        log.info("Published payment.dispensed event for paymentId={}, {} thuoc", event.paymentId(), event.lines().size());
     }
 }

@@ -3,7 +3,18 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bell, CalendarCheck, CalendarClock, CalendarX, Send } from "lucide-react";
+import {
+  Banknote,
+  Bell,
+  CalendarCheck,
+  CalendarClock,
+  CalendarPlus,
+  CalendarX,
+  Inbox,
+  Package,
+  Send,
+  UserRound,
+} from "lucide-react";
 import { notificationApi } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils/cn";
@@ -11,19 +22,21 @@ import type { AppNotification } from "@/types";
 
 const QUERY_KEY = ["notifications"] as const;
 
-/** Hỏi lại máy chủ mỗi 30 giây: thông báo mới (admin vừa xếp lịch) hiện lên mà không cần tải lại trang. */
+/** Hỏi lại máy chủ mỗi 30 giây: thông báo mới (admin vừa xếp lịch, bác sĩ vừa lưu bệnh án) hiện lên mà không cần tải lại trang. */
 const POLL_MS = 30_000;
 
-/** Chuông thông báo của khách: chấm số chưa đọc, bấm mở danh sách, bấm một mục để tới trang liên quan. */
+/**
+ * Chuông thông báo (khách, bác sĩ, nhân viên, admin): chấm số chưa đọc, bấm mở danh sách, bấm một mục
+ * để tới trang liên quan. Backend lưu theo userId của người đăng nhập nên mỗi người chỉ thấy của mình.
+ */
 export function NotificationBell() {
   const { email, hasRole } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
 
-  // Chỉ khách hàng nhận thông báo (backend lưu theo userId của khách). Nhân viên không gọi để
-  // khỏi nhận lỗi vô cớ.
-  const enabled = Boolean(email) && hasRole("CUSTOMER");
+  const enabled = Boolean(email) && (hasRole("CUSTOMER") || hasRole("DOCTOR") || hasRole("STAFF") || hasRole("ADMIN"));
+  const isCustomer = hasRole("CUSTOMER");
 
   const query = useQuery({
     queryKey: QUERY_KEY,
@@ -113,7 +126,9 @@ export function NotificationBell() {
                 <p className="px-4 py-8 text-center text-sm text-stone">Đang tải…</p>
               ) : items.length === 0 ? (
                 <p className="px-4 py-10 text-center text-sm text-stone">
-                  Chưa có thông báo nào. Khi phòng khám xếp lịch hoặc đề xuất giờ khác cho bạn, thông báo sẽ hiện ở đây.
+                  {isCustomer
+                    ? "Chưa có thông báo nào. Khi phòng khám xếp lịch hoặc đề xuất giờ khác cho bạn, thông báo sẽ hiện ở đây."
+                    : "Chưa có thông báo nào. Lịch khám mới, lịch bị huỷ và phiếu thu chờ chốt sẽ hiện ở đây."}
                 </p>
               ) : (
                 <ul>
@@ -150,14 +165,29 @@ export function NotificationBell() {
   );
 }
 
-/** Đề xuất giờ khác cần khách trả lời nên nổi màu cam; các loại còn lại màu dịu. */
+/** Loại cần ai đó xử lý (đề xuất giờ, yêu cầu mới, phiếu thu chờ chốt) màu cam; huỷ màu đỏ; còn lại màu dịu. */
 function TypeIcon({ type }: { type: string }) {
-  const Icon =
-    type === "CONFIRMED" ? CalendarCheck : type === "PROPOSAL" ? CalendarClock : type === "CANCELLED_BY_CLINIC" ? CalendarX : type === "REQUEST_RECEIVED" ? Send : Bell;
+  const ICONS: Record<string, typeof Bell> = {
+    CONFIRMED: CalendarCheck,
+    PROPOSAL: CalendarClock,
+    CANCELLED_BY_CLINIC: CalendarX,
+    REQUEST_RECEIVED: Send,
+    DOCTOR_ASSIGNED: CalendarPlus,
+    APPOINTMENT_CANCELLED: CalendarX,
+    NEW_REQUEST: Inbox,
+    PAYMENT_PENDING: Banknote,
+    NEW_ORDER: Package,
+    PROFILE_SETUP: UserRound,
+  };
+  const Icon = ICONS[type] ?? Bell;
   const tone =
-    type === "PROPOSAL"
+    type === "PROPOSAL" ||
+    type === "NEW_REQUEST" ||
+    type === "NEW_ORDER" ||
+    type === "PAYMENT_PENDING" ||
+    type === "PROFILE_SETUP"
       ? "bg-[#fff1e6] text-[#c2570c]"
-      : type === "CANCELLED_BY_CLINIC"
+      : type === "CANCELLED_BY_CLINIC" || type === "APPOINTMENT_CANCELLED"
         ? "bg-[#fdeceb] text-coral-deep"
         : "bg-mint text-teal";
   return (

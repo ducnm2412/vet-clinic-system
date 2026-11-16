@@ -90,6 +90,12 @@
             <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
         </dependency>
 
+        <!-- Hỏi auth-service (qua Eureka) danh sách người nhận theo vai trò: "mọi nhân viên", "admin" -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-openfeign</artifactId>
+        </dependency>
+
         <!-- Retry có giới hạn cho @RabbitListener (RetryInterceptorBuilder) trước khi bỏ cuộc,
              tránh gửi lại mail vô hạn khi RabbitMQ requeue -->
         <dependency>

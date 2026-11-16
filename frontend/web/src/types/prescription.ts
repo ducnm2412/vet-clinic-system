@@ -1,5 +1,5 @@
 /**
- * Danh mục thuốc và đơn mẫu của pet-service (/medications, /prescription-templates).
+ * Danh mục thuốc, kho thuốc và đơn mẫu của product-service (/medications, /prescription-templates).
  * Danh mục chỉ để gợi ý khi kê đơn: đơn thuốc thật vẫn lưu tên thuốc dạng chữ
  * (PrescriptionItemRequest.medicationName), không trỏ vào danh mục.
  */
@@ -15,6 +15,32 @@ export interface Medication {
   active: boolean;
   /** Giá bán một đơn vị (VND); null = chưa có giá, quầy nhập tay lúc thu tiền. */
   unitPrice: number | null;
+  /** Tồn kho hiện tại theo `unit`. */
+  stockQuantity: number;
+  /** Tồn từ mức này trở xuống thì báo sắp hết (0 = chỉ báo khi hết hẳn). */
+  lowStockThreshold: number;
+}
+
+/** Một dòng lịch sử nhập/xuất kho thuốc. */
+export interface MedicationStockMovement {
+  id: string;
+  medicationId: string;
+  type: "IMPORT" | "ADJUSTMENT" | "SALE" | "RETURN";
+  quantityChange: number;
+  quantityAfter: number;
+  /** Số thuốc đã phát nhưng kho không đủ để trừ (thu tiền không bị chặn). */
+  shortfall: number;
+  note: string | null;
+  /** Với SALE là id phiếu thu đã phát thuốc. */
+  referenceId: string | null;
+  createdBy: string | null;
+  createdAt: string;
+}
+
+export function medicationStockStatusOf(m: Pick<Medication, "stockQuantity" | "lowStockThreshold">):
+  "IN_STOCK" | "LOW_STOCK" | "OUT_OF_STOCK" {
+  if (m.stockQuantity <= 0) return "OUT_OF_STOCK";
+  return m.stockQuantity <= m.lowStockThreshold ? "LOW_STOCK" : "IN_STOCK";
 }
 
 export interface MedicationRequest {

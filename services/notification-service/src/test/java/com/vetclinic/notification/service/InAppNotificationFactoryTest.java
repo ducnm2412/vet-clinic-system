@@ -17,7 +17,7 @@ class InAppNotificationFactoryTest {
     private AppointmentNotificationEvent event(String type, String doctor) {
         return new AppointmentNotificationEvent(type, appointmentId, UUID.randomUUID(), "k@example.com", "Milo",
                 null, null, doctor, LocalDate.of(2026, 11, 13), LocalTime.of(8, 30),
-                LocalTime.of(9, 0), LocalDate.of(2026, 11, 13), LocalTime.of(8, 0));
+                LocalTime.of(9, 0), LocalDate.of(2026, 11, 13), LocalTime.of(8, 0), null);
     }
 
     @Test
@@ -62,7 +62,7 @@ class InAppNotificationFactoryTest {
     @Test
     void blankPetName_fallsBackToAGenericWord() {
         AppointmentNotificationEvent e = new AppointmentNotificationEvent("CONFIRMED", appointmentId,
-                UUID.randomUUID(), null, "  ", null, null, null, null, null, null, null, null);
+                UUID.randomUUID(), null, "  ", null, null, null, null, null, null, null, null, null);
 
         assertThat(InAppNotificationFactory.forAppointment(e).orElseThrow().title()).contains("thú cưng của bạn");
     }

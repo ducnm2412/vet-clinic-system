@@ -3,7 +3,10 @@ package com.vetclinic.auth.repository;
 import com.vetclinic.auth.domain.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -21,4 +24,8 @@ public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificat
     Optional<User> findByGoogleSub(String googleSub);
 
     Optional<User> findByFacebookId(String facebookId);
+
+    @Query("select u.id from User u join u.roles r where r.name = :role and u.status = :status order by u.id")
+    List<UUID> findIdsByRoleAndStatus(@Param("role") com.vetclinic.auth.domain.RoleName role,
+                                      @Param("status") com.vetclinic.auth.domain.UserStatus status);
 }

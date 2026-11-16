@@ -24,8 +24,8 @@ import {
 } from "@/components/ui";
 
 /**
- * Danh mục thuốc dùng chung của phòng khám. Bác sĩ và ADMIN cùng quản lý nên đây là một
- * component dùng cho cả hai trang, mỗi vai trò chỉ có một trang mỏng bọc ngoài.
+ * Danh mục thuốc dùng chung của phòng khám, do ADMIN quản lý (trang /admin/medications).
+ * Bác sĩ không có trang riêng, chỉ được gợi ý tên thuốc từ đây khi kê đơn.
  *
  * Không có nút xoá: đơn mẫu trỏ vào thuốc, nên ngừng dùng thì ẩn khỏi gợi ý (giống dịch vụ
  * và sản phẩm). Đơn đã kê không bị ảnh hưởng vì lưu tên thuốc dạng chữ.
@@ -83,6 +83,17 @@ export function MedicationCatalog() {
       numeric: true,
       hideBelow: "sm",
       cell: (m) => (m.unitPrice == null ? <span className="text-bark">—</span> : formatPrice(m.unitPrice)),
+    },
+    {
+      key: "stock",
+      header: "Tồn kho",
+      numeric: true,
+      hideBelow: "sm",
+      cell: (m) => (
+        <span className={m.stockQuantity <= 0 ? "text-danger" : undefined}>
+          {m.stockQuantity} {m.unit}
+        </span>
+      ),
     },
     {
       key: "caution",

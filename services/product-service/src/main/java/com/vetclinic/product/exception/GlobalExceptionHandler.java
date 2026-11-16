@@ -19,14 +19,20 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.NOT_FOUND, ex.getMessage());
     }
 
-    @ExceptionHandler(DuplicateResourceException.class)
-    public ResponseEntity<ErrorResponse> handleDuplicate(DuplicateResourceException ex) {
+    @ExceptionHandler({DuplicateResourceException.class, DuplicateMedicationException.class,
+            DuplicateTemplateException.class})
+    public ResponseEntity<ErrorResponse> handleDuplicate(RuntimeException ex) {
         return build(HttpStatus.CONFLICT, ex.getMessage());
     }
 
     @ExceptionHandler(InsufficientStockException.class)
     public ResponseEntity<ErrorResponse> handleInsufficientStock(InsufficientStockException ex) {
         return build(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    @ExceptionHandler(InvalidTemplateException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidTemplate(InvalidTemplateException ex) {
+        return build(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

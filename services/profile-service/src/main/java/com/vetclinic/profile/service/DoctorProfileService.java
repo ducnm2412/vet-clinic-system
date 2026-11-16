@@ -9,9 +9,11 @@ import com.vetclinic.profile.dto.DoctorProfileResponse;
 import com.vetclinic.profile.dto.DoctorPublicResponse;
 import com.vetclinic.profile.dto.PhotoUrls;
 import com.vetclinic.profile.exception.ResourceNotFoundException;
+import com.vetclinic.profile.messaging.ProfileUpdatedEvent;
 import com.vetclinic.profile.repository.DoctorLicenseRepository;
 import com.vetclinic.profile.repository.DoctorProfileRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -26,6 +28,7 @@ public class DoctorProfileService {
     private final DoctorProfileRepository doctorProfileRepository;
     private final DoctorLicenseRepository doctorLicenseRepository;
     private final PhotoStorageService photoStorageService;
+    private final ApplicationEventPublisher events;
 
     @Transactional
     public DoctorProfileResponse uploadMyPhoto(UUID userId, MultipartFile file) {
@@ -56,6 +59,7 @@ public class DoctorProfileService {
         profile.setYearsOfExperience(request.yearsOfExperience());
 
         doctorProfileRepository.saveAndFlush(profile);
+        events.publishEvent(new ProfileUpdatedEvent(userId, "DOCTOR"));
         return toProfileResponse(profile);
     }
 

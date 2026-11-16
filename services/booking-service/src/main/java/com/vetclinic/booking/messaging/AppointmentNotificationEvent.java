@@ -32,7 +32,10 @@ public record AppointmentNotificationEvent(
         LocalTime endTime,
         // Giờ khách chọn ban đầu, để thư đề xuất so sánh được "bạn chọn X, chúng tôi đề xuất Y".
         LocalDate preferredDate,
-        LocalTime preferredTime
+        LocalTime preferredTime,
+        // Bác sĩ đã nhận lịch này (CONFIRMED, hoặc lịch đã xếp bị huỷ), để notification-service báo
+        // cho bác sĩ. Null khi chưa có bác sĩ nhận — kể cả lúc đang đề xuất giờ khác.
+        UUID doctorUserId
 ) {
 
     public enum Type {
@@ -43,6 +46,8 @@ public record AppointmentNotificationEvent(
         /** Không xếp được đúng giờ khách chọn; đề xuất giờ khác chờ khách trả lời. */
         PROPOSAL,
         /** Phòng khám huỷ lịch (khách không tự huỷ). */
-        CANCELLED_BY_CLINIC
+        CANCELLED_BY_CLINIC,
+        /** Khách tự huỷ lịch đã xếp bác sĩ. Chỉ để báo bác sĩ — khách không nhận thư. */
+        CANCELLED_BY_CUSTOMER
     }
 }

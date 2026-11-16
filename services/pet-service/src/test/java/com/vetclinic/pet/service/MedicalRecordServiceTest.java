@@ -1,10 +1,10 @@
 package com.vetclinic.pet.service;
 
 import com.vetclinic.pet.client.BookingServiceClient;
+import com.vetclinic.pet.client.ProductServiceClient;
 import com.vetclinic.pet.domain.PrescriptionStatus;
 import com.vetclinic.pet.dto.MedicalRecordRequest;
 import com.vetclinic.pet.dto.MedicalRecordResponse;
-import com.vetclinic.pet.dto.MedicationRequest;
 import com.vetclinic.pet.dto.PetRequest;
 import com.vetclinic.pet.dto.PetResponse;
 import com.vetclinic.pet.dto.PrescriptionItemRequest;
@@ -30,11 +30,13 @@ import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -52,10 +54,10 @@ class MedicalRecordServiceTest {
 
     @Autowired private MedicalRecordService medicalRecordService;
     @Autowired private PetService petService;
-    @Autowired private MedicationService medicationService;
     @Autowired private ApplicationEvents events;
 
     @MockBean private BookingServiceClient bookingServiceClient;
+    @MockBean private ProductServiceClient productServiceClient;
 
     private UUID owner;
     private UUID doctor;
@@ -110,11 +112,11 @@ class MedicalRecordServiceTest {
 
     @Test
     void firstSave_sendsCatalogPricePerMedication_andNullForUnknownOrUnpricedOnes() {
-        medicationService.create(new MedicationRequest("Thuoc Co Gia Test", "viên", null, null, new BigDecimal("8000")));
-        medicationService.create(new MedicationRequest("Thuoc Chua Gia Test", "viên", null, null));
+        // Danh mục ở product-service: nó chỉ trả những thuốc có giá, khoá là đúng tên bác sĩ gõ.
+        when(productServiceClient.pricesByName(any(), any()))
+                .thenReturn(Map.of("thuốc có giá test", new BigDecimal("8000")));
         UUID appointmentId = givenAppointment();
 
-        // Gõ không dấu, khác hoa/thường vẫn khớp danh mục như lúc tìm gợi ý.
         medicalRecordService.createOrUpdate(appointmentId, request("Viêm da",
                 thuoc("thuốc có giá test"), thuoc("Thuoc Chua Gia Test"), thuoc("Thuoc Ngoai Danh Muc")), TOKEN);
 
@@ -124,6 +126,21 @@ class MedicalRecordServiceTest {
                         p -> assertThat(p).isEqualByComparingTo("8000"),
                         p -> assertThat(p).isNull(),
                         p -> assertThat(p).isNull());
+        verify(productServiceClient).pricesByName(
+                List.of("thuốc có giá test", "Thuoc Chua Gia Test", "Thuoc Ngoai Danh Muc"), TOKEN);
+    }
+
+    @Test
+    void firstSave_stillSavesWhenProductServiceIsDown_withNoPrices() {
+        when(productServiceClient.pricesByName(any(), any())).thenThrow(new RuntimeException("product-service down"));
+        UUID appointmentId = givenAppointment();
+
+        MedicalRecordResponse saved = medicalRecordService.createOrUpdate(appointmentId,
+                request("Viêm da", thuoc("Amoxicillin")), TOKEN);
+
+        assertThat(saved.prescriptionItems()).hasSize(1);
+        PrescriptionCreatedEvent event = events.stream(PrescriptionCreatedEvent.class).findFirst().orElseThrow();
+        assertThat(event.items()).extracting(PrescriptionCreatedEvent.Item::unitPrice).containsOnlyNulls();
     }
 
     @Test

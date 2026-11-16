@@ -50,6 +50,8 @@ jwt:
   secret: ${JWT_SECRET}
 
 app:
+  # Khoá dùng chung với auth-service để gọi /internal/** (lấy danh sách người nhận theo vai trò).
+  internal-api-key: ${INTERNAL_API_KEY:}
   # Base URL của frontend (không phải api-gateway) — email trỏ người dùng vào 1 trang frontend,
   # trang đó tự gọi GET /auth/verify-email?token= qua gateway rồi hiển thị kết quả.
   frontend-url: ${FRONTEND_URL:http://localhost:3000}

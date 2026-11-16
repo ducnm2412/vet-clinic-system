@@ -23,6 +23,10 @@ public class AppointmentNotificationEventListener {
 
     @RabbitListener(queues = RabbitMQConfig.APPOINTMENT_NOTIFICATION_QUEUE)
     public void onAppointmentNotification(AppointmentNotificationEvent event) {
+        // Khách tự huỷ chỉ để báo bác sĩ (AppointmentStaffNoticeListener) — khách vừa tự bấm huỷ.
+        if ("CANCELLED_BY_CUSTOMER".equals(event.type())) {
+            return;
+        }
         // Lưu thông báo trong app trước: ghi database nhanh và ít khi lỗi. Gửi email lỗi thì RabbitMQ
         // thử lại cả message, nên làm email trước sẽ lưu trùng thông báo ở mỗi lần thử.
         boolean known = saveInApp(event);

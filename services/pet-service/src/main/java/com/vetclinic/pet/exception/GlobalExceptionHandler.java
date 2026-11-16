@@ -20,8 +20,7 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.NOT_FOUND, ex.getMessage());
     }
 
-    @ExceptionHandler({PrescriptionNotPaidException.class, PetHasMedicalRecordsException.class,
-            DuplicateMedicationException.class, DuplicateTemplateException.class})
+    @ExceptionHandler({PrescriptionNotPaidException.class, PetHasMedicalRecordsException.class})
     public ResponseEntity<ErrorResponse> handleConflict(RuntimeException ex) {
         return build(HttpStatus.CONFLICT, ex.getMessage());
     }
@@ -31,7 +30,7 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage());
     }
 
-    @ExceptionHandler({InvalidPhotoException.class, InvalidTemplateException.class})
+    @ExceptionHandler(InvalidPhotoException.class)
     public ResponseEntity<ErrorResponse> handleInvalidPhoto(RuntimeException ex) {
         return build(HttpStatus.BAD_REQUEST, ex.getMessage());
     }

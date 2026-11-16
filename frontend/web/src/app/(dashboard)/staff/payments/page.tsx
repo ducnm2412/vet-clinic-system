@@ -6,6 +6,7 @@ import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/rea
 import { ApiError, bookingApi, medicationApi, orderManageApi, paymentApi } from "@/lib/api";
 import { PAYMENT_STATUS } from "@/lib/utils/status";
 import { formatDateTime, formatPrice } from "@/lib/utils/format";
+import { suggestQuantity } from "@/lib/utils/prescription";
 import type { Payment, PaymentItem } from "@/types";
 import { PageHeader } from "@/components/layout/DashboardShell";
 import { ProductAddOn, type ProductLine } from "@/components/counter/ProductAddOn";
@@ -194,7 +195,11 @@ function PaymentDialogBody({ payment, onClose }: { payment: Payment; onClose: ()
 
   const [drafts, setDrafts] = useState<Record<string, LineDraft>>(() =>
     Object.fromEntries(
-      payment.items.map((i: PaymentItem) => [i.id, { unitPrice: null, quantity: String(i.quantity ?? 1) }]),
+      // Phiếu chưa nhập số lượng thì gợi ý = số lần mỗi ngày × số ngày của đơn; đã nhập rồi thì giữ.
+      payment.items.map((i: PaymentItem) => [
+        i.id,
+        { unitPrice: null, quantity: String(i.quantity ?? suggestQuantity(i.frequency, i.durationDays)) },
+      ]),
     ),
   );
   function setDraft(id: string, patch: Partial<LineDraft>) {

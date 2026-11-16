@@ -6,7 +6,7 @@ import java.util.UUID;
 
 /**
  * Mirror của booking-service AppointmentNotificationEvent. `type` giữ dạng chuỗi (REQUEST_RECEIVED,
- * CONFIRMED, PROPOSAL, CANCELLED_BY_CLINIC) thay vì enum: booking-service thêm loại mới trước khi
+ * CONFIRMED, PROPOSAL, CANCELLED_BY_CLINIC, CANCELLED_BY_CUSTOMER) thay vì enum: booking-service thêm loại mới trước khi
  * bản này kịp cập nhật thì chỉ bỏ qua thư đó, không làm hỏng việc đọc cả message.
  */
 public record AppointmentNotificationEvent(
@@ -23,6 +23,9 @@ public record AppointmentNotificationEvent(
         LocalTime startTime,
         LocalTime endTime,
         LocalDate preferredDate,
-        LocalTime preferredTime
+        LocalTime preferredTime,
+        // Bác sĩ nhận lịch (CONFIRMED, hoặc lịch đã xếp bị huỷ). Null khi chưa có bác sĩ hoặc bản
+        // booking-service cũ chưa gửi trường này.
+        UUID doctorUserId
 ) {
 }

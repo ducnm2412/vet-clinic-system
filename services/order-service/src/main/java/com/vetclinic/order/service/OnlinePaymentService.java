@@ -11,6 +11,7 @@ import com.vetclinic.order.dto.PaymentResultResponse;
 import com.vetclinic.order.dto.PaymentResultResponse.Outcome;
 import com.vetclinic.order.exception.InvalidOrderStateException;
 import com.vetclinic.order.exception.ResourceNotFoundException;
+import com.vetclinic.order.messaging.OrderPlacedEvents;
 import com.vetclinic.order.payment.GatewayResult;
 import com.vetclinic.order.payment.GatewayUnavailableException;
 import com.vetclinic.order.payment.MockPaymentGateway;
@@ -21,6 +22,7 @@ import com.vetclinic.order.repository.OrderStatusHistoryRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,6 +42,7 @@ public class OnlinePaymentService {
     private final OrderStatusHistoryRepository historyRepository;
     private final ObjectProvider<OnlinePaymentGateway> gatewayProvider;
     private final ObjectProvider<MockPaymentGateway> mockGatewayProvider;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * Cấp link trả tiền cho đơn của chính khách. Mỗi lần gọi cấp mã giao dịch mới và vô hiệu mã cũ,
@@ -185,6 +188,8 @@ public class OnlinePaymentService {
             log.info("Đơn {} đã thanh toán online (giao dịch {})", order.getOrderCode(),
                     result.gatewayTransactionNo());
             recordNote(order, "Khách đã thanh toán online (giao dịch " + result.gatewayTransactionNo() + ")");
+            // Tiền đã về nên nhân viên xác nhận được rồi: báo nhân viên quầy có đơn mới.
+            eventPublisher.publishEvent(OrderPlacedEvents.of(order));
         }
         return respond(Outcome.PAID, order);
     }

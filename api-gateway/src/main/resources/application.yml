@@ -23,7 +23,7 @@ spring:
         - id: pet-service
           uri: lb://pet-service
           predicates:
-            - Path=/pets/**,/medical-records/**,/medications/**,/prescription-templates/**
+            - Path=/pets/**,/medical-records/**
         - id: booking-service
           uri: lb://booking-service
           predicates:
@@ -31,7 +31,7 @@ spring:
         - id: product-service
           uri: lb://product-service
           predicates:
-            - Path=/products/**,/categories/**
+            - Path=/products/**,/categories/**,/medications/**,/prescription-templates/**
         - id: order-service
           uri: lb://order-service
           predicates:

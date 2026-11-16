@@ -14,6 +14,10 @@ spring:
     open-in-view: false
   flyway:
     enabled: true
+    # db/seed = danh mục thuốc và đơn mẫu có sẵn. Tách khỏi db/migration vì test chạy Flyway trên
+    # product_db_test và nhiều test giả định bảng trống; pom.xml ghi đè lại chỉ còn db/migration khi test.
+    # Số phiên bản dùng chung cho cả hai thư mục: migration schema mới phải bắt đầu từ V7 (V6 là kho thuốc).
+    locations: classpath:db/migration,classpath:db/seed
   rabbitmq:
     host: ${RABBITMQ_HOST:localhost}
     port: ${RABBITMQ_PORT:5672}

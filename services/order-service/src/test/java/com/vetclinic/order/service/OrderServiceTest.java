@@ -21,6 +21,7 @@ import com.vetclinic.order.exception.ResourceNotFoundException;
 import com.vetclinic.order.exception.StockServiceUnavailableException;
 import com.vetclinic.order.messaging.OrderCancelledEvent;
 import com.vetclinic.order.messaging.OrderCompletedEvent;
+import com.vetclinic.order.messaging.OrderPlacedEvent;
 import com.vetclinic.order.payment.GatewayUnavailableException;
 import com.vetclinic.order.payment.OnlinePaymentGateway;
 import com.vetclinic.order.repository.CartRepository;
@@ -168,7 +169,8 @@ class OrderServiceTest {
         orderService.checkout(userId, new CheckoutRequest(
                 "Nguyen Van A", "0901234567", "12 Le Loi", null, PaymentMethod.ONLINE));
 
-        // Kho chỉ trừ khi nhân viên xác nhận đơn (sau khi đã trả tiền), không phải lúc đặt.
+        // Kho chỉ trừ khi nhân viên xác nhận đơn (sau khi đã trả tiền), không phải lúc đặt. Đơn online
+        // cũng chưa báo nhân viên: chưa trả tiền thì chưa có gì để xác nhận.
         verifyNoInteractions(eventPublisher);
     }
 
@@ -235,6 +237,19 @@ class OrderServiceTest {
         assertThatThrownBy(() -> orderService.checkout(userId, request()))
                 .isInstanceOf(ProductUnavailableException.class)
                 .hasMessageContaining("ngừng bán");
+    }
+
+    @Test
+    void checkout_cod_tellsStaffANewOrderIsWaiting() {
+        stubProduct(10, true, "150000");
+
+        orderService.checkout(userId, request());
+
+        ArgumentCaptor<OrderPlacedEvent> event = ArgumentCaptor.forClass(OrderPlacedEvent.class);
+        verify(eventPublisher).publishEvent(event.capture());
+        assertThat(event.getValue().paymentMethod()).isEqualTo("COD");
+        assertThat(event.getValue().total()).isEqualByComparingTo("330000");
+        assertThat(event.getValue().recipientName()).isEqualTo("Nguyen Van A");
     }
 
     @Test

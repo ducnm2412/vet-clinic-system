@@ -40,4 +40,11 @@ public class OrderEventPublisher {
                 RabbitMQConfig.ROUTING_KEY_ORDER_CANCELLED, event);
         log.info("Đã phát order.cancelled cho đơn {} ({} dòng hàng)", event.orderId(), event.lines().size());
     }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onOrderPlaced(OrderPlacedEvent event) {
+        rabbitTemplate.convertAndSend(RabbitMQConfig.ORDER_EVENTS_EXCHANGE,
+                RabbitMQConfig.ROUTING_KEY_ORDER_PLACED, event);
+        log.info("Đã phát order.placed cho đơn {} ({})", event.orderCode(), event.paymentMethod());
+    }
 }

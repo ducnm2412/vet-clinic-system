@@ -34,9 +34,92 @@ public class RabbitMQConfig {
     public static final String APPOINTMENT_NOTIFICATION_QUEUE = "notification.appointment-notification";
     private static final String ROUTING_KEY_APPOINTMENT_NOTIFICATION = "appointment.notification";
 
+    // Thông báo cho phía phòng khám nghe CÙNG routing key với thư báo khách nhưng bằng hàng đợi riêng:
+    // hai việc thử lại độc lập, lỗi gửi email không làm thông báo nhân viên bị lưu trùng.
+    public static final String APPOINTMENT_STAFF_NOTICE_QUEUE = "notification.appointment-staff-notice";
+
+    // pet-service là chủ khai báo gốc (durable=true, autoDelete=false).
+    public static final String PET_EVENTS_EXCHANGE = "pet.events";
+    public static final String PRESCRIPTION_CREATED_QUEUE = "notification.prescription-created";
+    private static final String ROUTING_KEY_PRESCRIPTION_CREATED = "prescription.created";
+
+    // order-service là chủ khai báo gốc (durable=true, autoDelete=false).
+    public static final String ORDER_EVENTS_EXCHANGE = "order.events";
+    public static final String ORDER_PLACED_QUEUE = "notification.order-placed";
+    private static final String ROUTING_KEY_ORDER_PLACED = "order.placed";
+
+    @Bean
+    public TopicExchange orderEventsExchange() {
+        return new TopicExchange(ORDER_EVENTS_EXCHANGE, true, false);
+    }
+
+    @Bean
+    public Queue orderPlacedQueue() {
+        return new Queue(ORDER_PLACED_QUEUE, true);
+    }
+
+    @Bean
+    public Binding orderPlacedBinding(Queue orderPlacedQueue, TopicExchange orderEventsExchange) {
+        return BindingBuilder.bind(orderPlacedQueue).to(orderEventsExchange).with(ROUTING_KEY_ORDER_PLACED);
+    }
+
+    @Bean
+    public Queue appointmentStaffNoticeQueue() {
+        return new Queue(APPOINTMENT_STAFF_NOTICE_QUEUE, true);
+    }
+
+    @Bean
+    public Binding appointmentStaffNoticeBinding(Queue appointmentStaffNoticeQueue,
+                                                 TopicExchange bookingEventsExchange) {
+        return BindingBuilder.bind(appointmentStaffNoticeQueue).to(bookingEventsExchange)
+                .with(ROUTING_KEY_APPOINTMENT_NOTIFICATION);
+    }
+
+    @Bean
+    public TopicExchange petEventsExchange() {
+        return new TopicExchange(PET_EVENTS_EXCHANGE, true, false);
+    }
+
+    @Bean
+    public Queue prescriptionCreatedQueue() {
+        return new Queue(PRESCRIPTION_CREATED_QUEUE, true);
+    }
+
+    @Bean
+    public Binding prescriptionCreatedBinding(Queue prescriptionCreatedQueue, TopicExchange petEventsExchange) {
+        return BindingBuilder.bind(prescriptionCreatedQueue).to(petEventsExchange)
+                .with(ROUTING_KEY_PRESCRIPTION_CREATED);
+    }
+
     @Bean
     public TopicExchange userEventsExchange() {
         return new TopicExchange(USER_EVENTS_EXCHANGE, true, false);
+    }
+
+    public static final String STAFF_CREATED_QUEUE = "notification.staff-created";
+    private static final String ROUTING_KEY_STAFF_CREATED = "user.staff-created";
+
+    @Bean
+    public Queue staffCreatedQueue() {
+        return new Queue(STAFF_CREATED_QUEUE, true);
+    }
+
+    @Bean
+    public Binding staffCreatedBinding(Queue staffCreatedQueue, TopicExchange userEventsExchange) {
+        return BindingBuilder.bind(staffCreatedQueue).to(userEventsExchange).with(ROUTING_KEY_STAFF_CREATED);
+    }
+
+    public static final String PROFILE_UPDATED_QUEUE = "notification.profile-updated";
+    private static final String ROUTING_KEY_PROFILE_UPDATED = "profile.updated";
+
+    @Bean
+    public Queue profileUpdatedQueue() {
+        return new Queue(PROFILE_UPDATED_QUEUE, true);
+    }
+
+    @Bean
+    public Binding profileUpdatedBinding(Queue profileUpdatedQueue, TopicExchange userEventsExchange) {
+        return BindingBuilder.bind(profileUpdatedQueue).to(userEventsExchange).with(ROUTING_KEY_PROFILE_UPDATED);
     }
 
     @Bean

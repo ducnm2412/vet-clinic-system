@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { LogOut, Menu, X } from "lucide-react";
 import { SidebarNav } from "./Sidebar";
 import { IconButton } from "@/components/ui";
+import { NotificationBell } from "@/components/site/NotificationBell";
 import { useAuth } from "@/lib/auth";
 import { homeFor } from "@/config/nav";
 import { ROLE_LABEL } from "@/lib/api";
@@ -63,6 +64,7 @@ export function DashboardShell({ role, children }: { role: Role; children: React
           </IconButton>
 
           <div className="ml-auto flex items-center gap-3">
+            <NotificationBell />
             <div className="hidden text-right sm:block">
               <p className="text-sm leading-tight text-ink">{email}</p>
               <p className="text-xs leading-tight text-bark">

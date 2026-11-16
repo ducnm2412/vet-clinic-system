@@ -25,7 +25,7 @@ class AppointmentNotificationEventListenerTest {
 
     private static AppointmentNotificationEvent event(String type, UUID userId, String email) {
         return new AppointmentNotificationEvent(type, UUID.randomUUID(), userId, email, "Milo", null, null, null,
-                LocalDate.now(), LocalTime.NOON, LocalTime.NOON.plusMinutes(30), null, null);
+                LocalDate.now(), LocalTime.NOON, LocalTime.NOON.plusMinutes(30), null, null, null);
     }
 
     @Test
@@ -73,5 +73,15 @@ class AppointmentNotificationEventListenerTest {
         listener.onAppointmentNotification(event);
 
         verify(notificationService, never()).create(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void aCustomerCancellation_isOnlyForTheDoctor_theCustomerGetsNothing() {
+        UUID user = UUID.randomUUID();
+
+        listener.onAppointmentNotification(event("CANCELLED_BY_CUSTOMER", user, "khach@example.com"));
+
+        verify(emailService, never()).sendAppointmentNotification(any());
+        verify(notificationService, never()).create(any(), anyString(), anyString(), anyString(), anyString());
     }
 }

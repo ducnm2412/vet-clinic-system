@@ -1,8 +1,8 @@
 package com.vetclinic.pet.service;
 
 import com.vetclinic.pet.client.BookingServiceClient;
+import com.vetclinic.pet.client.ProductServiceClient;
 import com.vetclinic.pet.domain.MedicalRecord;
-import com.vetclinic.pet.domain.Medication;
 import com.vetclinic.pet.domain.PrescriptionItem;
 import com.vetclinic.pet.domain.PrescriptionStatus;
 import com.vetclinic.pet.dto.MedicalRecordRequest;
@@ -13,7 +13,6 @@ import com.vetclinic.pet.exception.PrescriptionNotPaidException;
 import com.vetclinic.pet.exception.ResourceNotFoundException;
 import com.vetclinic.pet.messaging.PrescriptionCreatedEvent;
 import com.vetclinic.pet.repository.MedicalRecordRepository;
-import com.vetclinic.pet.repository.MedicationRepository;
 import com.vetclinic.pet.repository.PetRepository;
 import feign.FeignException;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -42,8 +42,8 @@ public class MedicalRecordService {
 
     private final MedicalRecordRepository medicalRecordRepository;
     private final PetRepository petRepository;
-    private final MedicationRepository medicationRepository;
     private final BookingServiceClient bookingServiceClient;
+    private final ProductServiceClient productServiceClient;
     private final ApplicationEventPublisher applicationEventPublisher;
 
     /**
@@ -86,7 +86,8 @@ public class MedicalRecordService {
         // Chỉ yêu cầu thanh toán ở lần tạo mới: bác sĩ sửa lại đơn khi khách còn chưa trả tiền
         // không được bắn thêm một phiếu thu trùng.
         if (existing.isEmpty()) {
-            applicationEventPublisher.publishEvent(PrescriptionCreatedEvent.of(record, this::catalogPrice,
+            Map<String, BigDecimal> prices = catalogPrices(record, bearerToken);
+            applicationEventPublisher.publishEvent(PrescriptionCreatedEvent.of(record, prices::get,
                     newAppointment.billingServiceName(), newAppointment.billingServicePrice()));
         }
 
@@ -94,13 +95,27 @@ public class MedicalRecordService {
     }
 
     /**
-     * Giá trong danh mục của thuốc bác sĩ vừa gõ. Đơn lưu tên thuốc dạng chữ (không trỏ id), nên khớp
-     * theo tên đã bỏ dấu như lúc tìm gợi ý; thuốc ngoài danh mục hoặc chưa có giá thì null.
+     * Giá trong danh mục của các thuốc bác sĩ vừa gõ. Danh mục nằm ở product-service (đơn lưu tên
+     * thuốc dạng chữ, không trỏ id) nên hỏi bên đó một lần bằng token của bác sĩ. Thuốc ngoài danh
+     * mục hoặc chưa có giá thì không có mặt trong kết quả (= null).
+     *
+     * Hỏi giá hỏng không được làm hỏng việc lưu bệnh án: đơn thuốc vẫn lưu, phiếu thu để trống đơn
+     * giá và quầy nhập tay — đúng như thuốc chưa có giá.
      */
-    private BigDecimal catalogPrice(String medicationName) {
-        return medicationRepository.findBySearchName(TextNormalizer.normalize(medicationName))
-                .map(Medication::getUnitPrice)
-                .orElse(null);
+    private Map<String, BigDecimal> catalogPrices(MedicalRecord record, String bearerToken) {
+        List<String> names = record.getPrescriptionItems().stream()
+                .map(PrescriptionItem::getMedicationName).distinct().toList();
+        if (names.isEmpty()) {
+            return Map.of();
+        }
+        try {
+            Map<String, BigDecimal> prices = productServiceClient.pricesByName(names, bearerToken);
+            return prices == null ? Map.of() : prices;
+        } catch (RuntimeException e) {
+            log.warn("Khong lay duoc gia thuoc tu product-service, phieu thu se de trong don gia: {}",
+                    e.toString());
+            return Map.of();
+        }
     }
 
     /** Lịch hẹn phải có thật, và con vật trong lịch hẹn phải là con service này đang giữ hồ sơ. */

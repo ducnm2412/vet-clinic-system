@@ -3,6 +3,7 @@ package com.vetclinic.order.service;
 import com.vetclinic.order.domain.Order;
 import com.vetclinic.order.domain.OrderStatus;
 import com.vetclinic.order.domain.OrderStatusHistory;
+import com.vetclinic.order.messaging.OrderPlacedEvent;
 import com.vetclinic.order.domain.PaymentMethod;
 import com.vetclinic.order.domain.PaymentStatus;
 import com.vetclinic.order.dto.MockPaymentSubmitRequest;
@@ -27,6 +28,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -51,6 +53,7 @@ class OnlinePaymentServiceTest {
     @Mock private OrderStatusHistoryRepository historyRepository;
     @Mock private ObjectProvider<OnlinePaymentGateway> gatewayProvider;
     @Mock private ObjectProvider<MockPaymentGateway> mockGatewayProvider;
+    @Mock private ApplicationEventPublisher eventPublisher;
 
     private final MockPaymentGateway gateway = new MockPaymentGateway("test-secret", "/pay/mock");
     private OnlinePaymentService service;
@@ -60,7 +63,7 @@ class OnlinePaymentServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new OnlinePaymentService(orderRepository, historyRepository, gatewayProvider, mockGatewayProvider);
+        service = new OnlinePaymentService(orderRepository, historyRepository, gatewayProvider, mockGatewayProvider, eventPublisher);
         when(gatewayProvider.getIfAvailable()).thenReturn(gateway);
         when(mockGatewayProvider.getIfAvailable()).thenReturn(gateway);
 
@@ -181,6 +184,28 @@ class OnlinePaymentServiceTest {
     }
 
     @Test
+    void callback_success_tellsStaffAnOrderIsReadyToConfirm_once() {
+        service.startPayment(userId, order.getId(), "127.0.0.1");
+
+        service.handleCallback(signed("SUCCESS"));
+        service.handleCallback(signed("SUCCESS"));
+
+        ArgumentCaptor<OrderPlacedEvent> event = ArgumentCaptor.forClass(OrderPlacedEvent.class);
+        verify(eventPublisher, org.mockito.Mockito.times(1)).publishEvent(event.capture());
+        assertThat(event.getValue().orderId()).isEqualTo(order.getId());
+        assertThat(event.getValue().paymentMethod()).isEqualTo("ONLINE");
+    }
+
+    @Test
+    void callback_failed_doesNotTellStaff() {
+        service.startPayment(userId, order.getId(), "127.0.0.1");
+
+        service.handleCallback(signed("FAILED"));
+
+        verify(eventPublisher, never()).publishEvent(any(OrderPlacedEvent.class));
+    }
+
+    @Test
     void callback_repeated_isIdempotent() {
         service.startPayment(userId, order.getId(), "127.0.0.1");
         service.handleCallback(signed("SUCCESS"));
@@ -256,6 +281,8 @@ class OnlinePaymentServiceTest {
         assertThat(result.outcome()).isEqualTo(PaymentResultResponse.Outcome.PAID);
         assertThat(order.getStatus()).isEqualTo(OrderStatus.CANCELLED);
         assertThat(order.getPaymentStatus()).isEqualTo(PaymentStatus.PAID);
+        // Đơn đã huỷ thì không có gì để nhân viên xác nhận.
+        verify(eventPublisher, never()).publishEvent(any(OrderPlacedEvent.class));
         ArgumentCaptor<OrderStatusHistory> history = ArgumentCaptor.forClass(OrderStatusHistory.class);
         verify(historyRepository).save(history.capture());
         assertThat(history.getValue().getNote()).contains("hoàn tiền");

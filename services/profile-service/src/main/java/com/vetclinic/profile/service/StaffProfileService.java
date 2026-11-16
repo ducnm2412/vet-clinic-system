@@ -4,8 +4,10 @@ import com.vetclinic.profile.domain.StaffProfile;
 import com.vetclinic.profile.dto.PhotoUrls;
 import com.vetclinic.profile.dto.StaffProfileRequest;
 import com.vetclinic.profile.dto.StaffProfileResponse;
+import com.vetclinic.profile.messaging.ProfileUpdatedEvent;
 import com.vetclinic.profile.repository.StaffProfileRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -19,6 +21,7 @@ public class StaffProfileService {
 
     private final StaffProfileRepository staffProfileRepository;
     private final PhotoStorageService photoStorageService;
+    private final ApplicationEventPublisher events;
 
     @Transactional
     public StaffProfileResponse uploadMyPhoto(UUID userId, MultipartFile file) {
@@ -48,6 +51,7 @@ public class StaffProfileService {
         profile.setHireDate(request.hireDate());
 
         staffProfileRepository.saveAndFlush(profile);
+        events.publishEvent(new ProfileUpdatedEvent(userId, "STAFF"));
         return toResponse(profile);
     }
 

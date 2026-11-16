@@ -33,7 +33,7 @@ class AppointmentNotificationEmailTest {
     private AppointmentNotificationEvent event(String type, String pet, String doctor, String reason, String service) {
         return new AppointmentNotificationEvent(type, appointmentId, UUID.randomUUID(), "khach@example.com", pet, service, reason,
                 doctor, LocalDate.of(2026, 12, 1), LocalTime.of(10, 0), LocalTime.of(10, 30),
-                LocalDate.of(2026, 12, 1), LocalTime.of(9, 0));
+                LocalDate.of(2026, 12, 1), LocalTime.of(9, 0), null);
     }
 
     private String send(AppointmentNotificationEvent event) throws Exception {

@@ -7,7 +7,15 @@ import { z } from "zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ApiError, productApi } from "@/lib/api";
 import { Button, Dialog, ErrorState, SelectField, TextAreaField, TextField, useToast } from "@/components/ui";
-import type { Product } from "@/types";
+import type { StockAdjustmentRequest } from "@/types";
+
+/** Thứ gì có tồn kho cũng nhập/điều chỉnh được: sản phẩm (mặc định) hay thuốc (truyền `adjust`). */
+export interface StockTarget {
+  id: string;
+  name: string;
+  unit: string;
+  stockQuantity: number;
+}
 
 const schema = z
   .object({
@@ -35,9 +43,14 @@ type FormValues = z.output<typeof schema>;
 export function StockDialog({
   product,
   onClose,
+  adjust = productApi.adjustStock,
+  invalidateKeys = ["products"],
 }: {
-  product: Product | null;
+  product: StockTarget | null;
   onClose: () => void;
+  adjust?: (id: string, body: StockAdjustmentRequest) => Promise<unknown>;
+  /** Gốc các query phải nạp lại sau khi đổi tồn (cộng thêm "stock-movements"). */
+  invalidateKeys?: string[];
 }) {
   const qc = useQueryClient();
   const toast = useToast();
@@ -64,14 +77,14 @@ export function StockDialog({
   const submit = useMutation({
     mutationFn: (values: FormValues) => {
       if (!product) throw new Error("Chưa chọn sản phẩm");
-      return productApi.adjustStock(product.id, {
+      return adjust(product.id, {
         type: values.type,
         quantityChange: values.quantityChange,
         note: values.note || undefined,
       });
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["products"] });
+      for (const key of invalidateKeys) qc.invalidateQueries({ queryKey: [key] });
       qc.invalidateQueries({ queryKey: ["stock-movements"] });
       toast.success(type === "IMPORT" ? "Đã nhập kho" : "Đã điều chỉnh tồn kho");
       onClose();

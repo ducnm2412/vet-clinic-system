@@ -151,6 +151,55 @@ class AppointmentNotificationEventsTest {
         assertThat(e.customerUserId()).isEqualTo(customer);
     }
 
+    @Test
+    void theDoctorIsNamedOnlyWhenTheyActuallyHoldTheAppointment() {
+        AppointmentResponse r = request("khach@example.com", NINE);
+        assertThat(only(Type.REQUEST_RECEIVED).doctorUserId()).isNull();
+
+        assignment.propose(r.id(), doctor, day, TEN);
+        // Đang đề xuất: bác sĩ chưa nhận lịch nên chưa được báo.
+        assertThat(only(Type.PROPOSAL).doctorUserId()).isNull();
+
+        assignment.acceptProposal(r.id(), customer);
+        assertThat(only(Type.CONFIRMED).doctorUserId()).isEqualTo(doctor);
+    }
+
+    @Test
+    void whenTheCustomerCancelsAConfirmedAppointment_onlyTheDoctorIsTold() {
+        AppointmentResponse r = request("khach@example.com", NINE);
+        assignment.assign(r.id(), doctor);
+
+        appointments.cancelAppointment(r.id(), customer, false);
+
+        assertThat(only(Type.CANCELLED_BY_CUSTOMER).doctorUserId()).isEqualTo(doctor);
+        assertThat(sent(Type.CANCELLED_BY_CLINIC)).isEmpty();
+    }
+
+    @Test
+    void whenTheClinicCancelsAConfirmedAppointment_theDoctorIsTooButNotForOneWithoutDoctor() {
+        AppointmentResponse unassigned = request("khach@example.com", NINE);
+        appointments.cancelAppointment(unassigned.id(), UUID.randomUUID(), true);
+        assertThat(only(Type.CANCELLED_BY_CLINIC).doctorUserId()).isNull();
+
+        AppointmentResponse assigned = request("khach@example.com", TEN);
+        assignment.assign(assigned.id(), doctor);
+        appointments.cancelAppointment(assigned.id(), UUID.randomUUID(), true);
+        assertThat(sent(Type.CANCELLED_BY_CLINIC)).extracting(AppointmentNotificationEvent::doctorUserId)
+                .containsExactlyInAnyOrder(null, doctor);
+    }
+
+    @Test
+    void aCustomerCancellingBeforeAnyDoctorHasIt_tellsNobody() {
+        AppointmentResponse r = request("khach@example.com", NINE);
+        appointments.cancelAppointment(r.id(), customer, false);
+        assertThat(sent(Type.CANCELLED_BY_CUSTOMER)).isEmpty();
+
+        AppointmentResponse proposed = request("khach@example.com", TEN);
+        assignment.propose(proposed.id(), doctor, day, TEN.plusHours(1));
+        appointments.cancelAppointment(proposed.id(), customer, false);
+        assertThat(sent(Type.CANCELLED_BY_CUSTOMER)).isEmpty();
+    }
+
     // ---- helpers ----
 
     private AppointmentResponse request(String email, LocalTime time) {

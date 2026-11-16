@@ -42,6 +42,8 @@ services:
       DB_PASSWORD: ${AUTH_DB_PASSWORD:?AUTH_DB_PASSWORD is required}
       EUREKA_URI: http://eureka-server:8761/eureka/
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      # Khoá cho service khac goi /internal/** (notification-service lay danh sach nguoi nhan theo vai tro).
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:?INTERNAL_API_KEY is required}
       JWT_ACCESS_EXPIRATION: ${JWT_ACCESS_EXPIRATION:-900000}
       JWT_REFRESH_EXPIRATION: ${JWT_REFRESH_EXPIRATION:-604800000}
       # Secure flag cua cookie refresh token - false o dev (HTTP), true o production (HTTPS).
@@ -178,6 +180,8 @@ services:
       DB_USERNAME: ${NOTIFICATION_DB_USER:-postgres}
       DB_PASSWORD: ${NOTIFICATION_DB_PASSWORD:?NOTIFICATION_DB_PASSWORD is required}
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      # Cung khoa voi auth-service: hoi auth-service "ai la nhan vien / admin" de gui thong bao cho ca nhom.
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:?INTERNAL_API_KEY is required}
     depends_on:
       notification-db:
         condition: service_healthy

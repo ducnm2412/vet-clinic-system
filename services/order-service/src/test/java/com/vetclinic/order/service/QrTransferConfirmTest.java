@@ -23,6 +23,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -47,6 +48,7 @@ class QrTransferConfirmTest {
     @Mock private OrderStatusHistoryRepository historyRepository;
     @Mock private ObjectProvider<OnlinePaymentGateway> gatewayProvider;
     @Mock private ObjectProvider<MockPaymentGateway> mockGatewayProvider;
+    @Mock private ApplicationEventPublisher eventPublisher;
 
     private OnlinePaymentService service;
     private UUID staffId;
@@ -54,7 +56,7 @@ class QrTransferConfirmTest {
 
     @BeforeEach
     void setUp() {
-        service = new OnlinePaymentService(orderRepository, historyRepository, gatewayProvider, mockGatewayProvider);
+        service = new OnlinePaymentService(orderRepository, historyRepository, gatewayProvider, mockGatewayProvider, eventPublisher);
         when(gatewayProvider.getIfAvailable()).thenReturn(new QrTransferGateway("/pay/qr"));
 
         staffId = UUID.randomUUID();
