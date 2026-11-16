@@ -52,6 +52,11 @@ jobs:
             done
           fi
           SV=$(echo $SV | tr ' ' '\n' | sort -u | xargs)
+          # Khong co code moi (hoac thay doi khong thuoc service nao) -> build lai tat ca.
+          if [ -z "$SV" ]; then
+            echo "Khong co service nao thay doi -> build lai tat ca"
+            SV="all"
+          fi
           echo "Service can build: ${SV:-(khong co)}"
           echo "services=$SV" >> "$GITHUB_OUTPUT"
 
