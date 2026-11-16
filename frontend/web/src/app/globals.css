@@ -383,6 +383,10 @@ body {
 }
 .header-overlay nav a[aria-current="page"] { background: rgba(255, 255, 255, 0.18) !important; }
 .header-overlay nav a:hover, .header-overlay nav button:hover { background: rgba(255, 255, 255, 0.15) !important; }
+/* Dropdown nền trắng nằm trong nav: trả lại màu chữ/nền gốc của Tailwind, không bị nhuộm trắng. */
+.header-overlay nav .nav-menu a {
+  color: revert-layer !important; background: revert-layer !important; text-shadow: none !important;
+}
 /* Vừa cuộn qua: header trượt xuống nhẹ khi đổi sang nền trắng. */
 .header-solid { animation: header-drop 350ms var(--ease-sig); }
 @keyframes header-drop { from { transform: translateY(-100%); } to { transform: none; } }

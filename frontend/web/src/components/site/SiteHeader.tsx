@@ -302,7 +302,7 @@ function ServicesDropdown({ active, items }: { active: boolean; items: Array<{ h
 
       {/* pt-3 làm "cầu nối" để chuột đi từ chữ xuống menu không bị mất hover */}
       <div className="invisible absolute left-1/2 top-full z-30 -translate-x-1/2 pt-3 opacity-0 transition-all duration-200 group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100">
-        <div className="w-[34rem] overflow-hidden rounded-3xl border border-[#f1e6dc] bg-white shadow-[0_20px_50px_-20px_rgba(160,80,20,0.45)]">
+        <div className="nav-menu w-[34rem] overflow-hidden rounded-3xl border border-[#f1e6dc] bg-white shadow-[0_20px_50px_-20px_rgba(160,80,20,0.45)]">
           <div className="flex items-center gap-2 bg-[linear-gradient(100deg,#fff6ee,#ffe6cf)] px-5 py-3">
             <PawPrint aria-hidden className="size-4 text-[#f57c1f]" />
             <p className="text-sm font-bold text-[#1f4a3c]">Dịch vụ thú y</p>
