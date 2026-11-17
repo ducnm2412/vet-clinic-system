@@ -11,7 +11,16 @@ function deleteErrorText(err: unknown): string {
 }
 
 /** Xoá hẳn tài khoản Bác sĩ / Nhân viên. Không hoàn tác được nên nói rõ hệ quả trước. */
-export function DeleteAccountDialog({ user, onClose }: { user: CurrentUser | null; onClose: () => void }) {
+export function DeleteAccountDialog({
+  user,
+  onClose,
+  onDeleted,
+}: {
+  user: CurrentUser | null;
+  onClose: () => void;
+  /** Gọi sau khi xoá xong — trang chi tiết dùng để quay về danh sách. */
+  onDeleted?: () => void;
+}) {
   const qc = useQueryClient();
   const toast = useToast();
   const name = user ? `${user.firstName} ${user.lastName}`.trim() : "";
@@ -19,10 +28,14 @@ export function DeleteAccountDialog({ user, onClose }: { user: CurrentUser | nul
 
   const remove = useMutation({
     mutationFn: (u: CurrentUser) => authApi.deleteUser(u.id),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["admin-users"] });
+    onSuccess: (_, u) => {
       toast.success(`Đã xoá tài khoản ${name}`);
+      // Trang chi tiết rời đi trước, rồi mới bỏ cache của tài khoản vừa xoá — kẻo nó tự tải
+      // lại và báo 404.
+      onDeleted?.();
       close();
+      qc.removeQueries({ queryKey: ["admin-user", u.id] });
+      qc.invalidateQueries({ queryKey: ["admin-users"] });
     },
   });
 

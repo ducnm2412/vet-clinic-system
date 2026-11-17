@@ -29,7 +29,8 @@ const POLL_MS = 30_000;
  * Chuông thông báo (khách, bác sĩ, nhân viên, admin): chấm số chưa đọc, bấm mở danh sách, bấm một mục
  * để tới trang liên quan. Backend lưu theo userId của người đăng nhập nên mỗi người chỉ thấy của mình.
  */
-export function NotificationBell() {
+export function NotificationBell({ variant = "site" }: { variant?: "site" | "sidebar" } = {}) {
+  const onDark = variant === "sidebar";
   const { email, hasRole } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -75,7 +76,10 @@ export function NotificationBell() {
         aria-expanded={open}
         aria-haspopup="dialog"
         aria-label={unread > 0 ? `Thông báo, ${unread} chưa đọc` : "Thông báo"}
-        className="relative grid size-11 place-items-center rounded-full text-pine transition-colors hover:bg-mint"
+        className={cn(
+          "relative grid place-items-center rounded-full transition-colors",
+          onDark ? "size-10 text-white/80 hover:bg-white/10 hover:text-white" : "size-11 text-pine hover:bg-mint",
+        )}
       >
         <Bell aria-hidden className="size-5" />
         {unread > 0 && (
@@ -89,7 +93,7 @@ export function NotificationBell() {
         <>
           <button
             aria-label="Đóng thông báo"
-            className="fixed inset-0 z-10 cursor-default"
+            className="fixed inset-0 z-40 cursor-default"
             onClick={() => setOpen(false)}
           />
           {/*
@@ -99,7 +103,14 @@ export function NotificationBell() {
           <div
             role="dialog"
             aria-label="Thông báo"
-            className="fixed inset-x-4 top-[4.5rem] z-20 flex max-h-[min(32rem,calc(100vh-6rem))] animate-[dropIn_.18s_ease-out] flex-col overflow-hidden rounded-2xl border border-mist bg-white shadow-[var(--shadow-lift)] sm:absolute sm:inset-x-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-[24rem] sm:origin-top-right"
+            className={cn(
+              "fixed inset-x-4 top-[4.5rem] z-50 flex max-h-[min(32rem,calc(100vh-6rem))] animate-[dropIn_.18s_ease-out] flex-col overflow-hidden rounded-2xl border border-mist bg-white text-left shadow-[var(--shadow-lift)]",
+              // Trên thanh bên (bị overflow-hidden), bảng dùng fixed: máy tính thì mở ngay cạnh
+              // phải thanh bên, màn hình hẹp thì trải ngang dưới thanh đầu trang như cũ.
+              onDark
+                ? "sm:inset-x-auto sm:right-4 sm:w-[24rem] lg:right-auto lg:left-[17rem] lg:top-6"
+                : "sm:absolute sm:inset-x-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-[24rem] sm:origin-top-right",
+            )}
           >
             <div className="flex items-center justify-between gap-3 border-b border-mist px-4 py-3">
               <h2 className="font-display text-lg text-pine">Thông báo</h2>

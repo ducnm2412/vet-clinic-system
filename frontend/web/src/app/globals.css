@@ -51,6 +51,8 @@
   --mint: #f2faf9;
   --mist: #dcefec;
   --stone: #5c6f6b;
+  /* Điểm nhấn màu nắng trên thanh bên dashboard (mục đang chọn, tên vai trò). */
+  --sun: #f5c04a;
 
   --radius-card: 16px;
   --shadow-lift: 0 14px 34px -14px rgb(19 78 74 / 0.28);
@@ -83,6 +85,7 @@
   --color-mint: var(--mint);
   --color-mist: var(--mist);
   --color-stone: var(--stone);
+  --color-sun: var(--sun);
 
   --font-sans: var(--font-sans);
   --font-display: var(--font-display);

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import Link from "next/link";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Lock, LockOpen, Search, Trash2 } from "lucide-react";
 import { ApiError, ROLE_LABEL, authApi, customerLookupApi, petLookupApi } from "@/lib/api";
 import { useAuth } from "@/lib/auth/context";
@@ -53,6 +54,7 @@ export function UserTable({ role, title, unitLabel }: { role?: Role; title: stri
     placeholderData: keepPreviousData,
   });
 
+  const qc = useQueryClient();
   const { userId: myId } = useAuth();
   const [lockTarget, setLockTarget] = useState<CurrentUser | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<CurrentUser | null>(null);
@@ -96,7 +98,16 @@ export function UserTable({ role, title, unitLabel }: { role?: Role; title: stri
     {
       key: "name",
       header: "Họ tên",
-      cell: (u) => <span className="font-medium text-ink">{`${u.firstName} ${u.lastName}`.trim()}</span>,
+      cell: (u) => (
+        <Link
+          href={`/admin/users/${u.id}`}
+          // Trang chi tiết đọc sẵn dòng này, khỏi phải lật lại cả danh sách để tìm.
+          onClick={() => qc.setQueryData(["admin-user", u.id], u)}
+          className="font-medium text-ink underline-offset-2 hover:text-moss hover:underline"
+        >
+          {`${u.firstName} ${u.lastName}`.trim() || u.email}
+        </Link>
+      ),
     },
     { key: "email", header: "Email", cell: (u) => <span className="break-all text-ink-soft">{u.email}</span> },
     ...(role

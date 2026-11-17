@@ -28,7 +28,8 @@ export function LockAccountDialog({ user, onClose }: { user: CurrentUser | null;
 
   const change = useMutation({
     mutationFn: (u: CurrentUser) => (locking ? authApi.lockUser(u.id) : authApi.unlockUser(u.id)),
-    onSuccess: () => {
+    onSuccess: (updated) => {
+      qc.setQueryData(["admin-user", updated.id], updated);
       qc.invalidateQueries({ queryKey: ["admin-users"] });
       toast.success(locking ? `Đã khoá tài khoản ${name}` : `Đã mở khoá tài khoản ${name}`);
       close();
