@@ -1,4 +1,4 @@
-import { http, qs, setToken } from "./client";
+import { ApiError, http, qs, setToken } from "./client";
 import { clearMockToken, mockLogin } from "./mock-auth"; // MOCK-TẠM
 import type {
   AccessTokenResponse,
@@ -89,6 +89,20 @@ export const authApi = {
   /** Chỉ ADMIN. Nguồn duy nhất có họ tên, email, vai trò và trạng thái của mọi tài khoản. */
   listUsers: (filters: UserFilters = {}) =>
     http.get<PageResponse<CurrentUser>>(`/admin/users${qs({ ...filters })}`),
+
+  /**
+   * Chỉ ADMIN. Backend chưa có GET /admin/users/{id}, nên lật danh sách (100 dòng/trang) tới khi
+   * gặp đúng id. Chỉ dùng khi mở thẳng link trang chi tiết — bấm từ bảng thì dữ liệu đã có sẵn.
+   * Không thấy thì ném ApiError 404 như backend sẽ làm.
+   */
+  async findUser(userId: string): Promise<CurrentUser> {
+    for (let page = 0; ; page++) {
+      const res = await http.get<PageResponse<CurrentUser>>(`/admin/users${qs({ page, size: 100 })}`);
+      const hit = res.content.find((u) => u.id === userId);
+      if (hit) return hit;
+      if (page + 1 >= res.totalPages) throw new ApiError(404, "Không tìm thấy tài khoản");
+    }
+  },
 
   /**
    * CN-08: khoá thay cho xoá — lịch sử khám và đơn hàng giữ nguyên. Backend thu hồi mọi phiên và
