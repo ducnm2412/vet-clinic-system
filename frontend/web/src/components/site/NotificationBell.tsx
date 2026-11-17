@@ -12,7 +12,10 @@ import {
   CalendarX,
   Inbox,
   Package,
+  PackageCheck,
+  PackageX,
   Send,
+  Truck,
   UserRound,
 } from "lucide-react";
 import { notificationApi } from "@/lib/api";
@@ -177,6 +180,10 @@ function TypeIcon({ type }: { type: string }) {
     NEW_REQUEST: Inbox,
     PAYMENT_PENDING: Banknote,
     NEW_ORDER: Package,
+    ORDER_CONFIRMED: Package,
+    ORDER_SHIPPING: Truck,
+    ORDER_COMPLETED: PackageCheck,
+    ORDER_CANCELLED: PackageX,
     PROFILE_SETUP: UserRound,
   };
   const Icon = ICONS[type] ?? Bell;
@@ -184,10 +191,11 @@ function TypeIcon({ type }: { type: string }) {
     type === "PROPOSAL" ||
     type === "NEW_REQUEST" ||
     type === "NEW_ORDER" ||
+    type === "ORDER_SHIPPING" ||
     type === "PAYMENT_PENDING" ||
     type === "PROFILE_SETUP"
       ? "bg-[#fff1e6] text-[#c2570c]"
-      : type === "CANCELLED_BY_CLINIC" || type === "APPOINTMENT_CANCELLED"
+      : type === "CANCELLED_BY_CLINIC" || type === "APPOINTMENT_CANCELLED" || type === "ORDER_CANCELLED"
         ? "bg-[#fdeceb] text-coral-deep"
         : "bg-mint text-teal";
   return (

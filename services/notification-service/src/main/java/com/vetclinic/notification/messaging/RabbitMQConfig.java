@@ -53,6 +53,33 @@ public class RabbitMQConfig {
         return new TopicExchange(ORDER_EVENTS_EXCHANGE, true, false);
     }
 
+    // Báo khách khi đơn đổi trạng thái: chuông và email nghe cùng routing key bằng hai hàng đợi riêng.
+    public static final String ORDER_STATUS_INAPP_QUEUE = "notification.order-status-inapp";
+    public static final String ORDER_STATUS_EMAIL_QUEUE = "notification.order-status-email";
+    private static final String ROUTING_KEY_ORDER_STATUS_CHANGED = "order.status-changed";
+
+    @Bean
+    public Queue orderStatusInAppQueue() {
+        return new Queue(ORDER_STATUS_INAPP_QUEUE, true);
+    }
+
+    @Bean
+    public Binding orderStatusInAppBinding(Queue orderStatusInAppQueue, TopicExchange orderEventsExchange) {
+        return BindingBuilder.bind(orderStatusInAppQueue).to(orderEventsExchange)
+                .with(ROUTING_KEY_ORDER_STATUS_CHANGED);
+    }
+
+    @Bean
+    public Queue orderStatusEmailQueue() {
+        return new Queue(ORDER_STATUS_EMAIL_QUEUE, true);
+    }
+
+    @Bean
+    public Binding orderStatusEmailBinding(Queue orderStatusEmailQueue, TopicExchange orderEventsExchange) {
+        return BindingBuilder.bind(orderStatusEmailQueue).to(orderEventsExchange)
+                .with(ROUTING_KEY_ORDER_STATUS_CHANGED);
+    }
+
     @Bean
     public Queue orderPlacedQueue() {
         return new Queue(ORDER_PLACED_QUEUE, true);

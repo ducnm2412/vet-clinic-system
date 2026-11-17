@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Check, ChevronRight, MapPin, Package, PawPrint, Printer, ShoppingCart, Truck } from "lucide-react";
+import { ArrowLeft, Check, ChevronRight, MapPin, Package, PawPrint, ShoppingCart, Truck } from "lucide-react";
 import { ApiError, orderApi, productApi } from "@/lib/api";
 import { formatDateTime, formatPrice } from "@/lib/utils/format";
 import { ORDER_PAYMENT_METHOD } from "@/lib/utils/status";
@@ -105,7 +105,7 @@ function OrderBody({ order }: { order: Order }) {
       </nav>
 
       <div className="rounded-[28px] bg-white p-4 shadow-[0_4px_30px_-14px_rgba(90,45,10,0.25)] sm:p-6">
-        {/* Đầu trang: quay lại, mã đơn, trạng thái, in hoá đơn */}
+        {/* Đầu trang: quay lại, mã đơn, trạng thái. Khách không in hoá đơn: hoá đơn do nhân viên lập và in. */}
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
             <Link
@@ -124,13 +124,6 @@ function OrderBody({ order }: { order: Order }) {
               {counter ? "Lập tại quầy" : "Đặt ngày"}: {formatDateTime(order.createdAt)}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => window.print()}
-            className="inline-flex h-10 items-center gap-2 rounded-xl border border-[#f57c1f] bg-white px-4 text-sm font-semibold text-[#f57c1f] transition hover:bg-[#fff1e3] print:hidden"
-          >
-            <Printer aria-hidden className="size-4" /> In hoá đơn
-          </button>
         </div>
 
         {awaitingCounter && (
@@ -255,8 +248,14 @@ function OrderBody({ order }: { order: Order }) {
         </section>
 
         {/* Thanh toán / huỷ */}
-        <div className={cn("mt-6 grid gap-5 print:hidden", isAwaitingPayment(order) && "md:grid-cols-2")}>
+        <div
+          className={cn(
+            "mt-6 grid gap-5",
+            (isAwaitingPayment(order) || (!counter && order.status === "SHIPPING")) && "md:grid-cols-2",
+          )}
+        >
           {isAwaitingPayment(order) && <PayNowPanel order={order} />}
+          {!counter && order.status === "SHIPPING" && <ReceivedPanel order={order} />}
           {counter ? (
             <div className="text-[15px] text-[#6b5a4e]">
               {awaitingCounter
@@ -488,6 +487,40 @@ function Timeline({ order }: { order: Order }) {
 }
 
 const STAGE_ICONS = [ShoppingCart, Check, Truck, Check];
+
+/** Đơn đang giao: khách nhận được hàng thì bấm xác nhận để đơn hoàn tất (nhân viên cũng bấm được thay). */
+function ReceivedPanel({ order }: { order: Order }) {
+  const qc = useQueryClient();
+  const toast = useToast();
+
+  const received = useMutation({
+    mutationFn: () => orderApi.confirmReceived(order.id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["orders"] });
+      toast.success("Cảm ơn bạn đã xác nhận nhận hàng");
+    },
+    onError: (err) =>
+      toast.error(err instanceof ApiError ? err.message : "Chưa xác nhận được, thử lại sau nhé."),
+  });
+
+  return (
+    <div className="rounded-2xl border border-[#f7b98a] bg-white p-5">
+      <h2 className="t-h3">Bạn đã nhận được hàng?</h2>
+      <p className="mt-3 text-stone">
+        Kiểm tra hàng xong, bấm xác nhận để hoàn tất đơn.
+        {order.paymentMethod === "COD" && <> Bạn thanh toán {formatPrice(order.total)} cho người giao khi nhận hàng.</>}
+      </p>
+      <SiteButton
+        size="lg"
+        className="mt-5 w-full"
+        loading={received.isPending}
+        onClick={() => received.mutate()}
+      >
+        Đã nhận hàng
+      </SiteButton>
+    </div>
+  );
+}
 
 function CancelPanel({ order }: { order: Order }) {
   const [open, setOpen] = useState(false);

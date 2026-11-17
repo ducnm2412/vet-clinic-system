@@ -2,6 +2,9 @@ import { http, qs } from "./client";
 import type {
   AttendanceAbsence,
   AttendanceRecord,
+  Leave,
+  LeaveCreateRequest,
+  LeaveCreateResult,
   Shift,
   ShiftCreateRequest,
   ShiftCreateResult,
@@ -34,6 +37,16 @@ export const attendanceApi = {
   /** CN-48: bảng công theo kỳ, chỉ ADMIN. */
   timesheet: (range: DateRange, userId?: string) =>
     http.get<Timesheet>(`/staff/attendance/timesheet${qs({ ...range, userId })}`),
+};
+
+/** Ngày nghỉ do admin ghi tay (không có đơn xin nghỉ). Chỉ ADMIN. */
+export const leaveApi = {
+  search: (range: DateRange, userId?: string) =>
+    http.get<Leave[]>(`/staff/leaves${qs({ ...range, userId })}`),
+
+  create: (body: LeaveCreateRequest) => http.post<LeaveCreateResult>("/staff/leaves", body),
+
+  remove: (id: string) => http.del<void>(`/staff/leaves/${id}`),
 };
 
 /** CN-39: xếp ca trực. Tạo và xoá chỉ ADMIN; xem thì nhân viên và bác sĩ cũng được. */

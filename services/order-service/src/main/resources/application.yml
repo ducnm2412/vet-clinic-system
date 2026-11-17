@@ -39,6 +39,8 @@ order:
   shipping-fee: ${ORDER_SHIPPING_FEE:30000}
   # Hạn trả tiền của đơn thanh toán online; quá hạn chưa trả thì đơn bị tự huỷ.
   online-payment-timeout-minutes: ${ORDER_ONLINE_PAYMENT_TIMEOUT_MINUTES:30}
+  # Đơn đã giao quá chừng này ngày mà khách chưa bấm "Đã nhận hàng" thì tự hoàn tất. 0 = tắt.
+  auto-complete-after-days: ${ORDER_AUTO_COMPLETE_AFTER_DAYS:7}
   # Cổng thanh toán giả lập để chạy thử khi chưa có tài khoản merchant. Chỉ bật ở môi trường dev/demo:
   # cổng này cho "trả tiền" mà không có tiền thật. Khi bật bắt buộc đặt secret (khoá ký HMAC).
   mock-gateway:

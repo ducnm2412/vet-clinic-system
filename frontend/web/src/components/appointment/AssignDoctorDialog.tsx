@@ -96,13 +96,16 @@ export function AssignDoctorDialog({
   });
 
   const list = doctors.data ?? [];
-  const freeCount = list.filter((d) => d.free).length;
+  // Chỉ xếp được bác sĩ có ca làm việc vào giờ đó (dù chưa chấm công) và đang rảnh.
+  const pickable = (d: DoctorAvailability) => d.free && d.onShift;
+  const pickableCount = list.filter(pickable).length;
+  const onShiftCount = list.filter((d) => d.onShift).length;
   const chosen = list.find((d) => d.doctorUserId === doctorId);
   const pet = detail.data?.pet ?? null;
   const askedPast =
     askedDate < todayISO(); // giờ khách chọn đã qua: không xếp được nữa, chỉ đề xuất hoặc huỷ.
 
-  const ready = doctorId !== "" && chosen?.free === true && (mode === "assign" || time !== "");
+  const ready = doctorId !== "" && (chosen ? pickable(chosen) : false) && (mode === "assign" || time !== "");
 
   return (
     <Dialog
@@ -219,11 +222,14 @@ export function AssignDoctorDialog({
           <p className="mt-2 text-sm text-bark">Chưa có bác sĩ nào đang làm việc.</p>
         ) : (
           <>
-            {freeCount === 0 && (
+            {pickableCount === 0 && (
               <p className="mt-2 text-sm text-bark">
+                {onShiftCount === 0
+                  ? "Chưa có bác sĩ nào có ca làm việc vào giờ này. Xếp ca ở trang Lịch làm việc, hoặc "
+                  : "Các bác sĩ có ca vào giờ này đều đang bận. "}
                 {mode === "assign"
-                  ? "Giờ này không bác sĩ nào rảnh. Chuyển sang “Đề xuất giờ khác” để chọn giờ có bác sĩ trống."
-                  : "Giờ này không bác sĩ nào rảnh. Chọn giờ khác."}
+                  ? "Chuyển sang “Đề xuất giờ khác” để chọn giờ có bác sĩ trống."
+                  : "Chọn giờ khác."}
               </p>
             )}
             <ul className="mt-2 divide-y divide-line rounded-[var(--radius-control)] border border-line">
@@ -303,7 +309,7 @@ function DoctorRow({
       <label
         className={cn(
           "flex items-center gap-3 px-3 py-2.5",
-          d.free ? "cursor-pointer hover:bg-paper" : "cursor-not-allowed opacity-60",
+          d.free && d.onShift ? "cursor-pointer hover:bg-paper" : "cursor-not-allowed opacity-60",
           selected && "bg-moss-wash",
         )}
       >
@@ -311,7 +317,7 @@ function DoctorRow({
           type="radio"
           name="doctor"
           checked={selected}
-          disabled={!d.free}
+          disabled={!(d.free && d.onShift)}
           onChange={onSelect}
           className="size-4 accent-[var(--color-moss)]"
         />
@@ -321,7 +327,7 @@ function DoctorRow({
         </span>
         <span className="flex flex-wrap justify-end gap-1.5">
           {d.free ? <Tag>Rảnh giờ này</Tag> : <Tag className="border-danger/40 text-danger">Bận giờ này</Tag>}
-          {d.onShift && <Tag>Có ca trực</Tag>}
+          {d.onShift ? <Tag>Có ca làm việc</Tag> : <Tag className="border-danger/40 text-danger">Chưa có ca</Tag>}
           <Tag>{d.dayLoad} lịch trong ngày</Tag>
         </span>
       </label>

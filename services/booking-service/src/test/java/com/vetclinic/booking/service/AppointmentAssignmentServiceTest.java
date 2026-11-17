@@ -74,6 +74,9 @@ class AppointmentAssignmentServiceTest {
                 Instant.now(), Instant.now()));
         drA = UUID.randomUUID();
         drB = UUID.randomUUID();
+        // Mặc định cả hai bác sĩ có ca cả ngày; test nào cần bác sĩ không có ca thì xoá ca đi.
+        putOnShift(drA);
+        putOnShift(drB);
         when(profileServiceClient.listDoctors()).thenReturn(List.of(
                 new DoctorSummaryResponse(UUID.randomUUID(), drA, "BS An", "Nội khoa", null, null),
                 new DoctorSummaryResponse(UUID.randomUUID(), drB, "BS Bình", "Da liễu", null, null)));
@@ -82,7 +85,7 @@ class AppointmentAssignmentServiceTest {
     // ---- xếp bác sĩ ----
 
     @Test
-    void assign_confirmsAndGivesTheDoctorASlot_withoutAnyShift() {
+    void assign_confirmsAndGivesTheDoctorASlot_whenTheyAreOnShiftEvenWithoutCheckingIn() {
         AppointmentResponse req = request(NINE);
 
         AppointmentResponse r = assignment.assign(req.id(), drA);
@@ -96,6 +99,42 @@ class AppointmentAssignmentServiceTest {
         assertThat(slot.getStatus()).isEqualTo(SlotStatus.BOOKED);
         // Từ đây là lịch thường: bác sĩ thấy nó trong lịch của mình.
         assertThat(appointments.search(day, null, drA)).extracting(AppointmentResponse::id).contains(req.id());
+    }
+
+    @Test
+    void assign_refusesADoctorWithoutAShiftThatDay_andLeavesTheRequestWaiting() {
+        shiftRepository.deleteAll(shiftRepository.findByDoctorUserIdAndDate(drA, day));
+        AppointmentResponse req = request(NINE);
+
+        assertConflict(() -> assignment.assign(req.id(), drA));
+
+        assertThat(appointments.search(day, null, drA)).isEmpty();
+        // Bác sĩ khác có ca thì vẫn xếp được cho cùng yêu cầu đó.
+        assertThat(assignment.assign(req.id(), drB).status()).isEqualTo(AppointmentStatus.CONFIRMED);
+    }
+
+    @Test
+    void assign_refusesAShiftThatDoesNotCoverTheAppointmentTime() {
+        shiftRepository.deleteAll(shiftRepository.findByDoctorUserIdAndDate(drA, day));
+        shiftRepository.flush();
+        // Ca nửa buổi sáng xếp từ trước khi giờ làm việc được cố định.
+        shiftRepository.saveAndFlush(DoctorShift.builder().doctorUserId(drA).date(day)
+                .startTime(LocalTime.of(8, 0)).endTime(LocalTime.of(12, 0)).build());
+
+        assertThat(assignment.assign(request(NINE).id(), drA).status()).isEqualTo(AppointmentStatus.CONFIRMED);
+        AppointmentResponse afternoon = request(LocalTime.of(14, 0));
+        assertConflict(() -> assignment.assign(afternoon.id(), drA));
+    }
+
+    @Test
+    void propose_refusesADoctorWithoutAShiftAtTheProposedTime() {
+        shiftRepository.deleteAll(shiftRepository.findByDoctorUserIdAndDate(drA, day));
+        AppointmentResponse req = request(NINE);
+
+        assertConflict(() -> assignment.propose(req.id(), drA, day, TEN));
+
+        assertThat(assignment.propose(req.id(), drB, day, TEN).status())
+                .isEqualTo(AppointmentStatus.AWAITING_CUSTOMER);
     }
 
     @Test
@@ -286,10 +325,10 @@ class AppointmentAssignmentServiceTest {
 
     @Test
     void availableDoctors_flagsBusyOnesAndShiftsAndLoad() {
-        // BS An bận 9:00, có ca trực; BS Bình rảnh, không có ca.
+        // BS An bận 9:00, có ca; BS Bình rảnh, không có ca (hiện trong danh sách nhưng không xếp được).
         slotRepository.saveAndFlush(slot(drA, NINE, SlotStatus.BOOKED));
-        shiftRepository.saveAndFlush(DoctorShift.builder().doctorUserId(drA).date(day)
-                .startTime(LocalTime.of(8, 0)).endTime(LocalTime.of(17, 0)).build());
+        shiftRepository.deleteAll(shiftRepository.findByDoctorUserIdAndDate(drB, day));
+        shiftRepository.flush();
         AppointmentResponse req = request(NINE);
 
         List<DoctorAvailabilityResponse> list = assignment.availableDoctors(req.id(), null, null);
@@ -328,6 +367,12 @@ class AppointmentAssignmentServiceTest {
     }
 
     // ---- helpers ----
+
+    /** Bác sĩ phải có ca làm việc ngày đó thì admin mới xếp được lịch cho họ. */
+    private void putOnShift(UUID doctorUserId) {
+        shiftRepository.saveAndFlush(DoctorShift.builder().doctorUserId(doctorUserId).date(day)
+                .startTime(LocalTime.of(8, 0)).endTime(LocalTime.of(17, 0)).build());
+    }
 
     private AppointmentResponse request(LocalTime time) {
         return requests.createRequest(UUID.randomUUID(), "Bearer t",

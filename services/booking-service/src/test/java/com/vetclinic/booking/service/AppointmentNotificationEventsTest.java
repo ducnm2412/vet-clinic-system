@@ -3,6 +3,8 @@ package com.vetclinic.booking.service;
 import com.vetclinic.booking.client.PetServiceClient;
 import com.vetclinic.booking.client.ProfileServiceClient;
 import com.vetclinic.booking.domain.ClinicSchedule;
+import com.vetclinic.booking.domain.DoctorShift;
+import com.vetclinic.booking.repository.DoctorShiftRepository;
 import com.vetclinic.booking.dto.AppointmentRequest;
 import com.vetclinic.booking.dto.AppointmentResponse;
 import com.vetclinic.booking.dto.DoctorSummaryResponse;
@@ -49,6 +51,8 @@ class AppointmentNotificationEventsTest {
     @Autowired
     private ApplicationEvents events;
 
+    @Autowired
+    private DoctorShiftRepository shiftRepository;
     @MockBean
     private PetServiceClient petServiceClient;
     @MockBean
@@ -63,6 +67,8 @@ class AppointmentNotificationEventsTest {
         when(petServiceClient.getMyPet(any(), any())).thenReturn(new PetResponse(UUID.randomUUID(),
                 UUID.randomUUID(), "Milo", "Dog", "Poodle", "MALE", LocalDate.of(2020, 1, 1), null, null, null,
                 Instant.now(), Instant.now()));
+        shiftRepository.saveAndFlush(DoctorShift.builder().doctorUserId(doctor).date(day)
+                .startTime(LocalTime.of(8, 0)).endTime(LocalTime.of(17, 0)).build());
         when(profileServiceClient.listDoctors()).thenReturn(List.of(
                 new DoctorSummaryResponse(UUID.randomUUID(), doctor, "Trần Minh Khoa", null, null, null),
                 new DoctorSummaryResponse(UUID.randomUUID(), UUID.randomUUID(), "BS Khác", null, null, null)));

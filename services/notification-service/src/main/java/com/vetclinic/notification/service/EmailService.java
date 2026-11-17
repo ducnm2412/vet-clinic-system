@@ -2,6 +2,7 @@ package com.vetclinic.notification.service;
 
 import com.vetclinic.notification.messaging.AppointmentCreatedEvent;
 import com.vetclinic.notification.messaging.AppointmentNotificationEvent;
+import com.vetclinic.notification.messaging.OrderStatusChangedEvent;
 import org.springframework.web.util.HtmlUtils;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
@@ -172,6 +173,63 @@ public class EmailService {
 
         // Tiêu đề là văn bản thuần nên không escape HTML, nhưng phải bỏ ký tự xuống dòng: tên bé
         // chứa CR/LF là chèn được thêm header vào email.
+        send(event.customerEmail(), subject.replaceAll("[\r\n]+", " "), html.toString());
+        return true;
+    }
+
+    /**
+     * Thư báo khách khi đơn hàng đang giao, đã giao hoặc bị huỷ. Trả {@code false} với trạng thái không gửi
+     * thư (đã xác nhận chỉ báo trên chuông) — chỗ gọi bỏ qua chứ không coi là lỗi.
+     *
+     * Mã đơn, tên người nhận và lý do huỷ do khách hoặc nhân viên gõ nên mọi giá trị đều được escape.
+     */
+    public boolean sendOrderStatus(OrderStatusChangedEvent event) {
+        String code = event.orderCode() == null || event.orderCode().isBlank() ? "" : event.orderCode().trim();
+        String name = event.recipientName() == null || event.recipientName().isBlank()
+                ? "bạn" : event.recipientName().trim();
+        String link = frontendUrl + "/user/orders/" + event.orderId();
+        String status = event.status() == null ? "" : event.status();
+
+        StringBuilder html = new StringBuilder();
+        String subject;
+        switch (status) {
+            case "SHIPPING" -> {
+                subject = "Đơn hàng " + code + " đang được giao";
+                html.append("<p>Chào ").append(esc(name)).append(",</p>")
+                        .append("<p>Đơn hàng <strong>").append(esc(code))
+                        .append("</strong> đang trên đường giao đến bạn.</p>");
+                if ("COD".equals(event.paymentMethod())) {
+                    html.append("<p>Bạn thanh toán khi nhận hàng.</p>");
+                }
+                html.append("<p>Nhận được hàng, bạn vui lòng bấm <strong>Đã nhận hàng</strong> trong chi tiết đơn.</p>")
+                        .append(linkLine("Xem đơn hàng", link));
+            }
+            case "COMPLETED" -> {
+                subject = "Đơn hàng " + code + " đã giao xong";
+                html.append("<p>Chào ").append(esc(name)).append(",</p>")
+                        .append("<p>Đơn hàng <strong>").append(esc(code))
+                        .append("</strong> đã giao xong. Cảm ơn bạn đã mua hàng tại VetClinic.</p>")
+                        .append(linkLine("Xem đơn hàng", link));
+            }
+            case "CANCELLED" -> {
+                subject = "Đơn hàng " + code + " đã bị huỷ";
+                html.append("<p>Chào ").append(esc(name)).append(",</p>")
+                        .append("<p>Đơn hàng <strong>").append(esc(code)).append("</strong> đã bị huỷ.</p>");
+                if (event.cancelReason() != null && !event.cancelReason().isBlank()) {
+                    html.append("<p>Lý do: ").append(esc(event.cancelReason().trim())).append("</p>");
+                }
+                if (event.refundNeeded()) {
+                    html.append("<p>Bạn đã thanh toán online nên cửa hàng sẽ hoàn lại tiền cho bạn.</p>");
+                }
+                html.append("<p>Rất tiếc về sự bất tiện này. Bạn có thể đặt lại bất cứ lúc nào.</p>")
+                        .append(linkLine("Xem đơn hàng", link));
+            }
+            default -> {
+                return false;
+            }
+        }
+        html.append("<p>VetClinic</p>");
+
         send(event.customerEmail(), subject.replaceAll("[\r\n]+", " "), html.toString());
         return true;
     }

@@ -83,6 +83,28 @@ class StaffSecurityTest {
     }
 
     @Test
+    void onlyAdminSeesAndRecordsLeaves() throws Exception {
+        String body = """
+                {"userId":"%s","dates":["2026-10-05"],"reason":"Ốm"}
+                """.formatted(UUID.randomUUID());
+        for (String role : List.of("STAFF", "DOCTOR", "CUSTOMER")) {
+            mockMvc.perform(post("/staff/leaves").header("Authorization", bearer(role))
+                            .contentType(MediaType.APPLICATION_JSON).content(body))
+                    .andExpect(status().isForbidden());
+            mockMvc.perform(get("/staff/leaves").header("Authorization", bearer(role))
+                            .param("from", "2026-10-01").param("to", "2026-10-07"))
+                    .andExpect(status().isForbidden());
+        }
+        mockMvc.perform(get("/staff/leaves").param("from", "2026-10-01").param("to", "2026-10-07"))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(post("/staff/leaves").header("Authorization", bearer("ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.created.length()").value(1));
+    }
+
+    @Test
     void customersHaveNoBusinessWithAttendance() throws Exception {
         String customer = bearer("CUSTOMER");
         mockMvc.perform(post("/staff/attendance/check-in").header("Authorization", customer))

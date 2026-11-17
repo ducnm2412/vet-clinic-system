@@ -32,6 +32,7 @@ import com.vetclinic.order.messaging.InvoicePaidEvent;
 import com.vetclinic.order.messaging.OrderCancelledEvent;
 import com.vetclinic.order.messaging.OrderCompletedEvent;
 import com.vetclinic.order.messaging.OrderPlacedEvents;
+import com.vetclinic.order.messaging.OrderStatusChangedEvent;
 import com.vetclinic.order.payment.GatewayUnavailableException;
 import com.vetclinic.order.payment.OnlinePaymentGateway;
 import com.vetclinic.order.repository.CartRepository;
@@ -92,8 +93,12 @@ public class OrderService {
 
     // ---------- CN-33: đặt hàng ----------
 
-    @Transactional
     public OrderResponse checkout(UUID userId, CheckoutRequest request) {
+        return checkout(userId, null, request);
+    }
+
+    @Transactional
+    public OrderResponse checkout(UUID userId, String customerEmail, CheckoutRequest request) {
         // Không cho đặt đơn online khi chưa có cổng để trả: đơn sẽ kẹt chờ thanh toán rồi tự huỷ.
         if (request.paymentMethod() == PaymentMethod.ONLINE && onlineGateway.getIfAvailable() == null) {
             throw new GatewayUnavailableException();
@@ -107,6 +112,7 @@ public class OrderService {
         Order order = Order.builder()
                 .orderCode(generateOrderCode())
                 .userId(userId)
+                .customerEmail(customerEmail)
                 .status(OrderStatus.PENDING)
                 .paymentMethod(request.paymentMethod())
                 .recipientName(request.recipientName())
@@ -753,6 +759,7 @@ public class OrderService {
         order.setCancelledAt(Instant.now());
         order.setCancelReason(reason);
         recordHistory(order, from, OrderStatus.CANCELLED, requesterId, reason);
+        publishStatusChanged(order, requesterId);
         if (isRefundRequired(order)) {
             log.warn("Đơn {} đã thanh toán online nhưng bị huỷ — cần hoàn tiền thủ công", order.getOrderCode());
             recordHistory(order, OrderStatus.CANCELLED, OrderStatus.CANCELLED, requesterId,
@@ -803,6 +810,7 @@ public class OrderService {
         order.setCancelReason("Quá hạn thanh toán online");
         recordHistory(order, OrderStatus.PENDING, OrderStatus.CANCELLED, null,
                 "Tự huỷ do quá hạn thanh toán online");
+        publishStatusChanged(order, null);
         log.info("Đơn {} quá hạn thanh toán online, đã tự huỷ", order.getOrderCode());
         return true;
     }
@@ -825,8 +833,55 @@ public class OrderService {
 
         order.setStatus(target);
         recordHistory(order, from, target, actorId, note);
+        publishStatusChanged(order, actorId);
 
         return order;
+    }
+
+    /**
+     * Báo khách đơn vừa đổi trạng thái. Bỏ qua hoá đơn quầy (khách mua tại chỗ) và đơn không có tài khoản.
+     * actorId trùng chủ đơn nghĩa là chính khách vừa làm, thông báo sẽ không gửi lại cho họ.
+     */
+    private void publishStatusChanged(Order order, UUID actorId) {
+        if (order.getChannel() == OrderChannel.COUNTER || order.getUserId() == null) {
+            return;
+        }
+        eventPublisher.publishEvent(new OrderStatusChangedEvent(order.getId(), order.getOrderCode(),
+                order.getUserId(), order.getCustomerEmail(), order.getRecipientName(), order.getStatus().name(),
+                order.getPaymentMethod() == null ? null : order.getPaymentMethod().name(), order.getTotal(),
+                order.getCancelReason(), isRefundRequired(order), order.getUserId().equals(actorId)));
+    }
+
+    /** Khách xác nhận đã nhận được hàng: đơn đang giao chuyển sang hoàn tất, như khi nhân viên bấm Hoàn tất. */
+    @Transactional
+    public OrderResponse confirmReceived(UUID userId, UUID orderId) {
+        Order order = findOrThrow(orderId);
+        if (!userId.equals(order.getUserId())) {
+            // 404 thay vì 403: người lạ không dò được id đơn nào có thật.
+            throw new ResourceNotFoundException("Không tìm thấy đơn hàng: " + orderId);
+        }
+        if (order.getStatus() != OrderStatus.SHIPPING) {
+            throw new InvalidOrderStateException("Chỉ xác nhận đã nhận hàng khi đơn đang được giao");
+        }
+        return complete(orderId, userId, "Khách xác nhận đã nhận hàng");
+    }
+
+    /**
+     * Tự hoàn tất đơn đã giao mà khách không bấm "Đã nhận hàng". Gọi từ job quét định kỳ, mỗi đơn một transaction.
+     * Khoá dòng rồi xét lại trạng thái: khách hoặc nhân viên có thể vừa hoàn tất hay huỷ đơn giữa lúc job chọn đơn
+     * và lúc xử lý. Không có người thực hiện (changedBy rỗng), lịch sử ghi rõ là hệ thống tự làm.
+     *
+     * @return true nếu đơn vừa được hoàn tất
+     */
+    @Transactional
+    public boolean autoCompleteShippedOrder(UUID orderId, int afterDays) {
+        Order order = orderRepository.findByIdForUpdate(orderId).orElse(null);
+        if (order == null || order.getStatus() != OrderStatus.SHIPPING || order.getChannel() == OrderChannel.COUNTER) {
+            return false;
+        }
+        complete(orderId, null, "Tự động hoàn tất: đã giao quá " + afterDays + " ngày mà khách chưa xác nhận nhận hàng");
+        log.info("Đơn {} đã giao quá {} ngày, tự hoàn tất", order.getOrderCode(), afterDays);
+        return true;
     }
 
     private void recordHistory(Order order, OrderStatus from, OrderStatus to, UUID actorId, String note) {

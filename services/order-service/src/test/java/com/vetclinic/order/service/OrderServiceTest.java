@@ -22,6 +22,7 @@ import com.vetclinic.order.exception.StockServiceUnavailableException;
 import com.vetclinic.order.messaging.OrderCancelledEvent;
 import com.vetclinic.order.messaging.OrderCompletedEvent;
 import com.vetclinic.order.messaging.OrderPlacedEvent;
+import com.vetclinic.order.messaging.OrderStatusChangedEvent;
 import com.vetclinic.order.payment.GatewayUnavailableException;
 import com.vetclinic.order.payment.OnlinePaymentGateway;
 import com.vetclinic.order.repository.CartRepository;
@@ -347,6 +348,176 @@ class OrderServiceTest {
         // Không được bỏ qua bước xác nhận.
         assertThatThrownBy(() -> orderService.ship(order.getId(), UUID.randomUUID(), null))
                 .isInstanceOf(InvalidOrderStateException.class);
+    }
+
+    // ---------- Báo khách khi đơn đổi trạng thái ----------
+
+    /** Mọi OrderStatusChangedEvent đã phát (các sự kiện khác như trừ kho/hoàn kho bị bỏ qua). */
+    private List<OrderStatusChangedEvent> statusEvents() {
+        ArgumentCaptor<Object> captor = ArgumentCaptor.forClass(Object.class);
+        verify(eventPublisher, org.mockito.Mockito.atLeast(0)).publishEvent(captor.capture());
+        return captor.getAllValues().stream()
+                .filter(OrderStatusChangedEvent.class::isInstance)
+                .map(OrderStatusChangedEvent.class::cast)
+                .toList();
+    }
+
+    @Test
+    void staffMovingTheOrderAlong_tellsTheCustomerAtEveryStep() {
+        Order order = existingOrder(OrderStatus.PENDING);
+        order.setCustomerEmail("khach@example.com");
+        when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
+        UUID staff = UUID.randomUUID();
+
+        orderService.confirm(order.getId(), staff, null, TOKEN);
+        orderService.ship(order.getId(), staff, null);
+        orderService.complete(order.getId(), staff, null);
+
+        assertThat(statusEvents()).extracting(OrderStatusChangedEvent::status)
+                .containsExactly("CONFIRMED", "SHIPPING", "COMPLETED");
+        assertThat(statusEvents()).allSatisfy(e -> {
+            assertThat(e.customerUserId()).isEqualTo(userId);
+            assertThat(e.customerEmail()).isEqualTo("khach@example.com");
+            assertThat(e.orderCode()).isEqualTo("VC260825-AB12");
+            assertThat(e.byCustomer()).isFalse();
+        });
+    }
+
+    @Test
+    void staffCancelling_tellsTheCustomerWithReasonAndRefundFlag() {
+        Order order = onlineOrder(OrderStatus.PENDING, PaymentStatus.PAID);
+        when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
+
+        orderService.cancel(order.getId(), UUID.randomUUID(), true, "Hết hàng thực tế");
+
+        assertThat(statusEvents()).singleElement().satisfies(e -> {
+            assertThat(e.status()).isEqualTo("CANCELLED");
+            assertThat(e.cancelReason()).isEqualTo("Hết hàng thực tế");
+            assertThat(e.refundNeeded()).isTrue();
+            assertThat(e.byCustomer()).isFalse();
+        });
+    }
+
+    @Test
+    void customerCancellingTheirOwnOrder_isMarkedSoTheyAreNotNotifiedAboutIt() {
+        Order order = existingOrder(OrderStatus.PENDING);
+        when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
+
+        orderService.cancel(order.getId(), userId, false, "Đổi ý");
+
+        assertThat(statusEvents()).singleElement().satisfies(e -> assertThat(e.byCustomer()).isTrue());
+    }
+
+    @Test
+    void autoCancelledUnpaidOrder_tellsTheCustomer() {
+        Order order = onlineOrder(OrderStatus.PENDING, PaymentStatus.UNPAID);
+        order.setPaymentExpiresAt(Instant.now().minusSeconds(5));
+        when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
+
+        orderService.cancelExpiredUnpaidOrder(order.getId());
+
+        assertThat(statusEvents()).singleElement().satisfies(e -> {
+            assertThat(e.status()).isEqualTo("CANCELLED");
+            assertThat(e.cancelReason()).contains("Quá hạn");
+            assertThat(e.byCustomer()).isFalse();
+        });
+    }
+
+    @Test
+    void counterInvoice_neverNotifiesAnyone() {
+        Order order = existingOrder(OrderStatus.PENDING);
+        order.setChannel(OrderChannel.COUNTER);
+        when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
+
+        assertThatThrownBy(() -> orderService.ship(order.getId(), UUID.randomUUID(), null))
+                .isInstanceOf(InvalidOrderStateException.class);
+
+        assertThat(statusEvents()).isEmpty();
+    }
+
+    @Test
+    void checkout_remembersTheCustomerEmailFromTheirLogin() {
+        stubProduct(10, true, "150000");
+
+        orderService.checkout(userId, "khach@example.com", request());
+
+        ArgumentCaptor<Order> saved = ArgumentCaptor.forClass(Order.class);
+        verify(orderRepository).saveAndFlush(saved.capture());
+        assertThat(saved.getValue().getCustomerEmail()).isEqualTo("khach@example.com");
+    }
+
+    // ---------- Khách xác nhận đã nhận hàng ----------
+
+    @Test
+    void confirmReceived_completesTheShippingOrderAndLogsWhoDidIt() {
+        Order order = existingOrder(OrderStatus.SHIPPING);
+        when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
+
+        OrderResponse response = orderService.confirmReceived(userId, order.getId());
+
+        assertThat(response.status()).isEqualTo(OrderStatus.COMPLETED);
+        // COD: nhận hàng xong coi như đã thu tiền, giống nhân viên bấm Hoàn tất.
+        assertThat(response.paymentStatus()).isEqualTo(PaymentStatus.PAID);
+        ArgumentCaptor<OrderStatusHistory> history = ArgumentCaptor.forClass(OrderStatusHistory.class);
+        verify(historyRepository).save(history.capture());
+        assertThat(history.getValue().getChangedBy()).isEqualTo(userId);
+        assertThat(history.getValue().getNote()).contains("nhận hàng");
+        assertThat(statusEvents()).singleElement().satisfies(e -> assertThat(e.byCustomer()).isTrue());
+    }
+
+    @Test
+    void confirmReceived_onlyWorksWhileTheOrderIsBeingShipped() {
+        for (OrderStatus status : List.of(OrderStatus.PENDING, OrderStatus.CONFIRMED, OrderStatus.COMPLETED,
+                OrderStatus.CANCELLED)) {
+            Order order = existingOrder(status);
+            when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
+
+            assertThatThrownBy(() -> orderService.confirmReceived(userId, order.getId()))
+                    .isInstanceOf(InvalidOrderStateException.class);
+            assertThat(order.getStatus()).isEqualTo(status);
+        }
+    }
+
+    @Test
+    void confirmReceived_ofSomeoneElsesOrder_isNotFound() {
+        Order order = existingOrder(OrderStatus.SHIPPING);
+        when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
+
+        assertThatThrownBy(() -> orderService.confirmReceived(UUID.randomUUID(), order.getId()))
+                .isInstanceOf(ResourceNotFoundException.class);
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.SHIPPING);
+    }
+
+    // ---------- Tự hoàn tất đơn đã giao ----------
+
+    @Test
+    void autoComplete_completesAShippingOrderAsTheSystemAndTellsTheCustomer() {
+        Order order = existingOrder(OrderStatus.SHIPPING);
+        when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
+
+        assertThat(orderService.autoCompleteShippedOrder(order.getId(), 7)).isTrue();
+
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.COMPLETED);
+        assertThat(order.getPaymentStatus()).isEqualTo(PaymentStatus.PAID);
+        ArgumentCaptor<OrderStatusHistory> history = ArgumentCaptor.forClass(OrderStatusHistory.class);
+        verify(historyRepository).save(history.capture());
+        assertThat(history.getValue().getChangedBy()).isNull();
+        assertThat(history.getValue().getNote()).contains("Tự động").contains("7 ngày");
+        // Không phải khách tự bấm nên khách vẫn được báo đơn đã hoàn tất.
+        assertThat(statusEvents()).singleElement().satisfies(e -> assertThat(e.byCustomer()).isFalse());
+    }
+
+    @Test
+    void autoComplete_leavesOrdersThatAreNoLongerBeingShipped() {
+        for (OrderStatus status : List.of(OrderStatus.PENDING, OrderStatus.CONFIRMED, OrderStatus.COMPLETED,
+                OrderStatus.CANCELLED)) {
+            Order order = existingOrder(status);
+            when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
+
+            assertThat(orderService.autoCompleteShippedOrder(order.getId(), 7)).isFalse();
+            assertThat(order.getStatus()).isEqualTo(status);
+        }
+        verify(historyRepository, never()).save(any());
     }
 
     // ---------- Huỷ đơn ----------

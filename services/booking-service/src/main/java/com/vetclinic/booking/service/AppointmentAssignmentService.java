@@ -92,6 +92,7 @@ public class AppointmentAssignmentService {
 
         LocalDate date = appointment.getPreferredDate();
         LocalTime time = appointment.getPreferredTime();
+        requireOnShift(doctorUserId, date, time);
         // Chỉ cần giờ chưa trôi qua: lúc khách gửi, giờ đã được kiểm tra hợp lệ rồi.
         LocalDate today = LocalDate.now(ClinicSchedule.ZONE_ID);
         if (date.isBefore(today)
@@ -125,6 +126,7 @@ public class AppointmentAssignmentService {
         }
         requestService.requireBookableTime(date, time);
         requireActiveDoctor(doctorUserId);
+        requireOnShift(doctorUserId, date, time);
 
         appointmentRepository.advisoryLock(AppointmentRequestService.lockKey(date, time));
 
@@ -178,6 +180,19 @@ public class AppointmentAssignmentService {
                 .orElseThrow(() -> new ResourceNotFoundException("Appointment not found: " + appointmentId));
     }
 
+    /**
+     * Chỉ xếp lịch cho bác sĩ có ca làm việc bao trùm giờ khám, dù bác sĩ chưa chấm công (chấm công là việc
+     * xảy ra trong ngày, còn lịch thì xếp trước). Ca nửa ngày xếp từ trước vẫn đúng: ca 08–12 không nhận lịch 14:00.
+     */
+    private void requireOnShift(UUID doctorUserId, LocalDate date, LocalTime time) {
+        boolean onShift = doctorShiftRepository.findByDoctorUserIdAndDate(doctorUserId, date).stream()
+                .anyMatch(shift -> shift.covers(time));
+        if (!onShift) {
+            throw conflict("Bác sĩ này không có ca làm việc lúc " + time + " ngày " + date.format(DATE_VN)
+                    + ". Hãy xếp ca cho bác sĩ ở trang Lịch làm việc trước, hoặc chọn bác sĩ khác.");
+        }
+    }
+
     private void requireActiveDoctor(UUID doctorUserId) {
         boolean active = doctorDirectory.activeDoctors().stream().anyMatch(d -> doctorUserId.equals(d.userId()));
         if (!active) {
@@ -211,6 +226,9 @@ public class AppointmentAssignmentService {
         slot.setStatus(SlotStatus.AVAILABLE);
         slotRepository.saveAndFlush(slot);
     }
+
+    private static final java.time.format.DateTimeFormatter DATE_VN =
+            java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     private DoctorAvailabilityResponse toAvailability(DoctorSummaryResponse doctor, LocalDate date, LocalTime time,
                                                       Appointment appointment) {

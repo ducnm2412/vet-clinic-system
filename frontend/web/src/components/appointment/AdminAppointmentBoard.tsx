@@ -267,7 +267,8 @@ export function AdminAppointmentBoard() {
         id: d.doctorUserId,
         name: doctorName(d.fullName),
         specialty: d.specialty,
-        state: d.free ? "free" : "busy",
+        // Chỉ bác sĩ có ca làm việc giờ đó (dù chưa chấm công) và đang rảnh mới xếp được.
+        state: !d.free ? "busy" : d.onShift ? "free" : "noShift",
         onShift: d.onShift,
         load: d.dayLoad,
         source: d,
@@ -361,7 +362,8 @@ export function AdminAppointmentBoard() {
 
           {assignable && selected && !availability.isLoading && !availability.isError && freeCount === 0 && (
             <div className="mt-3 flex flex-wrap items-center gap-3 rounded-[var(--radius-control)] bg-amber-wash px-3 py-2.5 text-sm text-ink">
-              Giờ này không bác sĩ nào rảnh. Chọn một giờ khác còn bác sĩ trống và gửi đề xuất cho khách.
+              Giờ này không có bác sĩ nào vừa có ca làm việc vừa rảnh. Hãy xếp ca ở trang Lịch làm việc, hoặc chọn giờ
+              khác còn bác sĩ trống và gửi đề xuất cho khách.
               <Button
                 size="sm"
                 className="ml-auto"
@@ -490,8 +492,8 @@ interface DoctorBox {
   id: string;
   name: string;
   specialty: string | null;
-  /** idle: chưa chọn lịch nào; free/busy: rảnh hay bận đúng giờ của lịch đang chọn. */
-  state: "idle" | "free" | "busy";
+  /** idle: chưa chọn lịch nào; free/busy: rảnh hay bận đúng giờ của lịch đang chọn; noShift: rảnh nhưng chưa có ca. */
+  state: "idle" | "free" | "busy" | "noShift";
   onShift: boolean;
   load: number;
   source: DoctorAvailability | null;
@@ -519,7 +521,7 @@ function DoctorCard({
       className={cn(
         "flex min-h-[6.5rem] w-56 items-start gap-3 rounded-[var(--radius-control)] border p-3 text-left transition-colors",
         d.state === "free" && "border-moss/60 bg-moss-wash hover:border-moss focus-visible:border-moss",
-        d.state === "busy" && "cursor-not-allowed border-line bg-paper opacity-70",
+        (d.state === "busy" || d.state === "noShift") && "cursor-not-allowed border-line bg-paper opacity-70",
         d.state === "idle" && "cursor-default border-line bg-surface",
       )}
     >
@@ -535,7 +537,10 @@ function DoctorCard({
         <span className="mt-1.5 flex flex-wrap gap-1">
           {d.state === "free" && asked && <Tag className="border-moss/50 text-moss">Rảnh {formatTime(asked.time)}</Tag>}
           {d.state === "busy" && asked && <Tag className="border-danger/40 text-danger">Bận {formatTime(asked.time)}</Tag>}
-          {d.onShift && <Tag>Có ca trực</Tag>}
+          {d.state === "noShift" && asked && (
+            <Tag className="border-danger/40 text-danger">Chưa có ca {formatDate(asked.date).slice(0, 5)}</Tag>
+          )}
+          {d.onShift && <Tag>Có ca làm việc</Tag>}
           <Tag>{d.state === "idle" ? `${d.load} lịch ngày ${dayLabel}` : `${d.load} lịch trong ngày`}</Tag>
         </span>
       </span>

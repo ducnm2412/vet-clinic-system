@@ -50,6 +50,28 @@ class ShiftServiceTest {
     }
 
     @Test
+    void withoutTimes_aShiftIsTheClinicsFixedWorkingDay() {
+        Shifts.CreateResult result = shiftService.create(
+                new Shifts.CreateRequest(doctor, List.of(monday), null, null, null), admin);
+
+        assertThat(result.created()).singleElement().satisfies(shift -> {
+            assertThat(shift.startTime()).isEqualTo(LocalTime.of(8, 0));
+            assertThat(shift.endTime()).isEqualTo(LocalTime.of(17, 0));
+        });
+    }
+
+    @Test
+    void schedulingTheSameFixedShiftAgainIsSkipped() {
+        shiftService.create(new Shifts.CreateRequest(doctor, List.of(monday), null, null, null), admin);
+
+        Shifts.CreateResult again = shiftService.create(
+                new Shifts.CreateRequest(doctor, List.of(monday), null, null, null), admin);
+
+        assertThat(again.created()).isEmpty();
+        assertThat(again.skipped()).containsExactly(monday);
+    }
+
+    @Test
     void schedulingTheSameShiftAgainIsSkippedNotDuplicated() {
         shiftService.create(week(monday), admin);
 

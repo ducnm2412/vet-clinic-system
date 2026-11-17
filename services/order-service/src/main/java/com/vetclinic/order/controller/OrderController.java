@@ -54,7 +54,7 @@ public class OrderController {
     @ResponseStatus(HttpStatus.CREATED)
     public OrderResponse checkout(@Valid @RequestBody CheckoutRequest request,
                                   Authentication authentication) {
-        return orderService.checkout(userId(authentication), request);
+        return orderService.checkout(userId(authentication), emailOf(authentication), request);
     }
 
     @GetMapping
@@ -161,6 +161,16 @@ public class OrderController {
                                           @Valid @RequestBody CancelOrderRequest request,
                                           Authentication authentication) {
         return orderService.cancel(id, userId(authentication), isStaff(authentication), request.reason());
+    }
+
+    /** Khách xác nhận đã nhận được hàng (đơn đang giao). */
+    @PostMapping("/{id}/received")
+    public OrderResponse confirmReceived(@PathVariable UUID id, Authentication authentication) {
+        return orderService.confirmReceived(userId(authentication), id);
+    }
+
+    private String emailOf(Authentication authentication) {
+        return ((AuthenticatedUser) authentication.getPrincipal()).email();
     }
 
     private UUID userId(Authentication authentication) {

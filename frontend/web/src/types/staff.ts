@@ -19,8 +19,9 @@ export interface ShiftCreateRequest {
   userId: string;
   /** Xếp nhiều ngày một lượt, tối đa 31 ngày. */
   dates: string[];
-  startTime: string;
-  endTime: string;
+  /** Bỏ trống thì lấy giờ làm việc cố định của phòng khám (08:00–17:00). */
+  startTime?: string;
+  endTime?: string;
   note?: string;
 }
 
@@ -28,6 +29,29 @@ export interface ShiftCreateResult {
   created: Shift[];
   /** Ngày đã có sẵn đúng ca này từ trước — không phải lỗi. */
   skipped: string[];
+}
+
+/** Ngày nghỉ do admin ghi tay khi có người báo nghỉ. */
+export interface Leave {
+  id: string;
+  userId: string;
+  /** yyyy-MM-dd */
+  date: string;
+  reason: string | null;
+}
+
+export interface LeaveCreateRequest {
+  userId: string;
+  dates: string[];
+  reason?: string;
+}
+
+export interface LeaveCreateResult {
+  created: Leave[];
+  /** Ngày đã ghi nghỉ từ trước. */
+  skipped: string[];
+  /** Số ca đã xếp trong các ngày nghỉ bị gỡ. */
+  removedShifts: number;
 }
 
 export interface AttendanceRecord {

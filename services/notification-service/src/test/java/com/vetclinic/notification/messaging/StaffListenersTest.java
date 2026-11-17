@@ -133,4 +133,57 @@ class StaffListenersTest {
         verify(notifications).removeByType(user, "PROFILE_SETUP");
         verify(notifications, never()).removeByType(eq(null), anyString());
     }
+
+    // ---------- báo khách khi đơn hàng đổi trạng thái ----------
+
+    private static OrderStatusChangedEvent orderEvent(String status, String email, UUID customer, boolean byCustomer) {
+        return new OrderStatusChangedEvent(UUID.randomUUID(), "VC-1", customer, email, "Lan", status, "COD",
+                new java.math.BigDecimal("100000"), null, false, byCustomer);
+    }
+
+    @Test
+    void orderStatusChange_savesABellMessageForTheCustomer() {
+        UUID customer = UUID.randomUUID();
+
+        new OrderStatusInAppListener(notifications).onOrderStatusChanged(orderEvent("SHIPPING", "k@example.com",
+                customer, false));
+
+        verify(notifications).create(eq(customer), eq("ORDER_SHIPPING"), anyString(), anyString(),
+                org.mockito.ArgumentMatchers.startsWith("/user/orders/"));
+    }
+
+    @Test
+    void whatTheCustomerDidThemselves_isNotReportedBackToThem() {
+        var emailService = mock(com.vetclinic.notification.service.EmailService.class);
+        var event = orderEvent("CANCELLED", "k@example.com", UUID.randomUUID(), true);
+
+        new OrderStatusInAppListener(notifications).onOrderStatusChanged(event);
+        new OrderStatusEmailListener(emailService).onOrderStatusChanged(event);
+
+        verifyNoInteractions(notifications, emailService);
+    }
+
+    @Test
+    void orderWithoutAccountOrUnknownStatus_getsNoBellMessage() {
+        var listener = new OrderStatusInAppListener(notifications);
+
+        listener.onOrderStatusChanged(orderEvent("SHIPPING", null, null, false));
+        listener.onOrderStatusChanged(orderEvent("PENDING", null, UUID.randomUUID(), false));
+
+        verifyNoInteractions(notifications);
+    }
+
+    @Test
+    void orderMail_isSentOnlyWhenThereIsAnAddress() {
+        var emailService = mock(com.vetclinic.notification.service.EmailService.class);
+        var listener = new OrderStatusEmailListener(emailService);
+
+        listener.onOrderStatusChanged(orderEvent("SHIPPING", null, UUID.randomUUID(), false));
+        listener.onOrderStatusChanged(orderEvent("SHIPPING", " ", UUID.randomUUID(), false));
+        verifyNoInteractions(emailService);
+
+        var event = orderEvent("SHIPPING", "k@example.com", UUID.randomUUID(), false);
+        listener.onOrderStatusChanged(event);
+        verify(emailService).sendOrderStatus(event);
+    }
 }

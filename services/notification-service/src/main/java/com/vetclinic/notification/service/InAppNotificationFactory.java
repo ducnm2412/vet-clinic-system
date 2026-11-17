@@ -1,6 +1,7 @@
 package com.vetclinic.notification.service;
 
 import com.vetclinic.notification.messaging.AppointmentNotificationEvent;
+import com.vetclinic.notification.messaging.OrderStatusChangedEvent;
 
 import java.time.format.DateTimeFormatter;
 import java.util.Optional;
@@ -53,6 +54,41 @@ public final class InAppNotificationFactory {
                     "/appointments/create"));
             default -> Optional.empty();
         };
+    }
+
+    /** Thông báo cho khách khi đơn hàng đổi trạng thái. Rỗng với trạng thái không biết (ví dụ PENDING). */
+    public static Optional<Content> forOrder(OrderStatusChangedEvent event) {
+        String code = event.orderCode() == null || event.orderCode().isBlank() ? "của bạn" : event.orderCode().trim();
+        String link = event.orderId() == null ? "/user/orders" : "/user/orders/" + event.orderId();
+        String status = event.status() == null ? "" : event.status();
+
+        return switch (status) {
+            case "CONFIRMED" -> Optional.of(new Content(
+                    "Đơn hàng " + code + " đã được xác nhận",
+                    "Cửa hàng đã xác nhận đơn và đang chuẩn bị hàng cho bạn.",
+                    link));
+            case "SHIPPING" -> Optional.of(new Content(
+                    "Đơn hàng " + code + " đang được giao",
+                    "Đơn đang trên đường giao đến bạn"
+                            + ("COD".equals(event.paymentMethod()) ? ", bạn thanh toán khi nhận hàng" : "")
+                            + ". Nhận được hàng, bạn nhớ bấm \"Đã nhận hàng\" trong chi tiết đơn nhé.",
+                    link));
+            case "COMPLETED" -> Optional.of(new Content(
+                    "Đơn hàng " + code + " đã giao xong",
+                    "Đơn đã hoàn tất. Cảm ơn bạn đã mua hàng tại VetClinic.",
+                    link));
+            case "CANCELLED" -> Optional.of(new Content(
+                    "Đơn hàng " + code + " đã bị huỷ",
+                    "Đơn đã bị huỷ" + reason(event) + "."
+                            + (event.refundNeeded() ? " Cửa hàng sẽ hoàn lại tiền bạn đã thanh toán." : ""),
+                    link));
+            default -> Optional.empty();
+        };
+    }
+
+    private static String reason(OrderStatusChangedEvent event) {
+        return event.cancelReason() == null || event.cancelReason().isBlank()
+                ? "" : " (lý do: " + event.cancelReason().trim() + ")";
     }
 
     private static String when(java.time.LocalDate date, java.time.LocalTime time) {

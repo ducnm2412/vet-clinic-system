@@ -23,8 +23,10 @@ public final class Shifts {
             // Ngày gửi dạng "2026-09-28"; Jackson tự đọc ISO nên không cần @DateTimeFormat ở đây
             // (annotation đó dành cho tham số query, và không đặt được vào tham số kiểu generic).
             @NotNull @Size(min = 1, max = 31) List<@NotNull LocalDate> dates,
-            @NotNull LocalTime startTime,
-            @NotNull LocalTime endTime,
+            // Bỏ trống thì lấy giờ làm việc cố định của phòng khám (08:00–17:00). Vẫn nhận giờ riêng để
+            // tương thích với client cũ và các ca nửa ngày đã xếp từ trước.
+            LocalTime startTime,
+            LocalTime endTime,
             @Size(max = 500) String note
     ) {
     }

@@ -37,6 +37,8 @@ export const orderApi = {
   byId: (id: string) => devMock(http.get<Order>(`/orders/${id}`), () => mockOrderDetail(id)), // MOCK-TẠM
   history: (id: string) => devMock(http.get<OrderStatusHistory[]>(`/orders/${id}/history`), () => mockOrderHistory(id)), // MOCK-TẠM
   cancelMine: (id: string, reason: string) => http.post<Order>(`/orders/${id}/cancel`, { reason }),
+  /** Khách xác nhận đã nhận được hàng (đơn đang giao): đơn chuyển sang hoàn tất. */
+  confirmReceived: (id: string) => http.post<Order>(`/orders/${id}/received`),
 
   /** Lấy link sang cổng để trả tiền đơn online. Mỗi lần gọi cấp link mới và vô hiệu link cũ. */
   startPayment: (id: string) => http.post<PaymentInit>(`/orders/${id}/pay`),

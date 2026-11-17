@@ -17,6 +17,7 @@ public class RabbitMQConfig {
     public static final String ROUTING_KEY_ORDER_CANCELLED = "order.cancelled";
     public static final String ROUTING_KEY_INVOICE_PAID = "order.invoice-paid";
     public static final String ROUTING_KEY_ORDER_PLACED = "order.placed";
+    public static final String ROUTING_KEY_ORDER_STATUS_CHANGED = "order.status-changed";
 
     // payment-service là chủ gốc của exchange này; khai y hệt (true, false) để nhận payment.amount-set.
     public static final String PAYMENT_EVENTS_EXCHANGE = "payment.events";

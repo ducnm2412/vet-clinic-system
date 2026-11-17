@@ -4,6 +4,7 @@ import com.vetclinic.staff.domain.Shift;
 import com.vetclinic.staff.dto.Shifts;
 import com.vetclinic.staff.exception.StaffExceptions;
 import com.vetclinic.staff.messaging.ShiftChangedEvent;
+import com.vetclinic.staff.repository.LeaveRepository;
 import com.vetclinic.staff.repository.ShiftRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
@@ -31,13 +33,29 @@ public class ShiftService {
 
     static final long MAX_RANGE_DAYS = 366;
 
+    /** Giờ làm việc cố định của phòng khám: một ca là cả ngày 08:00–17:00 (nghỉ trưa nằm trong ca). */
+    public static final LocalTime DEFAULT_START = LocalTime.of(8, 0);
+    public static final LocalTime DEFAULT_END = LocalTime.of(17, 0);
+
     private final ShiftRepository shiftRepository;
+    private final LeaveRepository leaveRepository;
     private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public Shifts.CreateResult create(Shifts.CreateRequest request, UUID actorId) {
-        if (!request.endTime().isAfter(request.startTime())) {
+        LocalTime start = request.startTime() == null ? DEFAULT_START : request.startTime();
+        LocalTime end = request.endTime() == null ? DEFAULT_END : request.endTime();
+        if (!end.isAfter(start)) {
             throw new StaffExceptions.InvalidRequestException("Giờ kết thúc phải sau giờ bắt đầu");
+        }
+
+        // Người đang nghỉ thì không xếp ca vào ngày đó; muốn xếp phải bỏ ngày nghỉ trước.
+        List<LocalDate> onLeave = leaveRepository.findByUserIdAndDateIn(request.userId(), request.dates()).stream()
+                .map(l -> l.getDate()).sorted().toList();
+        if (!onLeave.isEmpty()) {
+            throw new StaffExceptions.InvalidRequestException("Người này đang nghỉ các ngày: "
+                    + onLeave.stream().map(d -> d.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")))
+                    .collect(java.util.stream.Collectors.joining(", ")) + ". Hãy bỏ ngày nghỉ trước khi xếp ca.");
         }
 
         List<Shifts.Response> created = new ArrayList<>();
@@ -45,14 +63,14 @@ public class ShiftService {
 
         for (LocalDate date : request.dates().stream().distinct().sorted().toList()) {
             // Xếp lại đúng ca đã có thì bỏ qua, không báo lỗi: admin bấm lại cả tuần là chuyện thường.
-            if (shiftRepository.existsByUserIdAndDateAndStartTime(request.userId(), date, request.startTime())) {
+            if (shiftRepository.existsByUserIdAndDateAndStartTime(request.userId(), date, start)) {
                 skipped.add(date);
                 continue;
             }
 
             Shift shift = shiftRepository.saveAndFlush(Shift.builder()
                     .userId(request.userId()).date(date)
-                    .startTime(request.startTime()).endTime(request.endTime())
+                    .startTime(start).endTime(end)
                     .note(request.note()).createdBy(actorId).build());
             created.add(toResponse(shift));
             eventPublisher.publishEvent(ShiftChangedEvent.added(shift.getUserId(), shift.getDate(),

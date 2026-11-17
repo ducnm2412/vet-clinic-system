@@ -47,4 +47,29 @@ class CustomerOrderListQueryTest {
                 .containsExactlyInAnyOrder("T-ONLINE", "T-ONLINE-CANCELLED", "T-WAITING", "T-PAID");
         assertThat(page.getTotalElements()).isEqualTo(4);
     }
+
+    // ---------- Đơn đã giao quá lâu ----------
+
+    private UUID insertShipping(String code, String channel, String shippedAgo) {
+        UUID userId = UUID.randomUUID();
+        insert(userId, code, "SHIPPING", channel, "UNPAID");
+        UUID orderId = jdbc.queryForObject("SELECT id FROM orders WHERE order_code = ?", UUID.class, code);
+        jdbc.update("INSERT INTO order_status_history (id, order_id, from_status, to_status, created_at) "
+                + "VALUES (?, ?, 'CONFIRMED', 'SHIPPING', now() - CAST(? AS interval))",
+                UUID.randomUUID(), orderId, shippedAgo);
+        return orderId;
+    }
+
+    @Test
+    void shippingOrdersAreFoundOnlyOnceTheyHaveBeenShippingLongEnough() {
+        UUID old = insertShipping("T-OLD", "ONLINE", "8 days");
+        insertShipping("T-RECENT", "ONLINE", "2 days");
+        insertShipping("T-COUNTER", "COUNTER", "30 days");
+        insert(UUID.randomUUID(), "T-DONE", "COMPLETED", "ONLINE", "PAID");
+
+        var ids = orders.findShippingOrderIdsShippedBefore(
+                java.time.Instant.now().minus(java.time.Duration.ofDays(7)), PageRequest.ofSize(10));
+
+        assertThat(ids).containsExactly(old);
+    }
 }

@@ -47,4 +47,11 @@ public class OrderEventPublisher {
                 RabbitMQConfig.ROUTING_KEY_ORDER_PLACED, event);
         log.info("Đã phát order.placed cho đơn {} ({})", event.orderCode(), event.paymentMethod());
     }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onOrderStatusChanged(OrderStatusChangedEvent event) {
+        rabbitTemplate.convertAndSend(RabbitMQConfig.ORDER_EVENTS_EXCHANGE,
+                RabbitMQConfig.ROUTING_KEY_ORDER_STATUS_CHANGED, event);
+        log.info("Đã phát order.status-changed cho đơn {} → {}", event.orderCode(), event.status());
+    }
 }

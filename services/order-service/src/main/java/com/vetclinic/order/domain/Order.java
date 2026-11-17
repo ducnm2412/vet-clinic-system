@@ -59,6 +59,10 @@ public class Order {
     @Column(name = "payment_method", length = 20)
     private PaymentMethod paymentMethod;
 
+    // Email của khách lúc đặt (từ token). Trống với đơn cũ và hoá đơn quầy.
+    @Column(name = "customer_email", length = 255)
+    private String customerEmail;
+
     @Column(name = "recipient_name", nullable = false, length = 200)
     private String recipientName;
 

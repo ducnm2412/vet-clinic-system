@@ -39,6 +39,20 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
             order by o.paymentExpiresAt""")
     List<UUID> findExpiredUnpaidOnlineOrderIds(@Param("now") Instant now, Pageable pageable);
 
+    /**
+     * Id các đơn online đang giao mà đã chuyển sang "đang giao" từ trước {@code shippedBefore}, cũ nhất trước.
+     * Mốc là lần cuối đơn được chuyển sang SHIPPING trong lịch sử trạng thái.
+     */
+    @Query("""
+            select o.id from Order o
+            where o.status = com.vetclinic.order.domain.OrderStatus.SHIPPING
+              and o.channel <> com.vetclinic.order.domain.OrderChannel.COUNTER
+              and (select max(h.createdAt) from OrderStatusHistory h
+                   where h.order.id = o.id
+                     and h.toStatus = com.vetclinic.order.domain.OrderStatus.SHIPPING) < :shippedBefore
+            order by o.createdAt""")
+    List<UUID> findShippingOrderIdsShippedBefore(@Param("shippedBefore") Instant shippedBefore, Pageable pageable);
+
     /** Khoá dòng khi xử lý kết quả cổng để hai thông báo cùng lúc không ghi đè nhau. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select o from Order o where o.gatewayTxnRef = :txnRef")
