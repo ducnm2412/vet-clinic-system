@@ -12,6 +12,6 @@ public final class OrderPlacedEvents {
         return new OrderPlacedEvent(order.getId(), order.getOrderCode(), order.getTotal(),
                 order.getItems() == null ? 0 : order.getItems().size(),
                 order.getPaymentMethod() == null ? null : order.getPaymentMethod().name(),
-                order.getRecipientName());
+                order.getRecipientName(), order.getAssignedStaffId(), order.getAssignedStaffName());
     }
 }

@@ -70,8 +70,10 @@ public class OrderController {
     @GetMapping("/manage")
     public PageResponse<OrderSummaryResponse> listAllOrders(
             @RequestParam(required = false) OrderStatus status,
+            // Chỉ đơn của một nhân viên phụ trách (tab "Đơn của tôi" truyền id của chính mình).
+            @RequestParam(required = false) UUID assignedTo,
             @PageableDefault(size = 20) Pageable pageable) {
-        return orderService.listAllOrders(status, pageable);
+        return orderService.listAllOrders(status, assignedTo, pageable);
     }
 
     @GetMapping("/manage/{id}")
@@ -112,6 +114,12 @@ public class OrderController {
                                                @RequestHeader("Authorization") String bearerToken,
                                                Authentication authentication) {
         return orderService.collectCounterInvoice(id, userId(authentication), request, bearerToken);
+    }
+
+    /** Nhận phụ trách đơn: khi người được chia đang bận hoặc đơn chưa chia cho ai. */
+    @PostMapping("/manage/{id}/claim")
+    public OrderResponse claim(@PathVariable UUID id, Authentication authentication) {
+        return orderService.claim(id, userId(authentication));
     }
 
     @PostMapping("/manage/{id}/confirm")

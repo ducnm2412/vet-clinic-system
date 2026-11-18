@@ -43,6 +43,7 @@ public class OnlinePaymentService {
     private final ObjectProvider<OnlinePaymentGateway> gatewayProvider;
     private final ObjectProvider<MockPaymentGateway> mockGatewayProvider;
     private final ApplicationEventPublisher eventPublisher;
+    private final StaffAssigner staffAssigner;
 
     /**
      * Cấp link trả tiền cho đơn của chính khách. Mỗi lần gọi cấp mã giao dịch mới và vô hiệu mã cũ,
@@ -189,6 +190,7 @@ public class OnlinePaymentService {
                     result.gatewayTransactionNo());
             recordNote(order, "Khách đã thanh toán online (giao dịch " + result.gatewayTransactionNo() + ")");
             // Tiền đã về nên nhân viên xác nhận được rồi: báo nhân viên quầy có đơn mới.
+            staffAssigner.assign(order);
             eventPublisher.publishEvent(OrderPlacedEvents.of(order));
         }
         return respond(Outcome.PAID, order);

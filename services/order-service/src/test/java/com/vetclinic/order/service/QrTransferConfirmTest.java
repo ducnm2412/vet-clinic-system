@@ -56,7 +56,8 @@ class QrTransferConfirmTest {
 
     @BeforeEach
     void setUp() {
-        service = new OnlinePaymentService(orderRepository, historyRepository, gatewayProvider, mockGatewayProvider, eventPublisher);
+        service = new OnlinePaymentService(orderRepository, historyRepository, gatewayProvider, mockGatewayProvider, eventPublisher,
+                org.mockito.Mockito.mock(StaffAssigner.class));
         when(gatewayProvider.getIfAvailable()).thenReturn(new QrTransferGateway("/pay/qr"));
 
         staffId = UUID.randomUUID();

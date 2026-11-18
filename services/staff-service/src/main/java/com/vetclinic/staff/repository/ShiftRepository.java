@@ -21,4 +21,8 @@ public interface ShiftRepository extends JpaRepository<Shift, UUID> {
             + "ORDER BY s.date, s.startTime, s.userId")
     List<Shift> search(@Param("from") LocalDate from, @Param("to") LocalDate to,
                        @Param("userId") UUID userId);
+
+    /** Những ai có ca trong ngày (mỗi người một lần dù có nhiều ca). */
+    @Query("SELECT DISTINCT s.userId FROM Shift s WHERE s.date = :date")
+    List<UUID> findUserIdsWithShiftOn(@Param("date") LocalDate date);
 }

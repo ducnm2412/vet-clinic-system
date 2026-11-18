@@ -74,7 +74,8 @@ class ExamInvoiceTest {
     @BeforeEach
     void setUp() {
         orderService = new OrderService(orderRepository, historyRepository, cartRepository,
-                cartService, productClient, paymentClient, new ObjectMapper(), eventPublisher, onlineGateway);
+                cartService, productClient, paymentClient, new ObjectMapper(), eventPublisher, onlineGateway,
+                org.mockito.Mockito.mock(StaffAssigner.class));
         ReflectionTestUtils.setField(orderService, "shippingFee", new BigDecimal("30000"));
         examInvoiceService = new ExamInvoiceService(orderService, customerInfoLookup);
 

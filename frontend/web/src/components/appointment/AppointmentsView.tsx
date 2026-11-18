@@ -114,14 +114,7 @@ export function AppointmentsView() {
           </div>
         ) : a.status === "CONFIRMED" ? (
           <div className="flex justify-end gap-1">
-            <Button
-              size="sm"
-              variant="secondary"
-              loading={updateStatus.isPending && updateStatus.variables?.id === a.id}
-              onClick={() => updateStatus.mutate({ id: a.id, next: "COMPLETED" })}
-            >
-              Đã khám
-            </Button>
+            {/* "Đã khám" không có ở đây: bác sĩ lưu bệnh án thì lịch tự chuyển sang đã khám. */}
             <Button
               size="sm"
               variant="ghost"

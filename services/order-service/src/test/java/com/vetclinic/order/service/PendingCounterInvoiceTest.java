@@ -77,7 +77,8 @@ class PendingCounterInvoiceTest {
     @BeforeEach
     void setUp() {
         orderService = new OrderService(orderRepository, historyRepository, cartRepository,
-                cartService, productClient, paymentClient, new ObjectMapper(), eventPublisher, onlineGateway);
+                cartService, productClient, paymentClient, new ObjectMapper(), eventPublisher, onlineGateway,
+                org.mockito.Mockito.mock(StaffAssigner.class));
         ReflectionTestUtils.setField(orderService, "shippingFee", new BigDecimal("30000"));
         when(productClient.deductStock(any(), any()))
                 .thenReturn(new ProductClient.StockDeductionResponse(UUID.randomUUID(), 1));

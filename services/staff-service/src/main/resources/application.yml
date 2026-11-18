@@ -30,6 +30,10 @@ eureka:
   instance:
     prefer-ip-address: true
 
+app:
+  # Khoá dùng chung để các service gọi nhau qua /internal/** (không có JWT người dùng). Trống -> đóng hẳn.
+  internal-api-key: ${INTERNAL_API_KEY:}
+
 jwt:
   # Dùng chung secret với auth-service — tự verify chữ ký token, không gọi ngược auth-service mỗi request.
   secret: ${JWT_SECRET}

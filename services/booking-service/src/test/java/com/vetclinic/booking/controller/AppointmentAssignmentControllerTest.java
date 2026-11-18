@@ -121,6 +121,44 @@ class AppointmentAssignmentControllerTest {
     }
 
     @Test
+    void markingAnAppointmentDone_isForDoctorsAndAdminsNotFrontDeskStaff() throws Exception {
+        String admin = token(UUID.randomUUID(), "ADMIN");
+        mockMvc.perform(put("/booking/appointments/{id}/assign", request.id())
+                        .header("Authorization", "Bearer " + admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"doctorUserId\":\"%s\"}".formatted(doctor)))
+                .andExpect(status().isOk());
+
+        // Nhân viên quầy không xác nhận thay bác sĩ rằng ca khám đã xong...
+        mockMvc.perform(put("/booking/appointments/{id}/status", request.id())
+                        .header("Authorization", "Bearer " + token(UUID.randomUUID(), "STAFF"))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"COMPLETED\"}"))
+                .andExpect(status().isForbidden());
+        // ...nhưng vẫn báo khách vắng mặt được.
+        mockMvc.perform(put("/booking/appointments/{id}/status", request.id())
+                        .header("Authorization", "Bearer " + token(UUID.randomUUID(), "STAFF"))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"NO_SHOW\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("NO_SHOW"));
+    }
+
+    @Test
+    void doctorAndAdminCanMarkAnAppointmentDone() throws Exception {
+        String admin = token(UUID.randomUUID(), "ADMIN");
+        mockMvc.perform(put("/booking/appointments/{id}/assign", request.id())
+                        .header("Authorization", "Bearer " + admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"doctorUserId\":\"%s\"}".formatted(doctor)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(put("/booking/appointments/{id}/status", request.id())
+                        .header("Authorization", "Bearer " + token(doctor, "DOCTOR"))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"COMPLETED\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("COMPLETED"));
+    }
+
+    @Test
     void proposal_isHiddenFromTheDoctorUntilTheCustomerAccepts() throws Exception {
         String admin = token(UUID.randomUUID(), "ADMIN");
         mockMvc.perform(put("/booking/appointments/{id}/propose", request.id())

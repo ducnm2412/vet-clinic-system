@@ -78,7 +78,8 @@ class CounterInvoiceTest {
     @BeforeEach
     void setUp() {
         orderService = new OrderService(orderRepository, historyRepository, cartRepository,
-                cartService, productClient, paymentClient, new ObjectMapper(), eventPublisher, onlineGateway);
+                cartService, productClient, paymentClient, new ObjectMapper(), eventPublisher, onlineGateway,
+                org.mockito.Mockito.mock(StaffAssigner.class));
         when(onlineGateway.getIfAvailable()).thenReturn(org.mockito.Mockito.mock(OnlinePaymentGateway.class));
         ReflectionTestUtils.setField(orderService, "shippingFee", new BigDecimal("30000"));
 

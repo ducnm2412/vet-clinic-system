@@ -90,12 +90,31 @@ public final class StaffNotificationFactory {
         String code = event.orderCode() == null || event.orderCode().isBlank() ? "mới" : event.orderCode().trim();
         String who = event.recipientName() == null || event.recipientName().isBlank()
                 ? "" : " của " + event.recipientName().trim();
+        boolean assigned = event.assignedStaffId() != null;
         return new Content(NEW_ORDER,
-                "Có đơn hàng mới chờ xác nhận",
+                assigned ? "Bạn được giao một đơn hàng mới" : "Có đơn hàng mới chờ xác nhận",
                 "Đơn " + code + who + " gồm " + event.itemCount() + " sản phẩm"
                         + (event.total() == null ? "" : ", tổng " + money(event.total()))
                         + (online ? ", khách đã thanh toán online." : ", thanh toán khi nhận hàng."),
                 "/staff/orders");
+    }
+
+    /** Báo admin: có đơn hàng mới và ai đang phụ trách (hoặc chưa giao cho ai) để theo dõi, không phải xử lý. */
+    public static Content newOrderForAdmin(OrderPlacedEvent event) {
+        boolean online = "ONLINE".equals(event.paymentMethod());
+        String code = event.orderCode() == null || event.orderCode().isBlank() ? "mới" : event.orderCode().trim();
+        String who = event.recipientName() == null || event.recipientName().isBlank()
+                ? "" : " của " + event.recipientName().trim();
+        String owner = event.assignedStaffId() == null
+                ? "Chưa giao cho nhân viên nào (hôm nay không có nhân viên có ca), đã báo chung mọi nhân viên."
+                : "Giao cho " + (event.assignedStaffName() == null || event.assignedStaffName().isBlank()
+                        ? "một nhân viên" : event.assignedStaffName().trim()) + ".";
+        return new Content(NEW_ORDER,
+                "Có đơn hàng mới",
+                "Đơn " + code + who + " gồm " + event.itemCount() + " sản phẩm"
+                        + (event.total() == null ? "" : ", tổng " + money(event.total()))
+                        + (online ? ", khách đã thanh toán online. " : ", thanh toán khi nhận hàng. ") + owner,
+                "/admin/orders");
     }
 
     /** Báo nhân viên quầy: bác sĩ vừa lưu bệnh án nên có phiếu thu chờ chốt số tiền. */

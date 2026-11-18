@@ -59,6 +59,9 @@ export interface OrderSummary {
   createdAt: string;
   /** Đơn online đã trả tiền nhưng bị huỷ: nhân viên cần hoàn tiền thủ công. */
   refundRequired: boolean;
+  /** Nhân viên phụ trách đơn (hệ thống chia cho người có ca, hoặc tự nhận). null nếu chưa ai. */
+  assignedStaffId: string | null;
+  assignedStaffName: string | null;
 }
 
 export interface Order {
@@ -93,6 +96,8 @@ export interface Order {
   cancelledAt: string | null;
   cancelReason: string | null;
   refundRequired: boolean;
+  assignedStaffId: string | null;
+  assignedStaffName: string | null;
 }
 
 export interface OrderStatusHistory {

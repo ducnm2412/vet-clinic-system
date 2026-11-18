@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError, nextActions, orderManageApi } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 import { ORDER_PAYMENT_METHOD, ORDER_PAYMENT_STATUS, ORDER_STATUS } from "@/lib/utils/status";
 import { formatDateTime, formatPrice } from "@/lib/utils/format";
 import type { OrderStatus, OrderSummary } from "@/types";
@@ -42,14 +43,18 @@ const ACTION_LABEL = {
 
 /** Quản lý đơn cho nhân viên và quản trị — hai vai trò dùng chung endpoint `/orders/manage`. */
 export function OrderManageView() {
+  const { userId } = useAuth();
   const [status, setStatus] = useState<OrderStatus | "ALL">("PENDING");
+  // "Đơn của tôi": chỉ đơn hệ thống đã chia (hoặc mình đã nhận) cho người đang đăng nhập.
+  const [mine, setMine] = useState(false);
   const [page, setPage] = useState(0);
   const [openId, setOpenId] = useState<string | null>(null);
 
+  const assignedTo = mine && userId ? userId : undefined;
   const orders = useQuery({
-    queryKey: ["orders", "manage", { status, page }],
+    queryKey: ["orders", "manage", { status, assignedTo, page }],
     queryFn: () =>
-      orderManageApi.list({ status: status === "ALL" ? undefined : status, page, size: 20 }),
+      orderManageApi.list({ status: status === "ALL" ? undefined : status, assignedTo, page, size: 20 }),
   });
 
   const columns: Column<OrderSummary>[] = [
@@ -66,6 +71,21 @@ export function OrderManageView() {
       ),
     },
     { key: "recipient", header: "Người nhận", cell: (o) => o.recipientName },
+    {
+      key: "assignee",
+      header: "Phụ trách",
+      hideBelow: "md",
+      cell: (o) =>
+        o.channel === "COUNTER" ? (
+          <span className="text-bark">—</span>
+        ) : o.assignedStaffId === null ? (
+          <span className="text-bark">Chưa giao</span>
+        ) : o.assignedStaffId === userId ? (
+          <Tag className="border-moss/50 text-moss">Của bạn</Tag>
+        ) : (
+          <span className="text-ink-soft">{o.assignedStaffName ?? "Nhân viên khác"}</span>
+        ),
+    },
     {
       key: "created",
       header: "Đặt lúc",
@@ -85,6 +105,29 @@ export function OrderManageView() {
 
   return (
     <>
+      <div className="mb-2 flex flex-wrap gap-1.5" role="group" aria-label="Lọc theo người phụ trách">
+        {[
+          { value: false, label: "Tất cả đơn" },
+          { value: true, label: "Đơn của tôi" },
+        ].map((t) => (
+          <button
+            key={t.label}
+            onClick={() => {
+              setMine(t.value);
+              setPage(0);
+            }}
+            aria-pressed={mine === t.value}
+            className={`rounded-[var(--radius-control)] border px-3 py-1.5 text-sm transition-colors ${
+              mine === t.value
+                ? "border-moss bg-moss-wash font-medium text-ink"
+                : "border-line-strong bg-surface text-ink-soft hover:bg-paper"
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
       <div className="mb-3 flex flex-wrap gap-1.5" role="group" aria-label="Lọc theo trạng thái đơn">
         {TABS.map((t) => (
           <button
@@ -128,7 +171,11 @@ export function OrderManageView() {
               empty={
                 <EmptyState
                   title={
-                    status === "ALL" ? "Chưa có đơn hàng nào" : "Không có đơn nào ở trạng thái này"
+                    mine
+                      ? "Chưa có đơn nào được giao cho bạn"
+                      : status === "ALL"
+                        ? "Chưa có đơn hàng nào"
+                        : "Không có đơn nào ở trạng thái này"
                   }
                 />
               }
@@ -154,6 +201,7 @@ export function OrderManageView() {
 function OrderDetailDialog({ orderId, onClose }: { orderId: string | null; onClose: () => void }) {
   const qc = useQueryClient();
   const toast = useToast();
+  const { userId } = useAuth();
   const router = useRouter();
   const [cancelling, setCancelling] = useState(false);
   const [reason, setReason] = useState("");
@@ -190,6 +238,20 @@ function OrderDetailDialog({ orderId, onClose }: { orderId: string | null; onClo
     },
     onError: (err) =>
       toast.error(err instanceof ApiError ? err.message : "Không thực hiện được thao tác."),
+  });
+
+  // Nhận phụ trách khi người được chia đang bận hoặc đơn chưa chia cho ai; không đổi trạng thái đơn.
+  const claim = useMutation({
+    mutationFn: () => {
+      if (!orderId) throw new Error("Chưa chọn đơn");
+      return orderManageApi.claim(orderId);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["orders"] });
+      toast.success("Bạn đã nhận xử lý đơn này");
+    },
+    onError: (err) =>
+      toast.error(err instanceof ApiError ? err.message : "Không nhận được đơn."),
   });
 
   // Chỉ dùng khi hệ thống bật cổng chuyển khoản QR; cổng khác thì backend từ chối và toast báo lý do.
@@ -283,6 +345,24 @@ function OrderDetailDialog({ orderId, onClose }: { orderId: string | null; onClo
               {data.paymentMethod ? ORDER_PAYMENT_METHOD[data.paymentMethod] : "Chưa có cách thu"}
             </span>
           </div>
+
+          {data.channel !== "COUNTER" && data.status !== "COMPLETED" && data.status !== "CANCELLED" && (
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+              <span className="text-bark">Phụ trách:</span>
+              {data.assignedStaffId === null ? (
+                <span className="text-ink">Chưa giao cho ai</span>
+              ) : data.assignedStaffId === userId ? (
+                <Tag className="border-moss/50 text-moss">Bạn</Tag>
+              ) : (
+                <span className="font-medium text-ink">{data.assignedStaffName ?? "Nhân viên khác"}</span>
+              )}
+              {data.assignedStaffId !== userId && (
+                <Button size="sm" variant="secondary" loading={claim.isPending} onClick={() => claim.mutate()}>
+                  Nhận xử lý
+                </Button>
+              )}
+            </div>
+          )}
 
           {awaitingPayment && (
             <p className="rounded-[var(--radius-control)] bg-amber-wash px-3 py-2 text-sm">

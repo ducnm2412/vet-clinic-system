@@ -21,6 +21,9 @@ public record OrderSummaryResponse(
         BigDecimal total,
         String recipientName,
         Instant createdAt,
-        boolean refundRequired
+        boolean refundRequired,
+        // Nhân viên phụ trách đơn (được chia hoặc tự nhận); null nếu chưa ai.
+        UUID assignedStaffId,
+        String assignedStaffName
 ) {
 }

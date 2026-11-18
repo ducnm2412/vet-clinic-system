@@ -69,7 +69,7 @@ function order(code: string, status: OrderSummary["status"], items: number, tota
   return {
     id: `od-${code}`, orderCode: `#DH${code}`, status, channel: "ONLINE", paymentMethod: "COD",
     paymentStatus: paid ? "PAID" : "UNPAID", totalItems: items, total, recipientName: "Khách hàng demo",
-    createdAt: `${date}T10:15:00`, refundRequired: false,
+    createdAt: `${date}T10:15:00`, refundRequired: false, assignedStaffId: null, assignedStaffName: null,
   };
 }
 
@@ -145,6 +145,7 @@ export function mockOrderDetail(id: string): Order {
     paymentExpiresAt: null, transferReference: null,
     cancelledAt: o.status === "CANCELLED" ? o.createdAt : null,
     cancelReason: o.status === "CANCELLED" ? "Khách đổi ý" : null, refundRequired: false,
+    assignedStaffId: null, assignedStaffName: null,
   };
 }
 

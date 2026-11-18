@@ -37,6 +37,9 @@ class StaffSecurityTest {
     @Value("${jwt.secret}")
     private String jwtSecret;
 
+    @Value("${app.internal-api-key:}")
+    private String internalKey;
+
     private String bearer(String role) {
         return bearer(role, UUID.randomUUID());
     }
@@ -160,5 +163,45 @@ class StaffSecurityTest {
                         .param("from", "2026-10-01").param("to", "2026-10-07"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.rows").isArray());
+    }
+
+    @Test
+    void internalShiftListIsOnlyForServicesWithTheInternalKey() throws Exception {
+        // Người dùng, kể cả ADMIN, và người chưa đăng nhập đều không vào được: đây là đường giữa các service.
+        mockMvc.perform(get("/internal/shifts/user-ids").param("date", "2026-10-05"))
+                .andExpect(status().isUnauthorized());
+        for (String role : List.of("ADMIN", "STAFF", "CUSTOMER")) {
+            mockMvc.perform(get("/internal/shifts/user-ids").param("date", "2026-10-05")
+                            .header("Authorization", bearer(role)))
+                    .andExpect(status().isForbidden());
+        }
+        mockMvc.perform(get("/internal/shifts/user-ids").param("date", "2026-10-05")
+                        .header("X-Internal-Key", "khong-phai-khoa"))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(get("/internal/shifts/user-ids").param("date", "2026-10-05")
+                        .header("X-Internal-Key", internalKey))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void internalShiftListNamesEachPersonOnShiftOnTheDayOnce() throws Exception {
+        UUID onShift = UUID.randomUUID();
+        UUID other = UUID.randomUUID();
+        for (String body : List.of(
+                """
+                {"userId":"%s","dates":["2026-10-05"]}""".formatted(onShift),
+                """
+                {"userId":"%s","dates":["2026-10-06"]}""".formatted(other))) {
+            mockMvc.perform(post("/staff/shifts").header("Authorization", bearer("ADMIN"))
+                            .contentType(MediaType.APPLICATION_JSON).content(body))
+                    .andExpect(status().isCreated());
+        }
+
+        mockMvc.perform(get("/internal/shifts/user-ids").param("date", "2026-10-05")
+                        .header("X-Internal-Key", internalKey))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0]").value(onShift.toString()));
     }
 }

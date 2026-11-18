@@ -74,6 +74,7 @@ class OrderServiceTest {
     @Mock private PaymentClient paymentClient;
     @Mock private ApplicationEventPublisher eventPublisher;
     @Mock private ObjectProvider<OnlinePaymentGateway> onlineGateway;
+    @Mock private StaffAssigner staffAssigner;
 
     private OrderService orderService;
 
@@ -86,7 +87,8 @@ class OrderServiceTest {
     @BeforeEach
     void setUp() {
         orderService = new OrderService(orderRepository, historyRepository, cartRepository,
-                cartService, productClient, paymentClient, new ObjectMapper(), eventPublisher, onlineGateway);
+                cartService, productClient, paymentClient, new ObjectMapper(), eventPublisher, onlineGateway,
+                staffAssigner);
         when(onlineGateway.getIfAvailable()).thenReturn(org.mockito.Mockito.mock(OnlinePaymentGateway.class));
         ReflectionTestUtils.setField(orderService, "shippingFee", new BigDecimal("30000"));
         ReflectionTestUtils.setField(orderService, "onlinePaymentTimeoutMinutes", 30L);
@@ -486,6 +488,68 @@ class OrderServiceTest {
         assertThatThrownBy(() -> orderService.confirmReceived(UUID.randomUUID(), order.getId()))
                 .isInstanceOf(ResourceNotFoundException.class);
         assertThat(order.getStatus()).isEqualTo(OrderStatus.SHIPPING);
+    }
+
+    // ---------- Chia đơn cho nhân viên ----------
+
+    @Test
+    void checkout_cod_assignsAStaffMemberBeforeAnnouncingTheOrder() {
+        stubProduct(10, true, "150000");
+        UUID staffId = UUID.randomUUID();
+        org.mockito.Mockito.doAnswer(inv -> {
+            ((Order) inv.getArgument(0)).setAssignedStaffId(staffId);
+            return null;
+        }).when(staffAssigner).assign(any(Order.class));
+
+        orderService.checkout(userId, request());
+
+        ArgumentCaptor<OrderPlacedEvent> event = ArgumentCaptor.forClass(OrderPlacedEvent.class);
+        verify(eventPublisher).publishEvent(event.capture());
+        assertThat(event.getValue().assignedStaffId()).isEqualTo(staffId);
+    }
+
+    @Test
+    void claim_makesTheStaffMemberResponsibleAndLogsIt() {
+        Order order = existingOrder(OrderStatus.PENDING);
+        UUID previous = UUID.randomUUID();
+        order.setAssignedStaffId(previous);
+        when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
+        UUID me = UUID.randomUUID();
+        when(staffAssigner.nameOf(me)).thenReturn("Lan Nguyen");
+
+        OrderResponse response = orderService.claim(order.getId(), me);
+
+        assertThat(response.assignedStaffId()).isEqualTo(me);
+        assertThat(response.assignedStaffName()).isEqualTo("Lan Nguyen");
+        assertThat(order.getAssignedAt()).isNotNull();
+        ArgumentCaptor<OrderStatusHistory> history = ArgumentCaptor.forClass(OrderStatusHistory.class);
+        verify(historyRepository).save(history.capture());
+        assertThat(history.getValue().getChangedBy()).isEqualTo(me);
+        assertThat(history.getValue().getNote()).contains("nhận xử lý");
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.PENDING);
+    }
+
+    @Test
+    void claim_ofYourOwnOrderChangesNothing() {
+        Order order = existingOrder(OrderStatus.CONFIRMED);
+        UUID me = UUID.randomUUID();
+        order.setAssignedStaffId(me);
+        when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
+
+        orderService.claim(order.getId(), me);
+
+        verify(historyRepository, never()).save(any());
+    }
+
+    @Test
+    void claim_isRefusedOnceTheOrderIsFinished() {
+        for (OrderStatus status : List.of(OrderStatus.COMPLETED, OrderStatus.CANCELLED)) {
+            Order order = existingOrder(status);
+            when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
+
+            assertThatThrownBy(() -> orderService.claim(order.getId(), UUID.randomUUID()))
+                    .isInstanceOf(InvalidOrderStateException.class);
+        }
     }
 
     // ---------- Tự hoàn tất đơn đã giao ----------

@@ -364,8 +364,9 @@ function StepTitle({ icon: Icon, title, hint }: { icon: typeof PawPrint; title: 
   );
 }
 
-const pickBase = "rounded-2xl border bg-white transition duration-200";
-const pickIdle = "border-[#eeeeee] hover:-translate-y-0.5 hover:border-[#f9cfa8] hover:shadow-[0_12px_24px_-18px_rgba(245,124,31,0.6)]";
+// Nền KHÔNG đặt ở pickBase: cn() chỉ nối chuỗi, bg-white ở đây sẽ đè nền cam của ô đang chọn (chữ trắng trên nền trắng).
+const pickBase = "rounded-2xl border transition duration-200";
+const pickIdle = "border-[#eeeeee] bg-white hover:-translate-y-0.5 hover:border-[#f9cfa8] hover:shadow-[0_12px_24px_-18px_rgba(245,124,31,0.6)]";
 const pickOn = "border-[#f57c1f] bg-[#fff8f1] ring-2 ring-[#f57c1f]/15";
 
 function StepPets({

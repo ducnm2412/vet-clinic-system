@@ -72,10 +72,49 @@ class StaffListenersTest {
         when(directory.idsByRole("STAFF")).thenReturn(staff);
 
         new OrderPlacedStaffListener(notifications, directory).onOrderPlaced(new OrderPlacedEvent(
-                UUID.randomUUID(), "ORD-1", new java.math.BigDecimal("330000"), 2, "COD", "Nguyen Van A"));
+                UUID.randomUUID(), "ORD-1", new java.math.BigDecimal("330000"), 2, "COD", "Nguyen Van A", null, null));
 
         verify(notifications).createForAll(eq(staff), eq("NEW_ORDER"), anyString(),
                 org.mockito.ArgumentMatchers.contains("ORD-1"), eq("/staff/orders"));
+    }
+
+    @Test
+    void newOrderAssignedToOneStaffMember_notifiesOnlyThatPerson() {
+        UUID assignee = UUID.randomUUID();
+
+        new OrderPlacedStaffListener(notifications, directory).onOrderPlaced(new OrderPlacedEvent(
+                UUID.randomUUID(), "ORD-2", new java.math.BigDecimal("330000"), 2, "COD", "Nguyen Van A", assignee, "Lan"));
+
+        verify(notifications).create(eq(assignee), eq("NEW_ORDER"), eq("Bạn được giao một đơn hàng mới"),
+                org.mockito.ArgumentMatchers.contains("ORD-2"), eq("/staff/orders"));
+        // Không báo chung nhân viên: chỉ người được giao (và admin, kiểm riêng ở test bên dưới).
+        org.mockito.Mockito.verify(directory, org.mockito.Mockito.never()).idsByRole("STAFF");
+    }
+
+    @Test
+    void newOrder_alwaysNotifiesAdminsToo_withWhoHandlesIt() {
+        List<UUID> admins = List.of(UUID.randomUUID());
+        when(directory.idsByRole("ADMIN")).thenReturn(admins);
+
+        new OrderPlacedStaffListener(notifications, directory).onOrderPlaced(new OrderPlacedEvent(
+                UUID.randomUUID(), "ORD-3", new java.math.BigDecimal("330000"), 2, "COD", "Nguyen Van A",
+                UUID.randomUUID(), "Lan"));
+
+        verify(notifications).createForAll(eq(admins), eq("NEW_ORDER"), eq("Có đơn hàng mới"),
+                org.mockito.ArgumentMatchers.contains("Giao cho Lan"), eq("/admin/orders"));
+    }
+
+    @Test
+    void newOrder_aBrokenAdminLookupNeverMakesStaffGetTheNoticeTwice() {
+        UUID assignee = UUID.randomUUID();
+        when(directory.idsByRole("ADMIN")).thenThrow(new IllegalStateException("auth-service down"));
+
+        // Không ném lỗi: ném thì RabbitMQ gửi lại sự kiện và nhân viên nhận thông báo lần hai.
+        new OrderPlacedStaffListener(notifications, directory).onOrderPlaced(new OrderPlacedEvent(
+                UUID.randomUUID(), "ORD-4", new java.math.BigDecimal("330000"), 2, "COD", "Nguyen Van A", assignee,
+                "Lan"));
+
+        verify(notifications).create(eq(assignee), eq("NEW_ORDER"), anyString(), anyString(), eq("/staff/orders"));
     }
 
     @Test

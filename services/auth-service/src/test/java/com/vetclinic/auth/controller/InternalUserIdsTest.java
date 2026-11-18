@@ -67,4 +67,17 @@ class InternalUserIdsTest {
         mockMvc.perform(get("/internal/users/ids").param("role", "STAFF").header("Authorization", admin))
                 .andExpect(status().isForbidden());
     }
+
+    @Test
+    void namesAreResolvedByIdWithTheInternalKeyOnly() throws Exception {
+        UUID staff = save("internal.names@example.com", RoleName.STAFF, UserStatus.ACTIVE);
+
+        mockMvc.perform(get("/internal/users/names").param("ids", staff.toString(), UUID.randomUUID().toString())
+                        .header("X-Internal-Key", "test-internal-key"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$['" + staff + "']").value("A B"))
+                .andExpect(jsonPath("$.length()").value(1));
+        mockMvc.perform(get("/internal/users/names").param("ids", staff.toString()))
+                .andExpect(status().isUnauthorized());
+    }
 }

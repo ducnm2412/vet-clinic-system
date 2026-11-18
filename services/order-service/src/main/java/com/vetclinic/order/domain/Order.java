@@ -63,6 +63,17 @@ public class Order {
     @Column(name = "customer_email", length = 255)
     private String customerEmail;
 
+    // Nhân viên phụ trách đơn và lúc được giao. Trống nếu lúc đó không ai có ca, hoặc đơn cũ.
+    @Column(name = "assigned_staff_id")
+    private UUID assignedStaffId;
+
+    // Họ tên người phụ trách lúc được giao, lưu sẵn vì nhân viên thường không tra được tên đồng nghiệp.
+    @Column(name = "assigned_staff_name", length = 200)
+    private String assignedStaffName;
+
+    @Column(name = "assigned_at")
+    private Instant assignedAt;
+
     @Column(name = "recipient_name", nullable = false, length = 200)
     private String recipientName;
 

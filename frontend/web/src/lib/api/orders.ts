@@ -55,10 +55,17 @@ export const orderApi = {
 
 /** Nhánh quản trị đơn — STAFF/ADMIN. Đặt ở /orders/manage vì gateway đã dành /admin cho auth. */
 export const orderManageApi = {
-  list: (params: { status?: OrderStatus; page?: number; size?: number } = {}) =>
+  list: (params: { status?: OrderStatus; assignedTo?: string; page?: number; size?: number } = {}) =>
     http.get<PageResponse<OrderSummary>>(
-      `/orders/manage${qs({ status: params.status, page: params.page ?? 0, size: params.size ?? 20 })}`,
+      `/orders/manage${qs({
+        status: params.status,
+        assignedTo: params.assignedTo,
+        page: params.page ?? 0,
+        size: params.size ?? 20,
+      })}`,
     ),
+  /** Nhận phụ trách đơn: khi người được chia đang bận hoặc đơn chưa chia cho ai. */
+  claim: (id: string) => http.post<Order>(`/orders/manage/${id}/claim`),
   byId: (id: string) => http.get<Order>(`/orders/manage/${id}`),
 
   /**

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ApiError, bookingApi } from "@/lib/api";
+import { ApiError, bookingApi, shiftApi } from "@/lib/api";
 import { cn } from "@/lib/utils/cn";
 import { APPOINTMENT_STATUS } from "@/lib/utils/status";
 import { formatDate, formatTime, todayISO } from "@/lib/utils/format";
@@ -68,6 +68,13 @@ export function AdminAppointmentBoard() {
   const day = useQuery({
     queryKey: ["appointments", { date, status: "", doctorUserId: "" }],
     queryFn: () => bookingApi.search({ date }),
+    enabled: date !== "",
+  });
+
+  // Ai có ca ở ngày đang xem: khi chưa chọn lịch nào, hàng bác sĩ chỉ hiện những người có ca ngày đó.
+  const dayShifts = useQuery({
+    queryKey: ["shifts", "day", date],
+    queryFn: () => shiftApi.search({ from: date, to: date }),
     enabled: date !== "",
   });
 
@@ -262,29 +269,35 @@ export function AdminAppointmentBoard() {
 
   // --- Hàng bác sĩ ---------------------------------------------------------------------------
   const assignable = selected !== null && !askedPast;
+  // Chỉ bác sĩ có ca làm việc đúng ngày (dù chưa chấm công) mới hiện ở đây; ai không có ca thì không xếp được
+  // nên không bày ra. Bác sĩ có ca nhưng đang bận đúng giờ đó vẫn hiện, ghi rõ "Bận".
+  const shiftUserIds = new Set((dayShifts.data ?? []).map((sh) => sh.userId));
   const doctorBoxes: DoctorBox[] = assignable
-    ? (availability.data ?? []).map((d) => ({
-        id: d.doctorUserId,
-        name: doctorName(d.fullName),
-        specialty: d.specialty,
-        // Chỉ bác sĩ có ca làm việc giờ đó (dù chưa chấm công) và đang rảnh mới xếp được.
-        state: !d.free ? "busy" : d.onShift ? "free" : "noShift",
-        onShift: d.onShift,
-        load: d.dayLoad,
-        source: d,
-      }))
-    : (directory.data ?? []).map((d) => ({
-        id: d.userId,
-        name: doctorName(d.fullName),
-        specialty: d.specialty,
-        state: "idle",
-        onShift: false,
-        load: loadByDoctor.get(d.userId) ?? 0,
-        source: null,
-      }));
+    ? (availability.data ?? [])
+        .filter((d) => d.onShift)
+        .map((d) => ({
+          id: d.doctorUserId,
+          name: doctorName(d.fullName),
+          specialty: d.specialty,
+          state: d.free ? "free" : "busy",
+          onShift: d.onShift,
+          load: d.dayLoad,
+          source: d,
+        }))
+    : (directory.data ?? [])
+        .filter((d) => shiftUserIds.has(d.userId))
+        .map((d) => ({
+          id: d.userId,
+          name: doctorName(d.fullName),
+          specialty: d.specialty,
+          state: "idle",
+          onShift: true,
+          load: loadByDoctor.get(d.userId) ?? 0,
+          source: null,
+        }));
   const freeCount = doctorBoxes.filter((d) => d.state === "free").length;
-  const doctorsLoading = assignable ? availability.isLoading : directory.isLoading;
-  const doctorsError = assignable ? availability.isError : directory.isError;
+  const doctorsLoading = assignable ? availability.isLoading : directory.isLoading || dayShifts.isLoading;
+  const doctorsError = assignable ? availability.isError : directory.isError || dayShifts.isError;
 
   return (
     <div className="space-y-5">
@@ -305,7 +318,7 @@ export function AdminAppointmentBoard() {
                 </>
               )
             ) : (
-              "Chọn một lịch chờ xếp bên dưới để xem bác sĩ nào rảnh. Số lịch ở mỗi ô tính theo ngày chọn bên phải."
+              "Chỉ hiện bác sĩ có ca làm việc trong ngày. Chọn một lịch chờ xếp bên dưới để xem bác sĩ nào rảnh đúng giờ khách đặt."
             )}
           </p>
           <div className="ml-auto flex items-center gap-2">
@@ -341,10 +354,15 @@ export function AdminAppointmentBoard() {
           ) : doctorsError ? (
             <ErrorState
               message="Không tải được danh sách bác sĩ."
-              onRetry={() => (assignable ? availability.refetch() : directory.refetch())}
+              onRetry={() => (assignable ? availability.refetch() : (directory.refetch(), dayShifts.refetch()))}
             />
           ) : doctorBoxes.length === 0 ? (
-            <p className="text-sm text-bark">Chưa có bác sĩ nào đang làm việc.</p>
+            <p className="text-sm text-bark">
+              {assignable && asked
+                ? `Ngày ${formatDate(asked.date)} chưa có bác sĩ nào có ca làm việc.`
+                : `Ngày ${formatDate(date)} chưa có bác sĩ nào có ca làm việc.`}{" "}
+              Hãy xếp ca ở trang Lịch làm việc.
+            </p>
           ) : (
             <ul className="flex gap-3 overflow-x-auto pb-1">
               {doctorBoxes.map((d) => (
@@ -362,8 +380,8 @@ export function AdminAppointmentBoard() {
 
           {assignable && selected && !availability.isLoading && !availability.isError && freeCount === 0 && (
             <div className="mt-3 flex flex-wrap items-center gap-3 rounded-[var(--radius-control)] bg-amber-wash px-3 py-2.5 text-sm text-ink">
-              Giờ này không có bác sĩ nào vừa có ca làm việc vừa rảnh. Hãy xếp ca ở trang Lịch làm việc, hoặc chọn giờ
-              khác còn bác sĩ trống và gửi đề xuất cho khách.
+              Giờ này không có bác sĩ nào vừa có ca làm việc vừa rảnh. Hãy xếp thêm ca ở trang Lịch làm việc, hoặc đề
+              xuất giờ khác còn bác sĩ trống cho khách.
               <Button
                 size="sm"
                 className="ml-auto"
@@ -492,8 +510,8 @@ interface DoctorBox {
   id: string;
   name: string;
   specialty: string | null;
-  /** idle: chưa chọn lịch nào; free/busy: rảnh hay bận đúng giờ của lịch đang chọn; noShift: rảnh nhưng chưa có ca. */
-  state: "idle" | "free" | "busy" | "noShift";
+  /** idle: chưa chọn lịch nào; free/busy: rảnh hay bận đúng giờ của lịch đang chọn. */
+  state: "idle" | "free" | "busy";
   onShift: boolean;
   load: number;
   source: DoctorAvailability | null;
@@ -521,7 +539,7 @@ function DoctorCard({
       className={cn(
         "flex min-h-[6.5rem] w-56 items-start gap-3 rounded-[var(--radius-control)] border p-3 text-left transition-colors",
         d.state === "free" && "border-moss/60 bg-moss-wash hover:border-moss focus-visible:border-moss",
-        (d.state === "busy" || d.state === "noShift") && "cursor-not-allowed border-line bg-paper opacity-70",
+        d.state === "busy" && "cursor-not-allowed border-line bg-paper opacity-70",
         d.state === "idle" && "cursor-default border-line bg-surface",
       )}
     >
@@ -537,9 +555,6 @@ function DoctorCard({
         <span className="mt-1.5 flex flex-wrap gap-1">
           {d.state === "free" && asked && <Tag className="border-moss/50 text-moss">Rảnh {formatTime(asked.time)}</Tag>}
           {d.state === "busy" && asked && <Tag className="border-danger/40 text-danger">Bận {formatTime(asked.time)}</Tag>}
-          {d.state === "noShift" && asked && (
-            <Tag className="border-danger/40 text-danger">Chưa có ca {formatDate(asked.date).slice(0, 5)}</Tag>
-          )}
           {d.onShift && <Tag>Có ca làm việc</Tag>}
           <Tag>{d.state === "idle" ? `${d.load} lịch ngày ${dayLabel}` : `${d.load} lịch trong ngày`}</Tag>
         </span>

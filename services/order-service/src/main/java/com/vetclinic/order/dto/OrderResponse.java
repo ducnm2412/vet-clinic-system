@@ -37,6 +37,9 @@ public record OrderResponse(
         Instant cancelledAt,
         String cancelReason,
         // Đơn online đã trả tiền nhưng bị huỷ: nhân viên cần hoàn tiền thủ công cho khách.
-        boolean refundRequired
+        boolean refundRequired,
+        // Nhân viên phụ trách đơn (được chia hoặc tự nhận); null nếu chưa ai.
+        UUID assignedStaffId,
+        String assignedStaffName
 ) {
 }

@@ -76,6 +76,18 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
             order by o.createdAt desc""")
     Page<Order> findByUserIdOrderByCreatedAtDesc(@Param("userId") UUID userId, Pageable pageable);
 
+    /** Mỗi nhân viên: số đơn được giao và lần giao gần nhất kể từ {@code since}. Người chưa được giao không có dòng. */
+    @Query("""
+            select o.assignedStaffId, count(o), max(o.assignedAt) from Order o
+            where o.assignedStaffId in :ids and o.assignedAt >= :since
+            group by o.assignedStaffId""")
+    List<Object[]> assignmentLoad(@Param("ids") java.util.Collection<UUID> ids, @Param("since") Instant since);
+
+    /** Đơn của một nhân viên phụ trách, lọc theo trạng thái (null = tất cả). */
+    @Query("select o from Order o where o.assignedStaffId = :staffId and (:status is null or o.status = :status) "
+            + "order by o.createdAt desc")
+    Page<Order> findAssignedTo(@Param("staffId") UUID staffId, @Param("status") OrderStatus status, Pageable pageable);
+
     /** CN-36: nhân viên xem toàn bộ đơn, lọc theo trạng thái (null = tất cả). */
     @Query("select o from Order o where (:status is null or o.status = :status) order by o.createdAt desc")
     Page<Order> findAllByStatus(@Param("status") OrderStatus status, Pageable pageable);

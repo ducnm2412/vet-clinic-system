@@ -25,6 +25,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
@@ -119,7 +120,15 @@ public class AppointmentController {
     @PutMapping("/booking/appointments/{id}/status")
     @PreAuthorize("hasAnyRole('DOCTOR','STAFF','ADMIN')")
     public AppointmentResponse updateStatus(@PathVariable UUID id,
+                                             Authentication authentication,
                                              @Valid @RequestBody AppointmentStatusUpdateRequest request) {
+        // "Đã khám" là việc của bác sĩ (lưu bệnh án thì lịch tự chuyển) hoặc admin xử lý ngoại lệ; nhân viên quầy
+        // chỉ tiếp nhận, xác nhận, báo vắng mặt, không xác nhận thay bác sĩ rằng ca khám đã xong.
+        if (request.status() == AppointmentStatus.COMPLETED
+                && !RoleUtils.hasAnyRole(authentication, "DOCTOR", "ADMIN")) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Chỉ bác sĩ hoặc quản trị viên mới đánh dấu lịch đã khám xong");
+        }
         return appointmentService.updateStatus(id, request.status());
     }
 }

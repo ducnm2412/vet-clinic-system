@@ -387,6 +387,8 @@ services:
       EUREKA_URI: http://eureka-server:8761/eureka/
       # Chung JWT_SECRET voi auth-service de tu verify token.
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      # Khoa cho cac service goi nhau qua /internal/** (order-service chia don cho nhan vien dang co ca).
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:?INTERNAL_API_KEY is required}
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_USERNAME: ${RABBITMQ_USER:-guest}
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
@@ -431,6 +433,8 @@ services:
       DB_PASSWORD: ${STAFF_DB_PASSWORD:?STAFF_DB_PASSWORD is required}
       EUREKA_URI: http://eureka-server:8761/eureka/
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      # Khoa cho cac service goi nhau qua /internal/** (order-service chia don cho nhan vien dang co ca).
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:?INTERNAL_API_KEY is required}
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_USERNAME: ${RABBITMQ_USER:-guest}
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}

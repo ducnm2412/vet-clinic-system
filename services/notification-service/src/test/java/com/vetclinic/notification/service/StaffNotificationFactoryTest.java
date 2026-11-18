@@ -72,13 +72,35 @@ class StaffNotificationFactoryTest {
     @Test
     void newOrder_saysHowItWillBePaidAndHowMuch() {
         var cod = StaffNotificationFactory.newOrder(new com.vetclinic.notification.messaging.OrderPlacedEvent(
-                UUID.randomUUID(), "ORD-1", new java.math.BigDecimal("330000"), 2, "COD", "Lan"));
+                UUID.randomUUID(), "ORD-1", new java.math.BigDecimal("330000"), 2, "COD", "Lan", null, null));
         var online = StaffNotificationFactory.newOrder(new com.vetclinic.notification.messaging.OrderPlacedEvent(
-                UUID.randomUUID(), "ORD-2", new java.math.BigDecimal("50000"), 1, "ONLINE", null));
+                UUID.randomUUID(), "ORD-2", new java.math.BigDecimal("50000"), 1, "ONLINE", null, null, null));
 
         assertThat(cod.message()).contains("ORD-1", "của Lan", "2 sản phẩm", "330.000đ", "khi nhận hàng");
         assertThat(online.message()).contains("ORD-2", "đã thanh toán online").doesNotContain(" của ");
         assertThat(cod.link()).isEqualTo("/staff/orders");
+        assertThat(cod.title()).isEqualTo("Có đơn hàng mới chờ xác nhận");
+    }
+
+    @Test
+    void newOrder_toldToTheAssignedStaffMemberSaysItIsTheirs() {
+        var assigned = StaffNotificationFactory.newOrder(new com.vetclinic.notification.messaging.OrderPlacedEvent(
+                UUID.randomUUID(), "ORD-3", new java.math.BigDecimal("50000"), 1, "COD", "Lan", UUID.randomUUID(), "Minh"));
+
+        assertThat(assigned.title()).isEqualTo("Bạn được giao một đơn hàng mới");
+    }
+
+    @Test
+    void newOrderForAdmin_saysWhoHandlesItOrThatNobodyDoes() {
+        var handled = StaffNotificationFactory.newOrderForAdmin(new com.vetclinic.notification.messaging.OrderPlacedEvent(
+                UUID.randomUUID(), "ORD-4", new java.math.BigDecimal("473000"), 2, "COD", "Huy", UUID.randomUUID(),
+                "Ngô Đức Minh"));
+        var unhandled = StaffNotificationFactory.newOrderForAdmin(new com.vetclinic.notification.messaging.OrderPlacedEvent(
+                UUID.randomUUID(), "ORD-5", new java.math.BigDecimal("473000"), 2, "ONLINE", "Huy", null, null));
+
+        assertThat(handled.message()).contains("ORD-4", "473.000đ", "Giao cho Ngô Đức Minh");
+        assertThat(handled.link()).isEqualTo("/admin/orders");
+        assertThat(unhandled.message()).contains("ORD-5", "Chưa giao cho nhân viên nào");
     }
 
     @Test

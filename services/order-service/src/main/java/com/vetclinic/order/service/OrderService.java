@@ -82,6 +82,7 @@ public class OrderService {
     private final ApplicationEventPublisher eventPublisher;
     /** Rỗng khi hệ thống chưa bật cổng thanh toán online nào. */
     private final ObjectProvider<OnlinePaymentGateway> onlineGateway;
+    private final StaffAssigner staffAssigner;
     private final SecureRandom secureRandom = new SecureRandom();
 
     @Value("${order.shipping-fee}")
@@ -173,6 +174,7 @@ public class OrderService {
 
         // Đơn online chưa trả thì nhân viên chưa xác nhận được: báo khi tiền về (OnlinePaymentService).
         if (order.getPaymentMethod() != PaymentMethod.ONLINE) {
+            staffAssigner.assign(order);
             eventPublisher.publishEvent(OrderPlacedEvents.of(order));
         }
 
@@ -619,8 +621,36 @@ public class OrderService {
     // ---------- CN-36: nhân viên xử lý đơn ----------
 
     @Transactional(readOnly = true)
-    public PageResponse<OrderSummaryResponse> listAllOrders(OrderStatus status, Pageable pageable) {
-        return PageResponse.from(orderRepository.findAllByStatus(status, pageable).map(this::toSummary));
+    public PageResponse<OrderSummaryResponse> listAllOrders(OrderStatus status, UUID assignedTo, Pageable pageable) {
+        var page = assignedTo == null
+                ? orderRepository.findAllByStatus(status, pageable)
+                : orderRepository.findAssignedTo(assignedTo, status, pageable);
+        return PageResponse.from(page.map(this::toSummary));
+    }
+
+    /**
+     * Nhân viên nhận phụ trách đơn: dùng khi người được chia đang bận hoặc vắng, hoặc đơn chưa chia cho ai.
+     * Không đổi trạng thái đơn, chỉ đổi người phụ trách và ghi vào lịch sử để biết ai nhận lúc nào.
+     */
+    @Transactional
+    public OrderResponse claim(UUID orderId, UUID staffId) {
+        Order order = orderRepository.findByIdForUpdate(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng: " + orderId));
+        if (order.getChannel() == OrderChannel.COUNTER) {
+            throw new InvalidOrderStateException("Hoá đơn tại quầy do nhân viên lập, không có bước nhận xử lý");
+        }
+        if (order.getStatus() == OrderStatus.COMPLETED || order.getStatus() == OrderStatus.CANCELLED) {
+            throw new InvalidOrderStateException("Đơn đã kết thúc, không cần nhận xử lý");
+        }
+        if (staffId.equals(order.getAssignedStaffId())) {
+            return toResponse(order);   // đã là của mình, bấm lại không đổi gì
+        }
+        order.setAssignedStaffId(staffId);
+        order.setAssignedStaffName(staffAssigner.nameOf(staffId));
+        order.setAssignedAt(Instant.now());
+        recordHistory(order, order.getStatus(), order.getStatus(), staffId, "Nhân viên nhận xử lý đơn");
+        log.info("Đơn {} do nhân viên {} nhận xử lý", order.getOrderCode(), staffId);
+        return toResponse(order);
     }
 
     @Transactional(readOnly = true)
@@ -934,13 +964,14 @@ public class OrderService {
                 o.getNote(), o.getSubtotal(), o.getShippingFee(), o.getExamPaymentId(), o.getExamAmount(),
                 o.getTotal(), items,
                 o.getCreatedAt(), o.getConfirmedAt(), o.getCompletedAt(), o.getPaidAt(), o.getPaymentExpiresAt(), o.getTransferReference(),
-                o.getCancelledAt(), o.getCancelReason(), isRefundRequired(o));
+                o.getCancelledAt(), o.getCancelReason(), isRefundRequired(o), o.getAssignedStaffId(), o.getAssignedStaffName());
     }
 
     private OrderSummaryResponse toSummary(Order o) {
         return new OrderSummaryResponse(o.getId(), o.getOrderCode(), o.getStatus(),
                 o.getChannel(), o.getPaymentMethod(), o.getPaymentStatus(),
-                o.getItems().size(), o.getTotal(), o.getRecipientName(), o.getCreatedAt(), isRefundRequired(o));
+                o.getItems().size(), o.getTotal(), o.getRecipientName(), o.getCreatedAt(), isRefundRequired(o),
+                o.getAssignedStaffId(), o.getAssignedStaffName());
     }
 
     private static boolean isRefundRequired(Order o) {
