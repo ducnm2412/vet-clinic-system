@@ -53,6 +53,11 @@ public class AttendanceRecord {
     @Column(length = 500)
     private String note;
 
+    /** Giờ ra do hệ thống tự điền vì người đó quên ra ca (không phải giờ ra thật). */
+    @Column(name = "auto_closed", nullable = false)
+    @Builder.Default
+    private boolean autoClosed = false;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;

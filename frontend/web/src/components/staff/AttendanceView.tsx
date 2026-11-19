@@ -42,6 +42,16 @@ export function duration(minutes: number, finished = true): string {
   return rest ? `${hours} giờ ${rest} phút` : `${hours} giờ`;
 }
 
+/** Giờ ra; nếu do hệ thống tự đóng ca (quên ra ca) thì ghi chú để không nhầm với giờ ra thật. */
+export function CheckOutTime({ record }: { record: AttendanceRecord }) {
+  return (
+    <span className="tnum">
+      {clock(record.checkOutAt)}
+      {record.autoClosed && <span className="ml-1 block text-xs font-normal text-amber sm:inline">Tự đóng ca</span>}
+    </span>
+  );
+}
+
 function shiftLabel(record: AttendanceRecord): string {
   if (!record.shiftStart || !record.shiftEnd) return "Ngoài ca";
   return `${record.shiftStart.slice(0, 5)}–${record.shiftEnd.slice(0, 5)}`;
@@ -102,7 +112,7 @@ export function AttendanceView() {
     { key: "date", header: "Ngày", cell: (r) => <span className="tnum">{formatDate(r.date)}</span> },
     { key: "shift", header: "Ca", hideBelow: "sm", cell: (r) => <span className="text-bark">{shiftLabel(r)}</span> },
     { key: "in", header: "Vào", numeric: true, cell: (r) => <span className="tnum">{clock(r.checkInAt)}</span> },
-    { key: "out", header: "Ra", numeric: true, cell: (r) => <span className="tnum">{clock(r.checkOutAt)}</span> },
+    { key: "out", header: "Ra", numeric: true, cell: (r) => <CheckOutTime record={r} /> },
     { key: "punctual", header: "Giờ giấc", cell: (r) => <Punctuality record={r} /> },
     {
       key: "worked",

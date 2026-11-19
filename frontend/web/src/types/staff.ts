@@ -70,6 +70,8 @@ export interface AttendanceRecord {
   /** Số phút ra sớm so với ca (quá dung sai); 0 = đúng giờ, ngoài ca, hoặc chưa ra ca. */
   earlyLeaveMinutes: number;
   note: string | null;
+  /** Giờ ra do hệ thống tự điền vì quên ra ca; giờ công tính theo hết ca được xếp. */
+  autoClosed: boolean;
 }
 
 export interface TimesheetRow {

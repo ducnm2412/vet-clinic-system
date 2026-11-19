@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 /**
  * Báo phía phòng khám về lịch đặt, qua thông báo trong app (không email):
  * bác sĩ được xếp lịch hoặc lịch của mình bị huỷ, admin có yêu cầu đặt lịch mới cần xếp, và nhân viên quầy
- * biết có yêu cầu đặt lịch mới.
+ * có ca làm đúng ngày khách hẹn biết có yêu cầu đặt lịch mới (không ai có ca thì báo tất cả nhân viên).
  *
  * Nghe cùng routing key với thư báo khách nhưng hàng đợi riêng, nên hai việc không kéo nhau thử lại.
  */
@@ -21,8 +21,7 @@ import org.springframework.stereotype.Component;
 public class AppointmentStaffNoticeListener {
 
     private static final String ADMIN_ROLE = "ADMIN";
-    private static final String STAFF_ROLE = "STAFF";
-
+    
     private final NotificationService notificationService;
     private final UserDirectory userDirectory;
 
@@ -41,7 +40,7 @@ public class AppointmentStaffNoticeListener {
         });
 
         StaffNotificationFactory.forStaff(event).ifPresent(c -> {
-            var staff = userDirectory.idsByRole(STAFF_ROLE);
+            var staff = userDirectory.staffOnShiftOrAll(event.date());
             notificationService.createForAll(staff, c.type(), c.title(), c.message(), c.link());
             log.info("Notified {} staff about new request appointmentId={}", staff.size(), event.appointmentId());
         });

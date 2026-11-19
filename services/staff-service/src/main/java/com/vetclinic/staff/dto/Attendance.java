@@ -37,7 +37,9 @@ public final class Attendance {
             LocalTime shiftEnd,
             long lateMinutes,
             long earlyLeaveMinutes,
-            String note
+            String note,
+            /** Giờ ra do hệ thống tự điền vì quên ra ca; giờ công tính theo hết ca được xếp. */
+            boolean autoClosed
     ) {
     }
 
@@ -47,7 +49,7 @@ public final class Attendance {
             /** Số ngày có chấm công (kể cả ngày quên ra ca). */
             long daysWorked,
             long totalMinutes,
-            /** Ngày đã vào ca nhưng chưa ra ca — giờ công của những ngày đó chưa tính được. */
+            /** Ngày quên ra ca: chưa ra ca, hoặc đã bị hệ thống tự đóng ca — giờ ra của những ngày đó không phải giờ thật. */
             long daysMissingCheckOut,
             long shiftsAssigned,
             /** Số ngày vào ca muộn quá dung sai. */

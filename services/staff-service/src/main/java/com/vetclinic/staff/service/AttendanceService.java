@@ -38,7 +38,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class AttendanceService {
 
-    static final ZoneId CLINIC_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
+    public static final ZoneId CLINIC_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
 
     /**
      * Dung sai khi so giờ vào/ra với ca: lệch tới chừng này vẫn tính là đúng giờ, quá thì mới ghi
@@ -89,6 +89,42 @@ public class AttendanceService {
         attendanceRepository.saveAndFlush(record);
         log.info("Ra ca: user={} ngày={} làm {} phút", userId, today, record.workedMinutes());
         return toRecord(record, spanOf(userId, today));
+    }
+
+    /**
+     * Đóng một ngày công đã qua mà người đó quên ra ca. Giờ ra điền là giờ hết ca được xếp hôm đó; không có ca,
+     * hoặc vào ca sau giờ hết ca, thì điền đúng giờ vào (0 phút công) để không tự tính giờ không có thật.
+     * Bản ghi đánh dấu {@code autoClosed} để admin thấy đây không phải giờ ra thật.
+     *
+     * @return true nếu đã đóng; false nếu bản ghi không còn cần đóng (đã ra ca, hoặc là hôm nay)
+     */
+    @Transactional
+    public boolean autoClose(UUID recordId) {
+        LocalDate today = LocalDate.now(CLINIC_ZONE);
+        AttendanceRecord record = attendanceRepository.findById(recordId).orElse(null);
+        if (record == null || record.getCheckOutAt() != null || !record.getDate().isBefore(today)) {
+            return false;
+        }
+        ShiftSpan span = spanOf(record.getUserId(), record.getDate());
+        Instant checkOut = record.getCheckInAt();
+        if (span != null) {
+            Instant shiftEnd = record.getDate().atTime(span.end()).atZone(CLINIC_ZONE).toInstant();
+            if (shiftEnd.isAfter(checkOut)) {
+                checkOut = shiftEnd;
+            }
+        }
+        record.setCheckOutAt(checkOut);
+        record.setAutoClosed(true);
+        String tag = "Tự đóng ca: quên ra ca";
+        String note = record.getNote();
+        record.setNote(note == null || note.isBlank() ? tag : truncate(note + " · " + tag));
+        attendanceRepository.saveAndFlush(record);
+        log.info("Tự đóng ca: user={} ngày={} giờ ra={}", record.getUserId(), record.getDate(), checkOut);
+        return true;
+    }
+
+    private static String truncate(String s) {
+        return s.length() <= 500 ? s : s.substring(0, 500);
     }
 
     /** Bản ghi hôm nay, để giao diện biết nên hiện nút "Vào ca" hay "Ra ca". Chưa chấm thì null. */
@@ -156,7 +192,7 @@ public class AttendanceService {
             ShiftSpan span = spans.get(new DayKey(record.getUserId(), record.getDate()));
             row[0]++;
             row[1] += record.workedMinutes();
-            if (record.getCheckOutAt() == null) {
+            if (record.getCheckOutAt() == null || record.isAutoClosed()) {
                 row[2]++;
             }
             if (lateMinutes(record, span) > 0) {
@@ -230,6 +266,6 @@ public class AttendanceService {
                 record.getCheckInAt(), record.getCheckOutAt(), record.workedMinutes(),
                 span == null ? null : span.start(), span == null ? null : span.end(),
                 lateMinutes(record, span), earlyLeaveMinutes(record, span),
-                record.getNote());
+                record.getNote(), record.isAutoClosed());
     }
 }

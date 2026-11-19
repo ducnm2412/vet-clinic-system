@@ -286,6 +286,95 @@ class AttendanceServiceTest {
         return attendanceService.search(date, date, userId).stream().findFirst().orElseThrow();
     }
 
+    // ---- Tự đóng ca quên ra ca ----
+
+    @Test
+    void autoCloseFillsCheckOutWithShiftEndAndFlagsTheRecord() {
+        LocalDate day = today.minusDays(1);
+        shift(me, day, 8, 17);
+        openRecord(me, day);
+        UUID id = attendanceRepository.findByUserIdAndDate(me, day).orElseThrow().getId();
+
+        assertThat(attendanceService.autoClose(id)).isTrue();
+
+        AttendanceRecord saved = attendanceRepository.findById(id).orElseThrow();
+        assertThat(saved.getCheckOutAt()).isEqualTo(day.atTime(17, 0).atZone(AttendanceService.CLINIC_ZONE).toInstant());
+        assertThat(saved.isAutoClosed()).isTrue();
+        assertThat(saved.getNote()).contains("Tự đóng ca");
+        assertThat(attendanceService.search(day, day, me).get(0).workedMinutes()).isEqualTo(9 * 60);
+        assertThat(attendanceService.search(day, day, me).get(0).autoClosed()).isTrue();
+    }
+
+    @Test
+    void autoCloseWithoutAShiftCountsNoWorkedTime() {
+        LocalDate day = today.minusDays(2);
+        openRecord(me, day);
+        UUID id = attendanceRepository.findByUserIdAndDate(me, day).orElseThrow().getId();
+
+        assertThat(attendanceService.autoClose(id)).isTrue();
+
+        AttendanceRecord saved = attendanceRepository.findById(id).orElseThrow();
+        assertThat(saved.getCheckOutAt()).isEqualTo(saved.getCheckInAt());
+        assertThat(saved.workedMinutes()).isZero();
+    }
+
+    @Test
+    void autoCloseNeverGoesBackBeforeTheCheckIn() {
+        LocalDate day = today.minusDays(1);
+        shift(me, day, 8, 12);
+        // Vào ca lúc 14h, sau giờ hết ca: không được điền giờ ra sớm hơn giờ vào.
+        attendanceRepository.saveAndFlush(AttendanceRecord.builder().userId(me).date(day)
+                .checkInAt(day.atTime(14, 0).atZone(AttendanceService.CLINIC_ZONE).toInstant()).build());
+        AttendanceRecord open = attendanceRepository.findByUserIdAndDate(me, day).orElseThrow();
+
+        attendanceService.autoClose(open.getId());
+
+        assertThat(attendanceRepository.findById(open.getId()).orElseThrow().workedMinutes()).isZero();
+    }
+
+    @Test
+    void autoCloseLeavesTodayAndFinishedRecordsAlone() {
+        openRecord(me, today);
+        UUID todayId = attendanceRepository.findByUserIdAndDate(me, today).orElseThrow().getId();
+        UUID other = UUID.randomUUID();
+        record(other, today.minusDays(1), 8, 12);
+        UUID doneId = attendanceRepository.findByUserIdAndDate(other, today.minusDays(1)).orElseThrow().getId();
+
+        assertThat(attendanceService.autoClose(todayId)).isFalse();
+        assertThat(attendanceService.autoClose(doneId)).isFalse();
+
+        assertThat(attendanceRepository.findById(todayId).orElseThrow().getCheckOutAt()).isNull();
+        assertThat(attendanceRepository.findById(doneId).orElseThrow().isAutoClosed()).isFalse();
+    }
+
+    @Test
+    void openRecordsBeforeTodayAreFoundOldestFirst() {
+        openRecord(me, today.minusDays(1));
+        UUID other = UUID.randomUUID();
+        openRecord(other, today.minusDays(3));
+        openRecord(UUID.randomUUID(), today);
+
+        var ids = attendanceRepository.findOpenIdsBefore(today, org.springframework.data.domain.PageRequest.ofSize(50));
+
+        assertThat(ids).contains(
+                attendanceRepository.findByUserIdAndDate(other, today.minusDays(3)).orElseThrow().getId(),
+                attendanceRepository.findByUserIdAndDate(me, today.minusDays(1)).orElseThrow().getId());
+        assertThat(ids).doesNotContain(attendanceRepository.findAll().stream()
+                .filter(a -> a.getDate().equals(today) && a.getCheckOutAt() == null).findFirst().orElseThrow().getId());
+        assertThat(ids.indexOf(attendanceRepository.findByUserIdAndDate(other, today.minusDays(3)).orElseThrow().getId()))
+                .isLessThan(ids.indexOf(attendanceRepository.findByUserIdAndDate(me, today.minusDays(1)).orElseThrow().getId()));
+    }
+
+    @Test
+    void timesheetCountsAutoClosedDaysAsMissingCheckOut() {
+        openRecord(me, today.minusDays(1));
+        attendanceService.autoClose(attendanceRepository.findByUserIdAndDate(me, today.minusDays(1)).orElseThrow().getId());
+
+        Attendance.TimesheetRow mine = attendanceService.timesheet(today.minusDays(1), today, me).rows().get(0);
+
+        assertThat(mine.daysMissingCheckOut()).isEqualTo(1);
+    }
+
     private void shift(UUID userId, LocalDate date, int fromHour, int toHour) {
         shiftRepository.saveAndFlush(Shift.builder().userId(userId).date(date)
                 .startTime(LocalTime.of(fromHour, 0)).endTime(LocalTime.of(toHour, 0)).build());

@@ -55,12 +55,13 @@ class StaffListenersTest {
     }
 
     @Test
-    void newRequest_alsoNotifiesEveryStaffMemberWithALinkToTheirAppointments() {
+    void newRequest_alsoNotifiesTheStaffOnShiftThatDay_withALinkToTheirAppointments() {
         List<UUID> staff = List.of(UUID.randomUUID(), UUID.randomUUID());
         when(directory.idsByRole("ADMIN")).thenReturn(List.of());
-        when(directory.idsByRole("STAFF")).thenReturn(staff);
+        AppointmentNotificationEvent request = event("REQUEST_RECEIVED", null);
+        when(directory.staffOnShiftOrAll(request.date())).thenReturn(staff);
 
-        appointmentListener.onAppointmentNotification(event("REQUEST_RECEIVED", null));
+        appointmentListener.onAppointmentNotification(request);
 
         verify(notifications).createForAll(eq(staff), eq("NEW_REQUEST"), anyString(), anyString(),
                 eq("/staff/appointments"));

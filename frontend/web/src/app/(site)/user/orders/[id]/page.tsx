@@ -467,9 +467,8 @@ function Timeline({ order }: { order: Order }) {
                 className={cn(
                   "relative grid size-12 place-items-center rounded-full",
                   !done && "border-2 border-[#e8e1da] bg-white text-[#b5a89c]",
-                  done && !(isNow && last) && "bg-[#1f7a4d] text-white",
-                  isNow && last && "bg-[#f57c1f] text-white ring-4 ring-[#f57c1f]/25",
-                  isNow && !last && "ring-4 ring-[#1f7a4d]/20",
+                  done && "bg-[#1f7a4d] text-white",
+                  isNow && "ring-4 ring-[#1f7a4d]/20",
                 )}
               >
                 <Icon className="size-5" strokeWidth={2.5} />

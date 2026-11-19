@@ -7,7 +7,7 @@ import { ApiError, attendanceApi, authApi } from "@/lib/api";
 import { formatDate } from "@/lib/utils/format";
 import { PageHeader } from "@/components/layout/DashboardShell";
 import { Metric, MetricRow } from "@/components/dashboard/Metric";
-import { Punctuality, duration } from "@/components/staff/AttendanceView";
+import { CheckOutTime, Punctuality, duration } from "@/components/staff/AttendanceView";
 import {
   DataTable,
   EmptyState,
@@ -137,7 +137,7 @@ export default function AdminAttendancePage() {
     { key: "date", header: "Ngày", cell: (r) => <span className="tnum">{formatDate(r.date)}</span> },
     { key: "name", header: "Người", cell: (r) => nameOf(r.userId) },
     { key: "in", header: "Vào", numeric: true, cell: (r) => <span className="tnum">{clock(r.checkInAt)}</span> },
-    { key: "out", header: "Ra", numeric: true, cell: (r) => <span className="tnum">{clock(r.checkOutAt)}</span> },
+    { key: "out", header: "Ra", numeric: true, cell: (r) => <CheckOutTime record={r} /> },
     { key: "punctual", header: "Giờ giấc", cell: (r) => <Punctuality record={r} /> },
     {
       key: "worked",

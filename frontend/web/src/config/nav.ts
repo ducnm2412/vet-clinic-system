@@ -88,6 +88,7 @@ export const NAV: Record<Role, NavSection[]> = {
     {
       title: "Cá nhân",
       items: [
+        { href: "/doctor/schedule", label: "Lịch làm của tôi", icon: CalendarClock },
         { href: "/doctor/attendance", label: "Chấm công", icon: Clock },
         { href: "/doctor/profile", label: "Hồ sơ", icon: UserRound },
       ],
@@ -113,6 +114,7 @@ export const NAV: Record<Role, NavSection[]> = {
     {
       title: "Cá nhân",
       items: [
+        { href: "/staff/schedule", label: "Lịch làm của tôi", icon: CalendarClock },
         { href: "/staff/attendance", label: "Chấm công", icon: Clock },
         { href: "/staff/profile", label: "Hồ sơ", icon: UserRound },
       ],
