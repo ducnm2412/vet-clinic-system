@@ -2,9 +2,8 @@
 
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bell, CalendarCheck2, Eye, EyeOff, KeyRound, MapPin, Package, Pencil, Plus, Tag, Trash2 } from "lucide-react";
-import { ApiError, customerApi } from "@/lib/api";
-import { MOCK_ACCOUNT_ENABLED } from "@/lib/api/mock-account"; // MOCK-TẠM
+import { Eye, EyeOff, MapPin, Pencil, Plus, Trash2 } from "lucide-react";
+import { ApiError, authApi, customerApi } from "@/lib/api";
 import { formatAddress } from "@/lib/utils/format";
 import type { Address, AddressRequest, CustomerGender } from "@/types";
 import { useAuth } from "@/lib/auth/context";
@@ -13,7 +12,6 @@ import { PhotoUploadButton } from "@/components/PhotoUploadButton";
 import { SiteButton } from "@/components/site/primitives";
 import { SiteDialog } from "@/components/site/SiteDialog";
 import { SiteInput, SiteTextarea } from "@/components/site/fields";
-import { ComingSoon } from "@/components/user/EmptyState";
 import { PageHeader } from "@/components/user/PageHeader";
 import { Tabs } from "@/components/user/Tabs";
 import { CustomerAvatar, useDisplayName } from "@/components/user/UserSidebar";
@@ -26,16 +24,15 @@ const GENDER_LABEL: Record<CustomerGender, string> = {
   OTHER: "Khác",
 };
 
-type Tab = "profile" | "address" | "password" | "notify";
+type Tab = "profile" | "address" | "password";
 const TABS: Array<{ key: Tab; label: string }> = [
   { key: "profile", label: "Thông tin cá nhân" },
   { key: "address", label: "Sổ địa chỉ" },
   { key: "password", label: "Đổi mật khẩu" },
-  { key: "notify", label: "Thông báo" },
 ];
 
 /**
- * CN-09, CN-10: hồ sơ của chính khách, sổ địa chỉ, đổi mật khẩu, cài đặt thông báo.
+ * CN-09, CN-10: hồ sơ của chính khách, sổ địa chỉ, đổi mật khẩu.
  * Mở thẳng một tab bằng ?tab=password (dropdown ở header dùng).
  */
 export default function AccountSettingsPage() {
@@ -55,7 +52,6 @@ export default function AccountSettingsPage() {
         {tab === "profile" && <ProfileSection />}
         {tab === "address" && <AddressSection />}
         {tab === "password" && <PasswordSection />}
-        {tab === "notify" && <NotifySection />}
       </div>
     </>
   );
@@ -178,107 +174,82 @@ function ProfileSection() {
   );
 }
 
-/* MOCK-TẠM: backend chưa có API đổi mật khẩu khi đang đăng nhập — form chỉ chạy thử ở dev. */
 function PasswordSection() {
   const toast = useToast();
   const [show, setShow] = useState(false);
   const [f, setF] = useState({ current: "", next: "", confirm: "" });
-  if (!MOCK_ACCOUNT_ENABLED) return <ComingSoon icon={KeyRound} title="Đổi mật khẩu sắp ra mắt" />;
+  // Lỗi do backend trả về theo từng ô (vd sai mật khẩu hiện tại); xoá khi người dùng sửa lại ô đó.
+  const [serverErrors, setServerErrors] = useState<Partial<Record<keyof typeof f, string>>>({});
+
+  const change = useMutation({
+    mutationFn: () =>
+      authApi.changePassword({ currentPassword: f.current, newPassword: f.next, confirmPassword: f.confirm }),
+    onSuccess: () => {
+      toast.success("Đã đổi mật khẩu. Các thiết bị khác sẽ phải đăng nhập lại.");
+      setF({ current: "", next: "", confirm: "" });
+      setServerErrors({});
+    },
+    onError: (err) => {
+      if (err instanceof ApiError && err.fieldErrors) {
+        setServerErrors({
+          current: err.fieldErrors.currentPassword,
+          next: err.fieldErrors.newPassword,
+          confirm: err.fieldErrors.confirmPassword,
+        });
+      } else {
+        toast.error(err instanceof Error ? err.message : "Không đổi được mật khẩu, bạn thử lại sau nhé.");
+      }
+    },
+  });
 
   const tooShort = f.next.length > 0 && f.next.length < 8;
   const mismatch = f.confirm.length > 0 && f.confirm !== f.next;
   const ok = !!f.current && f.next.length >= 8 && f.next === f.confirm;
-  const input = (key: keyof typeof f, label: string, hint?: string | false) => (
-    <label className="block">
-      <span className={fieldLabel}>{label}</span>
-      <span className="relative block">
-        <input
-          type={show ? "text" : "password"}
-          autoComplete={key === "current" ? "current-password" : "new-password"}
-          className={cn(field, "pr-12", hint && "border-[#e5484d]")}
-          value={f[key]}
-          onChange={(e) => setF({ ...f, [key]: e.target.value })}
-        />
-        <button
-          type="button"
-          onClick={() => setShow(!show)}
-          aria-label={show ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
-          className="absolute right-3 top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded-full text-[#777777] hover:bg-[#fff1e3]"
-        >
-          {show ? <EyeOff aria-hidden className="size-4" /> : <Eye aria-hidden className="size-4" />}
-        </button>
-      </span>
-      {hint && <span className="mt-1 block text-xs text-[#e5484d]">{hint}</span>}
-    </label>
-  );
+  const input = (key: keyof typeof f, label: string, hint?: string | false) => {
+    const error = hint || serverErrors[key];
+    return (
+      <label className="block">
+        <span className={fieldLabel}>{label}</span>
+        <span className="relative block">
+          <input
+            type={show ? "text" : "password"}
+            autoComplete={key === "current" ? "current-password" : "new-password"}
+            className={cn(field, "pr-12", error && "border-[#e5484d]")}
+            value={f[key]}
+            onChange={(e) => {
+              setF({ ...f, [key]: e.target.value });
+              if (serverErrors[key]) setServerErrors({ ...serverErrors, [key]: undefined });
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => setShow(!show)}
+            aria-label={show ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+            className="absolute right-3 top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded-full text-[#777777] hover:bg-[#fff1e3]"
+          >
+            {show ? <EyeOff aria-hidden className="size-4" /> : <Eye aria-hidden className="size-4" />}
+          </button>
+        </span>
+        {error && <span className="mt-1 block text-xs text-[#e5484d]">{error}</span>}
+      </label>
+    );
+  };
 
   return (
     <form
       className="max-w-lg space-y-4"
       onSubmit={(e) => {
         e.preventDefault();
-        toast.success("Demo: đã đổi mật khẩu (chưa kết nối backend).");
-        setF({ current: "", next: "", confirm: "" });
+        if (ok && !change.isPending) change.mutate();
       }}
     >
       {input("current", "Mật khẩu hiện tại")}
       {input("next", "Mật khẩu mới", tooShort && "Mật khẩu cần ít nhất 8 ký tự.")}
       {input("confirm", "Xác nhận mật khẩu mới", mismatch && "Mật khẩu xác nhận chưa khớp.")}
-      <button type="submit" disabled={!ok} className={cn(btnPrimary, "mt-2 h-12 w-full")}>
-        Cập nhật mật khẩu
+      <button type="submit" disabled={!ok || change.isPending} className={cn(btnPrimary, "mt-2 h-12 w-full")}>
+        {change.isPending ? "Đang cập nhật…" : "Cập nhật mật khẩu"}
       </button>
     </form>
-  );
-}
-
-/* MOCK-TẠM: backend chưa lưu cài đặt thông báo — ở dev chỉ giữ trong bộ nhớ trang. */
-function NotifySection() {
-  const toast = useToast();
-  const [prefs, setPrefs] = useState({ appointment: true, order: true, promo: false });
-  if (!MOCK_ACCOUNT_ENABLED) return <ComingSoon icon={Bell} title="Cài đặt thông báo sắp ra mắt" />;
-
-  const rows = [
-    { key: "appointment" as const, icon: CalendarCheck2, title: "Thông báo lịch khám", desc: "Nhắc trước buổi khám, khi lịch được xác nhận hoặc thay đổi." },
-    { key: "order" as const, icon: Package, title: "Thông báo đơn hàng", desc: "Cập nhật khi đơn được xác nhận, đang giao và đã giao." },
-    { key: "promo" as const, icon: Tag, title: "Thông báo khuyến mãi", desc: "Ưu đãi sản phẩm, gói tiêm phòng và dịch vụ spa." },
-  ];
-  return (
-    <div className="max-w-2xl">
-      <ul className="divide-y divide-[#eeeeee] rounded-2xl border border-[#eeeeee]">
-        {rows.map((r) => (
-          <li key={r.key} className="flex items-center gap-4 p-4">
-            <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-[#fff1e3] text-[#f57c1f]">
-              <r.icon aria-hidden className="size-5" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="font-semibold text-[#242424]">{r.title}</p>
-              <p className="text-[13px] text-[#777777]">{r.desc}</p>
-            </div>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={prefs[r.key]}
-              aria-label={r.title}
-              onClick={() => setPrefs({ ...prefs, [r.key]: !prefs[r.key] })}
-              className={cn(
-                "relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200",
-                prefs[r.key] ? "bg-[#f57c1f]" : "bg-[#dddddd]",
-              )}
-            >
-              <span
-                className={cn(
-                  "absolute left-0 top-1 size-5 rounded-full bg-white shadow transition-transform duration-200",
-                  prefs[r.key] ? "translate-x-6" : "translate-x-1",
-                )}
-              />
-            </button>
-          </li>
-        ))}
-      </ul>
-      <button type="button" onClick={() => toast.success("Demo: đã lưu cài đặt thông báo.")} className={cn(btnPrimary, "mt-5")}>
-        Lưu cài đặt
-      </button>
-    </div>
   );
 }
 

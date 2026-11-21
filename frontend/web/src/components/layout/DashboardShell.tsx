@@ -3,8 +3,9 @@
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Globe, LogOut, Menu, PawPrint, X } from "lucide-react";
+import { ArrowLeft, Globe, KeyRound, LogOut, Menu, PawPrint, X } from "lucide-react";
 import { SidebarNav } from "./Sidebar";
+import { ChangePasswordDialog } from "./ChangePasswordDialog";
 import { NotificationBell } from "@/components/site/NotificationBell";
 import { useAuth } from "@/lib/auth";
 import { homeFor } from "@/config/nav";
@@ -156,6 +157,7 @@ function Brand({ role, compact }: { role: Role; compact?: boolean }) {
 function UserCard() {
   const { email, roles, signOut } = useAuth();
   const router = useRouter();
+  const [changingPassword, setChangingPassword] = useState(false);
   const name = email?.split("@")[0] ?? "";
   const initial = (name[0] ?? "?").toUpperCase();
 
@@ -174,6 +176,14 @@ function UserCard() {
           </p>
         </div>
         <button
+          aria-label="Đổi mật khẩu"
+          title="Đổi mật khẩu"
+          onClick={() => setChangingPassword(true)}
+          className="grid size-9 shrink-0 place-items-center rounded-lg text-white/75 transition-colors hover:bg-white/10 hover:text-white"
+        >
+          <KeyRound aria-hidden className="size-4" />
+        </button>
+        <button
           aria-label="Đăng xuất"
           title="Đăng xuất"
           onClick={() => {
@@ -185,6 +195,7 @@ function UserCard() {
           <LogOut aria-hidden className="size-4" />
         </button>
       </div>
+      <ChangePasswordDialog open={changingPassword} onClose={() => setChangingPassword(false)} />
     </div>
   );
 }

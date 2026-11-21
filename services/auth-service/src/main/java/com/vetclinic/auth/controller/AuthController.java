@@ -3,6 +3,7 @@ package com.vetclinic.auth.controller;
 import java.util.UUID;
 import com.vetclinic.auth.dto.AccessTokenResponse;
 import com.vetclinic.auth.dto.AuthResponse;
+import com.vetclinic.auth.dto.ChangePasswordRequest;
 import com.vetclinic.auth.dto.CreateCustomerAccountRequest;
 import com.vetclinic.auth.dto.FacebookLoginRequest;
 import com.vetclinic.auth.dto.ForgotPasswordRequest;
@@ -18,6 +19,7 @@ import com.vetclinic.auth.exception.InvalidRefreshTokenException;
 import com.vetclinic.auth.security.RefreshCookieFactory;
 import com.vetclinic.auth.service.UserQueryService;
 import com.vetclinic.auth.service.AuthService;
+import com.vetclinic.auth.service.ChangePasswordService;
 import com.vetclinic.auth.service.PasswordResetService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -43,6 +45,7 @@ public class AuthController {
     private final AuthService authService;
     private final UserQueryService userQueryService;
     private final PasswordResetService passwordResetService;
+    private final ChangePasswordService changePasswordService;
     private final RefreshCookieFactory refreshCookieFactory;
 
     @PostMapping("/register")
@@ -141,6 +144,18 @@ public class AuthController {
     @PostMapping("/reset-password")
     public MessageResponse resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
         return passwordResetService.reset(request.token(), request.newPassword());
+    }
+
+    /**
+     * Đổi mật khẩu khi đang đăng nhập (mọi vai trò). Cookie refresh token của thiết bị này được giữ
+     * lại; các thiết bị khác bị đăng xuất.
+     */
+    @PostMapping("/change-password")
+    public MessageResponse changePassword(
+            Authentication authentication,
+            @CookieValue(value = "refreshToken", required = false) String refreshToken,
+            @Valid @RequestBody ChangePasswordRequest request) {
+        return changePasswordService.change(authentication.getName(), refreshToken, request);
     }
 
     @GetMapping("/me")

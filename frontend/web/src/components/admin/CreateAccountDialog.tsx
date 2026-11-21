@@ -21,7 +21,7 @@ type FormValues = z.infer<typeof schema>;
 
 /**
  * Tạo tài khoản bác sĩ hoặc nhân viên. Tài khoản hoạt động ngay, không cần xác minh email;
- * người được cấp nên đổi mật khẩu sau lần đăng nhập đầu (chưa có chức năng đổi — VD-08).
+ * người được cấp nên đổi mật khẩu sau lần đăng nhập đầu (nút chìa khoá ở thẻ người dùng, thanh bên).
  *
  * Thứ tự ô theo cách gọi tên Việt Nam: "Họ" đi vào firstName, "Tên" vào lastName — cùng quy ước
  * với sự kiện user.staff-created ghép họ tên cho profile-service (VD-20).

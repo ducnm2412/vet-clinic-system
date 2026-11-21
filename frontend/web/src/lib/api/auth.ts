@@ -69,6 +69,13 @@ export const authApi = {
   resetPassword: (body: { token: string; newPassword: string; confirmPassword: string }) =>
     http.post<{ message: string }>("/auth/reset-password", body, true),
 
+  /**
+   * Đổi mật khẩu khi đang đăng nhập. Sai mật khẩu hiện tại trả 400 kèm fieldErrors.currentPassword
+   * (không phải 401, nên không bị coi là hết phiên). Các thiết bị khác bị đăng xuất.
+   */
+  changePassword: (body: { currentPassword: string; newPassword: string; confirmPassword: string }) =>
+    http.post<{ message: string }>("/auth/change-password", body),
+
   me: () => http.get<CurrentUser>("/auth/me"),
 
   /** Chỉ ADMIN. Backend chỉ cho tạo tài khoản DOCTOR và STAFF. */

@@ -40,6 +40,13 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
+    @ExceptionHandler(PasswordChangeException.class)
+    public ResponseEntity<ErrorResponse> handlePasswordChange(PasswordChangeException ex) {
+        Map<String, String> fieldErrors = ex.getField() == null ? null : Map.of(ex.getField(), ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse(Instant.now(), HttpStatus.BAD_REQUEST.value(), ex.getMessage(), fieldErrors));
+    }
+
     @ExceptionHandler(InvalidGoogleTokenException.class)
     public ResponseEntity<ErrorResponse> handleInvalidGoogleToken(InvalidGoogleTokenException ex) {
         return build(HttpStatus.UNAUTHORIZED, ex.getMessage());
