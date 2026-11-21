@@ -29,7 +29,7 @@ public class CustomerProfileService {
     @Transactional
     public CustomerProfileResponse uploadMyPhoto(UUID userId, MultipartFile file) {
         CustomerProfile profile = getOrCreateProfile(userId);
-        photoStorageService.store(PhotoUrls.CUSTOMERS, profile.getId(), file);
+        profile.setPhotoUrl(photoStorageService.store(PhotoUrls.CUSTOMERS, profile.getId(), file));
         profile.setPhotoVersion(profile.getPhotoVersion() + 1);
         customerProfileRepository.saveAndFlush(profile);
         return toProfileResponse(profile);
@@ -171,7 +171,7 @@ public class CustomerProfileService {
 
     private CustomerProfileResponse toProfileResponse(CustomerProfile profile) {
         return new CustomerProfileResponse(profile.getId(), profile.getUserId(), profile.getPhone(),
-                profile.getDateOfBirth(), profile.getGender(), PhotoUrls.of(PhotoUrls.CUSTOMERS, profile.getId(), profile.getPhotoVersion()),
+                profile.getDateOfBirth(), profile.getGender(), PhotoUrls.resolve(profile.getPhotoUrl(), PhotoUrls.CUSTOMERS, profile.getId(), profile.getPhotoVersion()),
                 profile.getCreatedAt(), profile.getUpdatedAt());
     }
 

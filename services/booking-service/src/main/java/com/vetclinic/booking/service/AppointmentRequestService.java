@@ -56,11 +56,41 @@ public class AppointmentRequestService {
     @Transactional
     public AppointmentResponse createRequest(UUID customerUserId, String customerEmail, String bearerToken,
                                              AppointmentRequest request) {
+        requireBookableTime(request.date(), request.startTime());
+        return submit(customerUserId, customerEmail, request, requireOwnsPet(request.petId(), bearerToken));
+    }
+
+    /**
+     * CN-19: lễ tân gửi yêu cầu đặt lịch hộ khách đang đứng ở quầy. Đi chung đường với khách tự đặt
+     * (chờ admin xếp bác sĩ, báo admin và nhân viên có ca), chỉ khác cách kiểm quyền sở hữu: nhân
+     * viên không phải chủ con vật nên không hỏi được {@code /pets/me}; tra hồ sơ rồi đối chiếu chủ
+     * nuôi với khách nhân viên đã chọn — vẫn không cho gắn nhầm con vật của người khác.
+     *
+     * `customerEmail` là email của khách (nhân viên chọn khách ở bước một) để sau này báo khách
+     * khi admin xếp lịch; không có thì chỉ không gửi được email, yêu cầu vẫn nhận.
+     */
+    @Transactional
+    public AppointmentResponse createWalkInRequest(UUID customerUserId, String customerEmail, String bearerToken,
+                                                   AppointmentRequest request) {
+        requireBookableTime(request.date(), request.startTime());
+        PetResponse pet;
+        try {
+            pet = petServiceClient.getPetById(request.petId(), bearerToken);
+        } catch (FeignException.NotFound e) {
+            throw new ResourceNotFoundException("Pet not found: " + request.petId());
+        }
+        if (pet == null || !customerUserId.equals(pet.ownerUserId())) {
+            throw new ResourceNotFoundException(
+                    "Thú cưng " + request.petId() + " không thuộc về khách đã chọn");
+        }
+        return submit(customerUserId, customerEmail, request, pet);
+    }
+
+    /** Phần chung của hai đường gửi yêu cầu — giờ hợp lệ và quyền sở hữu con vật đã kiểm xong trước khi vào đây. */
+    private AppointmentResponse submit(UUID customerUserId, String customerEmail, AppointmentRequest request,
+                                       PetResponse pet) {
         LocalDate date = request.date();
         LocalTime time = request.startTime();
-        requireBookableTime(date, time);
-
-        PetResponse pet = requireOwnsPet(request.petId(), bearerToken);
         var service = clinicServiceCatalog.requireBookable(request.serviceId());
 
         // Khoá theo khách (giới hạn số yêu cầu đang mở) rồi theo khung giờ (sức chứa). Mọi lời gọi

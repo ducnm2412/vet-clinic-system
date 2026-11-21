@@ -88,6 +88,10 @@ services:
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
       # Thu muc luu anh dai dien (thu cung, bac si, nhan vien, khach hang) — nam tren volume ben duoi.
       UPLOAD_DIR: /data/uploads
+      # Anh dai dien luu tren Cloudinary (DB giu URL). De trong ca ba thi giu anh tren o dia (volume ben duoi).
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:-}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:-}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:-}
     volumes:
       - profile-uploads-data:/data/uploads
     depends_on:
@@ -338,6 +342,10 @@ services:
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
       # Thu muc luu anh thu cung — nam tren volume ben duoi.
       UPLOAD_DIR: /data/uploads
+      # Anh dai dien luu tren Cloudinary (DB giu URL). De trong ca ba thi giu anh tren o dia (volume ben duoi).
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:-}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:-}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:-}
     volumes:
       - pet-uploads-data:/data/uploads
     depends_on:

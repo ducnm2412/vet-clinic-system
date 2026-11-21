@@ -200,7 +200,14 @@ export const http = {
 
 /** Địa chỉ đầy đủ tới một path của API, dùng cho thẻ img trỏ tới ảnh công khai. */
 export function apiUrl(path: string): string {
+  // Ảnh trên Cloudinary là URL đầy đủ, không đi qua API của mình.
+  if (isAbsoluteUrl(path)) return path;
   return `${BASE}${path}`;
+}
+
+/** URL đầy đủ (https://…) chứ không phải path của API. */
+export function isAbsoluteUrl(path: string): boolean {
+  return /^https?:\/\//i.test(path);
 }
 
 /** Ghép query string, bỏ qua giá trị rỗng để không gửi tham số thừa. */

@@ -68,12 +68,14 @@ export const bookingApi = {
   mine: () => devMock(http.get<Appointment[]>("/booking/appointments/me"), () => mockAppointments), // MOCK-TẠM
 
   /**
-   * CN-19: lễ tân đặt lịch hộ khách đang đứng ở quầy. Backend đối chiếu con vật có đúng của khách
-   * đã chọn không — nhân viên không phải chủ nên không đi đường /pets/me được.
+   * CN-19: lễ tân gửi yêu cầu đặt lịch hộ khách đang đứng ở quầy — y như khách tự gửi: chờ admin
+   * xếp bác sĩ (AWAITING_ASSIGNMENT). Backend đối chiếu con vật có đúng của khách đã chọn không;
+   * `customerEmail` để báo khách khi admin xếp lịch.
    */
-  createWalkIn: (customerUserId: string, appointment: AppointmentRequest) =>
+  createWalkIn: (customerUserId: string, customerEmail: string | undefined, appointment: AppointmentRequest) =>
     http.post<Appointment>("/booking/appointments/walk-in", {
       customerUserId,
+      customerEmail,
       appointment,
     }),
 

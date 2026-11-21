@@ -26,7 +26,7 @@ public class StaffProfileService {
     @Transactional
     public StaffProfileResponse uploadMyPhoto(UUID userId, MultipartFile file) {
         StaffProfile profile = getOrCreateProfile(userId);
-        photoStorageService.store(PhotoUrls.STAFF, profile.getId(), file);
+        profile.setPhotoUrl(photoStorageService.store(PhotoUrls.STAFF, profile.getId(), file));
         profile.setPhotoVersion(profile.getPhotoVersion() + 1);
         staffProfileRepository.saveAndFlush(profile);
         return toResponse(profile);
@@ -71,7 +71,7 @@ public class StaffProfileService {
     private StaffProfileResponse toResponse(StaffProfile profile) {
         return new StaffProfileResponse(profile.getId(), profile.getUserId(), profile.getPosition(),
                 profile.getPhone(), profile.getHireDate(),
-                PhotoUrls.of(PhotoUrls.STAFF, profile.getId(), profile.getPhotoVersion()),
+                PhotoUrls.resolve(profile.getPhotoUrl(), PhotoUrls.STAFF, profile.getId(), profile.getPhotoVersion()),
                 profile.getCreatedAt(), profile.getUpdatedAt());
     }
 }

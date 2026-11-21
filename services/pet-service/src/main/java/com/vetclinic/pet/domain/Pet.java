@@ -76,6 +76,10 @@ public class Pet {
     @Builder.Default
     private int photoVersion = 0;
 
+    /** URL ảnh trên Cloudinary (đã kèm phiên bản). Null: chưa có ảnh trên Cloudinary, ảnh cũ (nếu có) nằm trên đĩa. */
+    @Column(name = "photo_url", length = 500)
+    private String photoUrl;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;

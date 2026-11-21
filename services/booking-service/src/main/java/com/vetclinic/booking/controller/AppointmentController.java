@@ -62,16 +62,17 @@ public class AppointmentController {
     }
 
     /**
-     * CN-19: lễ tân đặt lịch hộ khách đang đứng ở quầy. Đường riêng chứ không mở rộng endpoint
-     * của khách: hai việc khác nhau về người gọi, về cách kiểm quyền sở hữu và về ai được gọi.
+     * CN-19: lễ tân gửi yêu cầu đặt lịch hộ khách đang đứng ở quầy; admin xếp bác sĩ sau, y như
+     * khách tự gửi. Đường riêng chứ không mở rộng endpoint của khách: hai việc khác nhau về người
+     * gọi, về cách kiểm quyền sở hữu và về ai được gọi.
      */
     @PostMapping("/booking/appointments/walk-in")
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
     public AppointmentResponse createWalkIn(@Valid @RequestBody WalkInAppointmentRequest request,
                                            @RequestHeader("Authorization") String bearerToken) {
-        return appointmentService.createWalkInAppointment(request.customerUserId(), bearerToken,
-                request.appointment());
+        return appointmentRequestService.createWalkInRequest(request.customerUserId(), request.customerEmail(),
+                bearerToken, request.appointment());
     }
 
     @GetMapping("/booking/appointments/me")

@@ -13,4 +13,7 @@ public interface CustomerProfileRepository extends JpaRepository<CustomerProfile
     Optional<CustomerProfile> findByUserId(UUID userId);
 
     List<CustomerProfile> findByUserIdIn(Collection<UUID> userIds);
+
+    /** Hồ sơ có ảnh trên đĩa mà chưa có URL Cloudinary — đối tượng của LegacyPhotoMigration. */
+    List<CustomerProfile> findByPhotoVersionGreaterThanAndPhotoUrlIsNull(int photoVersion);
 }

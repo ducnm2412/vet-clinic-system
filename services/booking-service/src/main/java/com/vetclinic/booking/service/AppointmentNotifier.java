@@ -49,6 +49,14 @@ public class AppointmentNotifier {
         publish(Type.CANCELLED_BY_CLINIC, a, null, doctorHadIt ? doctorIdOf(a) : null);
     }
 
+    /**
+     * Phòng khám huỷ yêu cầu chờ xếp bác sĩ vì đã quá giờ khách chọn. Chỉ báo khách: lịch chưa có
+     * bác sĩ nên không ai khác cần biết.
+     */
+    public void cancelledOverdue(Appointment a) {
+        publish(Type.CANCELLED_OVERDUE, a, null, null);
+    }
+
     /** Khách tự huỷ lịch đã xếp bác sĩ: chỉ bác sĩ cần biết. */
     public void cancelledByCustomer(Appointment a) {
         publish(Type.CANCELLED_BY_CUSTOMER, a, null, doctorIdOf(a));

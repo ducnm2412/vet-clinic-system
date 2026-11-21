@@ -83,7 +83,7 @@ public class PetService {
     @Transactional
     public PetResponse uploadPhoto(UUID ownerUserId, UUID petId, MultipartFile file) {
         Pet pet = ownedOrThrow(ownerUserId, petId);
-        photoStorageService.store(pet.getId(), file);
+        pet.setPhotoUrl(photoStorageService.store(pet.getId(), file));
         pet.setPhotoVersion(pet.getPhotoVersion() + 1);
         return toResponse(petRepository.saveAndFlush(pet));
     }
@@ -185,9 +185,12 @@ public class PetService {
         return trimmed.isEmpty() ? null : trimmed;
     }
 
-    // URL dựng lại từ (id, version) lúc trả response, không lưu chuỗi trong DB. `?v=` chỉ để trình duyệt
-    // bỏ cache khi ảnh được thay.
+    // Ảnh đã lên Cloudinary thì trả URL đã lưu (kèm phiên bản của Cloudinary). Chưa có thì dựng URL ảnh cũ trên
+    // đĩa từ (id, version); `?v=` chỉ để trình duyệt bỏ cache khi ảnh được thay.
     private static String photoUrl(Pet pet) {
+        if (pet.getPhotoUrl() != null && !pet.getPhotoUrl().isBlank()) {
+            return pet.getPhotoUrl();
+        }
         return pet.getPhotoVersion() > 0 ? "/pets/photos/" + pet.getId() + "?v=" + pet.getPhotoVersion() : null;
     }
 

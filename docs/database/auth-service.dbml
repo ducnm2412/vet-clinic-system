@@ -1,0 +1,86 @@
+// Sơ đồ CSDL của auth-service (database auth_db). Dán vào https://dbdiagram.io/d
+
+Table password_reset_tokens {
+  id uuid [pk, default: `gen_random_uuid()`]
+  user_id uuid [not null]
+  token_hash varchar(64) [not null, unique]
+  expires_at timestamptz [not null]
+  used_at timestamptz
+  created_at timestamptz [not null, default: `now()`]
+}
+
+Table refresh_tokens {
+  id uuid [pk, default: `gen_random_uuid()`]
+  user_id uuid [not null]
+  token_hash varchar(64) [not null, unique]
+  expires_at timestamptz [not null]
+  revoked_at timestamptz
+  created_at timestamptz [not null, default: `now()`]
+}
+
+Table roles {
+  id integer [pk, increment]
+  name varchar(20) [not null, unique]
+}
+
+Table user_roles {
+  user_id uuid [not null]
+  role_id integer [not null]
+  indexes {
+    (user_id, role_id) [pk]
+  }
+}
+
+Table users {
+  id uuid [pk, default: `gen_random_uuid()`]
+  email varchar(255) [not null, unique]
+  password_hash varchar(255)
+  status varchar(20) [not null, default: 'ACTIVE']
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+  first_name varchar(100) [not null]
+  last_name varchar(100) [not null]
+  verification_token varchar(255)
+  verification_token_expires_at timestamptz
+  google_sub varchar(255) [unique]
+  facebook_id varchar(255) [unique]
+}
+
+// ===== Khoá ngoại trong database =====
+Ref: user_roles.user_id > users.id
+Ref: user_roles.role_id > roles.id
+Ref: refresh_tokens.user_id > users.id
+Ref: password_reset_tokens.user_id > users.id
+
+// ===== Tham chiếu sang service khác (UUID, không có FK thật; không vẽ vì bảng nằm ở DB khác) =====
+// customer_profiles.user_id - users.id  [profile-service]
+// doctor_profiles.user_id - users.id  [profile-service]
+// staff_profiles.user_id - users.id  [profile-service]
+// appointments.customer_user_id > users.id  [booking-service]
+// appointment_slots.doctor_user_id > users.id  [booking-service]
+// doctor_shifts.doctor_user_id > users.id  [booking-service]
+// pets.owner_user_id > users.id  [pet-service]
+// medical_records.customer_user_id > users.id  [pet-service]
+// medical_records.doctor_user_id > users.id  [pet-service]
+// carts.user_id > users.id  [order-service]
+// orders.user_id > users.id  [order-service]
+// orders.assigned_staff_id > users.id  [order-service]
+// order_status_history.changed_by > users.id  [order-service]
+// payments.customer_user_id > users.id  [payment-service]
+// notifications.user_id > users.id  [notification-service]
+// shifts.user_id > users.id  [staff-service]
+// shifts.created_by > users.id  [staff-service]
+// attendance_records.user_id > users.id  [staff-service]
+// leaves.user_id > users.id  [staff-service]
+// leaves.created_by > users.id  [staff-service]
+// stock_movements.created_by > users.id  [product-service]
+// medication_stock_movements.created_by > users.id  [product-service]
+// prescription_templates.created_by > users.id  [product-service]
+
+TableGroup auth_service {
+  password_reset_tokens
+  refresh_tokens
+  roles
+  user_roles
+  users
+}

@@ -52,6 +52,11 @@ public final class InAppNotificationFactory {
                     "Lịch khám của " + pet + " đã bị huỷ",
                     "Phòng khám đã huỷ lịch khám" + at(when) + ". Bạn có thể gửi yêu cầu đặt lịch mới.",
                     "/appointments/create"));
+            case "CANCELLED_OVERDUE" -> Optional.of(new Content(
+                    "Yêu cầu đặt lịch của " + pet + " đã bị huỷ",
+                    "Yêu cầu khám" + at(when) + " đã quá giờ mà chưa xếp được bác sĩ nên đã được huỷ. "
+                            + "Bạn có thể gửi yêu cầu đặt lịch mới.",
+                    "/appointments/create"));
             default -> Optional.empty();
         };
     }

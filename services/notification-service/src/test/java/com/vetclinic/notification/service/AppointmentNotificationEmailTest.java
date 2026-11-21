@@ -89,6 +89,17 @@ class AppointmentNotificationEmailTest {
     }
 
     @Test
+    void cancelledOverdue_saysTheRequestWasTooLate_andPointsToANewRequest() throws Exception {
+        String mail = send(event("CANCELLED_OVERDUE", "Milo", null, null, null));
+
+        assertThat(mail).contains("Yêu cầu đặt lịch của Milo đã bị huỷ");
+        assertThat(mail).contains("quá giờ");
+        assertThat(mail).contains("http://localhost:3000/appointments/create");
+        // Dấu chấm cuối giờ không kẹt trong ngoặc.
+        assertThat(mail).contains("đến 10:30) đã quá giờ").doesNotContain("10:30.)");
+    }
+
+    @Test
     void escapesHtmlTypedByCustomer() throws Exception {
         String mail = send(event("REQUEST_RECEIVED", "<b>Milo</b>", null,
                 "<a href=\"http://lua.dao\">bấm vào đây</a>", "<script>x</script>"));

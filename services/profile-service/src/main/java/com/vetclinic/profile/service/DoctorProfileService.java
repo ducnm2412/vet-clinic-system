@@ -33,7 +33,7 @@ public class DoctorProfileService {
     @Transactional
     public DoctorProfileResponse uploadMyPhoto(UUID userId, MultipartFile file) {
         DoctorProfile profile = getOrCreateProfile(userId);
-        photoStorageService.store(PhotoUrls.DOCTORS, profile.getId(), file);
+        profile.setPhotoUrl(photoStorageService.store(PhotoUrls.DOCTORS, profile.getId(), file));
         profile.setPhotoVersion(profile.getPhotoVersion() + 1);
         doctorProfileRepository.saveAndFlush(profile);
         return toProfileResponse(profile);
@@ -115,7 +115,7 @@ public class DoctorProfileService {
         return doctorProfileRepository.findAll().stream()
                 .map(p -> new DoctorPublicResponse(p.getId(), p.getUserId(), p.getFullName(), p.getSpecialty(),
                         p.getBio(), p.getYearsOfExperience(),
-                        PhotoUrls.of(PhotoUrls.DOCTORS, p.getId(), p.getPhotoVersion())))
+                        PhotoUrls.resolve(p.getPhotoUrl(), PhotoUrls.DOCTORS, p.getId(), p.getPhotoVersion())))
                 .toList();
     }
 
@@ -139,7 +139,7 @@ public class DoctorProfileService {
     private DoctorProfileResponse toProfileResponse(DoctorProfile profile) {
         return new DoctorProfileResponse(profile.getId(), profile.getUserId(), profile.getSpecialty(),
                 profile.getPhone(), profile.getBio(), profile.getYearsOfExperience(),
-                PhotoUrls.of(PhotoUrls.DOCTORS, profile.getId(), profile.getPhotoVersion()),
+                PhotoUrls.resolve(profile.getPhotoUrl(), PhotoUrls.DOCTORS, profile.getId(), profile.getPhotoVersion()),
                 profile.getCreatedAt(), profile.getUpdatedAt());
     }
 

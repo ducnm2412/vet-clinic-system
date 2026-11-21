@@ -25,6 +25,11 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
+    @ExceptionHandler(PhotoUploadException.class)
+    public ResponseEntity<ErrorResponse> handlePhotoUpload(PhotoUploadException ex) {
+        return build(HttpStatus.BAD_GATEWAY, "Không tải được ảnh lên, bạn thử lại sau nhé");
+    }
+
     // Vượt spring.servlet.multipart.max-file-size — bị chặn trước khi tới service nên phải bắt riêng.
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<ErrorResponse> handleUploadTooLarge(MaxUploadSizeExceededException ex) {

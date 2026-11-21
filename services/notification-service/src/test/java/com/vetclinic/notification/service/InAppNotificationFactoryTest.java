@@ -54,6 +54,15 @@ class InAppNotificationFactoryTest {
     }
 
     @Test
+    void cancelledOverdue_tellsTheCustomerItWasTooLate_andLinksToBookingANewOne() {
+        Content c = InAppNotificationFactory.forAppointment(event("CANCELLED_OVERDUE", null)).orElseThrow();
+
+        assertThat(c.title()).contains("Milo").contains("huỷ");
+        assertThat(c.message()).contains("quá giờ");
+        assertThat(c.link()).isEqualTo("/appointments/create");
+    }
+
+    @Test
     void unknownType_producesNothing() {
         assertThat(InAppNotificationFactory.forAppointment(event("SOMETHING_NEW", null))).isEmpty();
         assertThat(InAppNotificationFactory.forAppointment(event(null, null))).isEmpty();

@@ -30,6 +30,11 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage());
     }
 
+    @ExceptionHandler(PhotoUploadException.class)
+    public ResponseEntity<ErrorResponse> handlePhotoUpload(PhotoUploadException ex) {
+        return build(HttpStatus.BAD_GATEWAY, "Không tải được ảnh lên, bạn thử lại sau nhé");
+    }
+
     @ExceptionHandler(InvalidPhotoException.class)
     public ResponseEntity<ErrorResponse> handleInvalidPhoto(RuntimeException ex) {
         return build(HttpStatus.BAD_REQUEST, ex.getMessage());

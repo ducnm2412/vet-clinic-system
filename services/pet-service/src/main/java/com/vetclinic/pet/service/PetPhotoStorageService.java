@@ -19,8 +19,9 @@ import java.util.Arrays;
 import java.util.UUID;
 
 /**
- * Lưu ảnh đại diện thú cưng dưới {@code <upload.dir>/pets/<petId>.<ext>}. Mỗi con chỉ giữ một ảnh:
- * tải ảnh mới là ghi đè ảnh cũ. Cùng cấu trúc thư mục với profile-service trước đây, nên file cũ
+ * Lưu ảnh đại diện thú cưng. Có cấu hình Cloudinary thì đẩy ảnh lên đó và trả URL để lưu vào DB; chưa
+ * cấu hình thì giữ trên đĩa dưới {@code <upload.dir>/pets/<petId>.<ext>} (store trả null). Mỗi con chỉ giữ một
+ * ảnh: tải ảnh mới là ghi đè ảnh cũ. Cùng cấu trúc thư mục với profile-service trước đây, nên file cũ
  * chép sang volume của pet-service là dùng được ngay.
  */
 @Service
@@ -34,12 +35,15 @@ public class PetPhotoStorageService {
     }
 
     private final Path dir;
+    private final CloudinaryUploader cloudinary;
 
-    public PetPhotoStorageService(@Value("${app.upload.dir}") String uploadDir) {
+    public PetPhotoStorageService(@Value("${app.upload.dir}") String uploadDir, CloudinaryUploader cloudinary) {
         this.dir = Path.of(uploadDir).toAbsolutePath().normalize().resolve("pets");
+        this.cloudinary = cloudinary;
     }
 
-    public void store(UUID petId, MultipartFile file) {
+    /** @return URL ảnh trên Cloudinary để lưu vào DB, hoặc null khi ảnh được giữ trên đĩa. */
+    public String store(UUID petId, MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new InvalidPhotoException("Chưa chọn ảnh để tải lên");
         }
@@ -55,6 +59,10 @@ public class PetPhotoStorageService {
                 throw new InvalidPhotoException("Chỉ nhận ảnh JPG, PNG hoặc WebP");
             }
 
+            if (cloudinary.enabled()) {
+                return cloudinary.upload(publicId(petId), bytes);
+            }
+
             Files.createDirectories(dir);
             Path target = dir.resolve(petId + "." + ext);
             Path temp = Files.createTempFile(dir, petId + "-", ".tmp");
@@ -68,9 +76,36 @@ public class PetPhotoStorageService {
             } finally {
                 Files.deleteIfExists(temp);
             }
+            return null;
         } catch (IOException e) {
             throw new UncheckedIOException("Không lưu được ảnh", e);
         }
+    }
+
+    /**
+     * Chuyển ảnh cũ đang nằm trên đĩa lên Cloudinary (chạy một lần lúc khởi động, xem LegacyPhotoMigration).
+     *
+     * @return URL mới, hoặc null nếu Cloudinary chưa bật hoặc không còn file trên đĩa
+     */
+    public String uploadLegacyFile(UUID petId) {
+        if (!cloudinary.enabled()) {
+            return null;
+        }
+        for (String ext : EXTENSIONS) {
+            Path file = dir.resolve(petId + "." + ext);
+            if (Files.isRegularFile(file)) {
+                try {
+                    return cloudinary.upload(publicId(petId), Files.readAllBytes(file));
+                } catch (IOException e) {
+                    throw new UncheckedIOException("Không đọc được ảnh cũ " + file, e);
+                }
+            }
+        }
+        return null;
+    }
+
+    private static String publicId(UUID petId) {
+        return "vetclinic/pets/" + petId;
     }
 
     public StoredPhoto load(UUID petId) {
@@ -83,8 +118,9 @@ public class PetPhotoStorageService {
         throw new ResourceNotFoundException("Không có ảnh cho thú cưng: " + petId);
     }
 
-    /** Thú cưng bị xoá thì ảnh đi theo. Lỗi đĩa không được làm hỏng việc xoá hồ sơ. */
+    /** Thú cưng bị xoá thì ảnh đi theo. Lỗi đĩa hay Cloudinary không được làm hỏng việc xoá hồ sơ. */
     public void delete(UUID petId) {
+        cloudinary.delete(publicId(petId));
         for (String ext : EXTENSIONS) {
             try {
                 Files.deleteIfExists(dir.resolve(petId + "." + ext));

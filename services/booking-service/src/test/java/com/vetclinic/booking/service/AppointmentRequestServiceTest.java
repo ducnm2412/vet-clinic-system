@@ -22,6 +22,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.test.mock.mockito.SpyBean;
 import org.springframework.http.HttpStatus;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -36,6 +37,8 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -61,6 +64,8 @@ class AppointmentRequestServiceTest {
     @Autowired
     private BlockedDoctorRepository blockedDoctorRepository;
 
+    @SpyBean
+    private AppointmentNotifier notifier;
     @MockBean
     private PetServiceClient petServiceClient;
     @MockBean
@@ -89,6 +94,54 @@ class AppointmentRequestServiceTest {
         assertThat(r.endTime()).isEqualTo(NINE.plusMinutes(30));
         assertThat(r.petId()).isEqualTo(petId);
         assertThat(r.proposedDate()).isNull();
+    }
+
+    // ---------- đặt tại quầy: đi chung đường với khách tự đặt ----------
+
+    @Test
+    void walkIn_staffRequestWaitsForAdminToAssignADoctor_andKeepsTheCustomerEmail() {
+        UUID customer = UUID.randomUUID();
+        UUID petId = UUID.randomUUID();
+        when(petServiceClient.getPetById(any(), any())).thenReturn(petOf(customer, petId));
+
+        AppointmentResponse r = requestService.createWalkInRequest(customer, "khach@example.com", "Bearer staff",
+                new AppointmentRequest(petId, day, NINE, null, "Khách đến quầy"));
+
+        assertThat(r.status()).isEqualTo(AppointmentStatus.AWAITING_ASSIGNMENT);
+        assertThat(r.customerUserId()).isEqualTo(customer);
+        assertThat(r.petId()).isEqualTo(petId);
+        assertThat(r.doctorUserId()).isNull();
+        assertThat(appointmentRepository.findById(r.id()).orElseThrow().getCustomerEmail())
+                .isEqualTo("khach@example.com");
+    }
+
+    @Test
+    void walkIn_petOfSomeoneElseIsRefused() {
+        UUID petId = UUID.randomUUID();
+        // Nhân viên chọn nhầm khách: con vật này của người khác.
+        when(petServiceClient.getPetById(any(), any())).thenReturn(petOf(UUID.randomUUID(), petId));
+
+        assertThatThrownBy(() -> requestService.createWalkInRequest(UUID.randomUUID(), null, "Bearer staff",
+                new AppointmentRequest(petId, day, NINE, null, null)))
+                .isInstanceOf(com.vetclinic.booking.exception.ResourceNotFoundException.class);
+        assertThat(appointmentRepository.count()).isZero();
+    }
+
+    @Test
+    void walkIn_followsTheSameTimeRulesAsACustomerRequest() {
+        UUID customer = UUID.randomUUID();
+        UUID petId = UUID.randomUUID();
+        when(petServiceClient.getPetById(any(), any())).thenReturn(petOf(customer, petId));
+
+        // Ngày đã qua và giờ ngoài giờ làm việc bị chặn y như khách tự đặt.
+        assertThatThrownBy(() -> requestService.createWalkInRequest(customer, null, "Bearer staff",
+                new AppointmentRequest(petId, LocalDate.now(ClinicSchedule.ZONE_ID).minusDays(1), NINE, null, null)))
+                .isInstanceOfSatisfying(ResponseStatusException.class,
+                        e -> assertThat(e.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
+        assertThatThrownBy(() -> requestService.createWalkInRequest(customer, null, "Bearer staff",
+                new AppointmentRequest(petId, day, LocalTime.of(12, 0), null, null)))
+                .isInstanceOfSatisfying(ResponseStatusException.class,
+                        e -> assertThat(e.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
     }
 
     @Test
@@ -205,6 +258,29 @@ class AppointmentRequestServiceTest {
     }
 
     @Test
+    void clinicCancellingAnOverdueRequest_tellsTheCustomerItWasTooLate() {
+        Appointment overdue = appointmentRepository.saveAndFlush(Appointment.builder()
+                .customerUserId(UUID.randomUUID()).petId(UUID.randomUUID()).petName("Milo")
+                .status(AppointmentStatus.AWAITING_ASSIGNMENT)
+                .preferredDate(LocalDate.now(ClinicSchedule.ZONE_ID).minusDays(1)).preferredTime(NINE).build());
+
+        appointmentService.cancelAppointment(overdue.getId(), UUID.randomUUID(), true);
+
+        verify(notifier).cancelledOverdue(any());
+        verify(notifier, never()).cancelledByClinic(any(), org.mockito.ArgumentMatchers.anyBoolean());
+    }
+
+    @Test
+    void clinicCancellingARequestThatIsNotOverdue_usesTheOrdinaryCancellationNotice() {
+        AppointmentResponse r = requestService.createRequest(UUID.randomUUID(), "Bearer t", req(NINE));
+
+        appointmentService.cancelAppointment(r.id(), UUID.randomUUID(), true);
+
+        verify(notifier).cancelledByClinic(any(), org.mockito.ArgumentMatchers.eq(false));
+        verify(notifier, never()).cancelledOverdue(any());
+    }
+
+    @Test
     void anotherCustomer_cannotCancelMyRequest() {
         AppointmentResponse r = requestService.createRequest(UUID.randomUUID(), "Bearer t", req(NINE));
         assertThatThrownBy(() -> appointmentService.cancelAppointment(r.id(), UUID.randomUUID(), false))
@@ -317,6 +393,11 @@ class AppointmentRequestServiceTest {
         }
         when(profileServiceClient.listDoctors()).thenReturn(list);
         return list;
+    }
+
+    private PetResponse petOf(UUID ownerUserId, UUID petId) {
+        return new PetResponse(petId, ownerUserId, "Milo", "Dog", "Poodle", "MALE",
+                LocalDate.of(2020, 1, 1), null, null, null, Instant.now(), Instant.now());
     }
 
     private PetResponse pet() {

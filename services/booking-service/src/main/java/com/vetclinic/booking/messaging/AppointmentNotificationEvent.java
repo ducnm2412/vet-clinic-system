@@ -48,6 +48,8 @@ public record AppointmentNotificationEvent(
         /** Phòng khám huỷ lịch (khách không tự huỷ). */
         CANCELLED_BY_CLINIC,
         /** Khách tự huỷ lịch đã xếp bác sĩ. Chỉ để báo bác sĩ — khách không nhận thư. */
-        CANCELLED_BY_CUSTOMER
+        CANCELLED_BY_CUSTOMER,
+        /** Phòng khám huỷ yêu cầu chờ xếp bác sĩ vì đã quá giờ khách chọn. */
+        CANCELLED_OVERDUE
     }
 }

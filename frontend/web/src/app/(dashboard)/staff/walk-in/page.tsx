@@ -43,15 +43,15 @@ export default function WalkInBookingPage() {
   const [done, setDone] = useState<{ date: string; startTime: string } | null>(null);
 
   const times = useQuery({
-    queryKey: ["available-times", date],
-    queryFn: () => bookingApi.availableTimes(date),
+    queryKey: ["clinic-hours", date],
+    queryFn: () => bookingApi.clinicHours(date),
     enabled: pet !== null,
   });
   const services = useQuery({ queryKey: ["clinic-services"], queryFn: clinicServiceApi.list });
 
   const book = useMutation({
     mutationFn: () =>
-      bookingApi.createWalkIn(customer!.id, {
+      bookingApi.createWalkIn(customer!.id, customer!.email, {
         petId: pet!.id,
         date,
         startTime,
@@ -77,11 +77,14 @@ export default function WalkInBookingPage() {
   if (done) {
     return (
       <>
-        <PageHeader title="Đặt lịch tại quầy" description="Đã xong. Nhắc khách đến trước giờ hẹn khoảng 10 phút." />
+        <PageHeader
+          title="Đặt lịch tại quầy"
+          description="Đã gửi yêu cầu. Quản trị sẽ xếp bác sĩ, khách sẽ nhận thông báo khi lịch được xác nhận."
+        />
         <section className="rounded-[var(--radius-control)] border border-line bg-surface p-6">
           <p className="flex items-center gap-2 font-medium text-ink">
             <Check aria-hidden className="size-5 text-teal" />
-            Đã đặt lịch cho {pet?.name} lúc {formatTime(done.startTime)} ngày {formatDate(done.date)}
+            Đã gửi yêu cầu khám cho {pet?.name} lúc {formatTime(done.startTime)} ngày {formatDate(done.date)}
           </p>
           <p className="mt-2 text-sm text-bark">
             Khách: {customer?.firstName} {customer?.lastName} · {customer?.email}
@@ -165,7 +168,7 @@ export default function WalkInBookingPage() {
                 <Skeleton className="h-10 w-full" />
               ) : times.isError ? (
                 <ErrorState message="Không tải được khung giờ." onRetry={() => times.refetch()} />
-              ) : (times.data ?? []).length === 0 ? (
+              ) : !(times.data ?? []).some((t) => t.available) ? (
                 <p className="text-sm text-bark">Ngày này không còn chỗ. Chọn ngày khác giúp khách.</p>
               ) : (
                 <div className="flex flex-wrap gap-2">
@@ -174,15 +177,18 @@ export default function WalkInBookingPage() {
                       key={t.startTime}
                       type="button"
                       aria-pressed={startTime === t.startTime}
+                      disabled={!t.available}
                       onClick={() => setStartTime(t.startTime)}
-                      className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${
+                      className={`rounded-full border px-3 py-1.5 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
                         startTime === t.startTime
                           ? "border-teal bg-teal text-white"
-                          : "border-line bg-surface text-ink hover:border-teal"
+                          : "border-line bg-surface text-ink enabled:hover:border-teal"
                       }`}
                     >
                       {formatTime(t.startTime)}
-                      <span className="ml-1.5 text-xs opacity-70">còn {t.availableCount}</span>
+                      <span className="ml-1.5 text-xs opacity-70">
+                        {t.available ? `còn ${t.remaining}` : "hết chỗ"}
+                      </span>
                     </button>
                   ))}
                 </div>
@@ -201,7 +207,7 @@ export default function WalkInBookingPage() {
 
             <div className="mt-5">
               <Button disabled={!startTime} loading={book.isPending} onClick={() => book.mutate()}>
-                Đặt lịch
+                Gửi yêu cầu
               </Button>
             </div>
           </StepCard>

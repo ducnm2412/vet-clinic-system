@@ -1,0 +1,21 @@
+// Sơ đồ CSDL của notification-service (database notification_db). Dán vào https://dbdiagram.io/d
+
+Table notifications {
+  id uuid [pk]
+  user_id uuid [not null]
+  type varchar(40) [not null]
+  title varchar(200) [not null]
+  message varchar(1000) [not null]
+  link varchar(300)
+  read_at timestamptz
+  created_at timestamptz [not null, default: `now()`]
+}
+
+// ===== Khoá ngoại trong database =====
+
+// ===== Tham chiếu sang service khác (UUID, không có FK thật; không vẽ vì bảng nằm ở DB khác) =====
+// notifications.user_id > users.id  [auth-service]
+
+TableGroup notification_service {
+  notifications
+}

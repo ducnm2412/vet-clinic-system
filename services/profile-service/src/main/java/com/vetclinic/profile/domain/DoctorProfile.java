@@ -58,6 +58,10 @@ public class DoctorProfile {
     @Builder.Default
     private int photoVersion = 0;
 
+    // URL ảnh trên Cloudinary (đã kèm phiên bản). Null: chưa có ảnh trên Cloudinary, xem PhotoUrls.resolve.
+    @Column(name = "photo_url", length = 500)
+    private String photoUrl;
+
     @OneToMany(mappedBy = "doctorProfile", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<DoctorLicense> licenses = new ArrayList<>();

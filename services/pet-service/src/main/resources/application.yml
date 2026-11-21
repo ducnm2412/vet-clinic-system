@@ -43,6 +43,12 @@ app:
     # Thư mục gốc lưu ảnh thú cưng; trong Docker là volume pet-uploads-data.
     dir: ${UPLOAD_DIR:./uploads}
 
+cloudinary:
+  # Đủ cả ba thì ảnh thú cưng lưu trên Cloudinary (DB giữ URL); thiếu thì giữ trên đĩa như trước.
+  cloud-name: ${CLOUDINARY_CLOUD_NAME:}
+  api-key: ${CLOUDINARY_API_KEY:}
+  api-secret: ${CLOUDINARY_API_SECRET:}
+
 jwt:
   # Dùng chung secret với auth-service — tự verify chữ ký token, không gọi ngược auth-service mỗi request.
   secret: ${JWT_SECRET}

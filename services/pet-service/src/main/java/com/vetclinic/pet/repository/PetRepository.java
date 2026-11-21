@@ -18,4 +18,7 @@ public interface PetRepository extends JpaRepository<Pet, UUID> {
 
     List<Pet> findByOwnerUserIdInOrderByCreatedAtAsc(Collection<UUID> ownerUserIds);
 
+
+    /** Con có ảnh trên đĩa mà chưa có URL Cloudinary — đối tượng của LegacyPhotoMigration. */
+    List<Pet> findByPhotoVersionGreaterThanAndPhotoUrlIsNull(int photoVersion);
 }

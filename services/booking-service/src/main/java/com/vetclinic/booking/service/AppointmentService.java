@@ -55,24 +55,6 @@ public class AppointmentService {
         return createAppointment(customerUserId, null, bearerToken, request);
     }
 
-    /**
-     * CN-19: lễ tân đặt lịch hộ khách tại quầy.
-     *
-     * Khác đường đặt lịch của khách ở chỗ kiểm quyền sở hữu: nhân viên không phải chủ con vật nên
-     * không hỏi được {@code /pets/me}. Ở đây tra hồ sơ con vật rồi đối chiếu chủ nuôi với khách
-     * nhân viên chọn — vẫn không cho gắn nhầm con vật của người khác, chỉ là kiểm ở chỗ khác.
-     */
-    @Transactional
-    public AppointmentResponse createWalkInAppointment(UUID customerUserId, String bearerToken,
-                                                      AppointmentRequest request) {
-        PetResponse pet = petServiceClient.getPetById(request.petId(), bearerToken);
-        if (!customerUserId.equals(pet.ownerUserId())) {
-            throw new ResourceNotFoundException(
-                    "Thú cưng " + request.petId() + " không thuộc về khách đã chọn");
-        }
-        return book(customerUserId, null, request, pet);
-    }
-
     /** `customerEmail` lấy từ JWT của khách, dùng cho email xác nhận lịch (CN-43). */
     @Transactional
     public AppointmentResponse createAppointment(UUID customerUserId, String customerEmail, String bearerToken,
@@ -167,6 +149,8 @@ public class AppointmentService {
             // Chỉ lịch CONFIRMED mới có bác sĩ đã nhận; lịch chờ xếp hoặc đang đề xuất thì bác sĩ chưa
             // được báo gì nên cũng không cần báo huỷ.
             boolean doctorHadIt = appointment.getStatus() == AppointmentStatus.CONFIRMED && appointment.getSlot() != null;
+            // Yêu cầu chưa xếp bác sĩ mà giờ khách chọn đã trôi qua: khách được báo rõ lý do là quá giờ.
+            boolean overdue = isOverdueRequest(appointment);
             appointment.setStatus(AppointmentStatus.CANCELLED);
             AppointmentSlot slot = appointment.getSlot();
             // Lịch còn chờ xếp bác sĩ chưa giữ slot nào, không có gì để trả lại.
@@ -179,13 +163,29 @@ public class AppointmentService {
             appointmentRepository.saveAndFlush(appointment);
             // Khách tự huỷ thì họ vừa bấm, không cần thư. Phòng khám huỷ thì khách phải được biết.
             if (privileged && !appointment.getCustomerUserId().equals(callerUserId)) {
-                notifier.cancelledByClinic(appointment, doctorHadIt);
+                if (overdue) {
+                    notifier.cancelledOverdue(appointment);
+                } else {
+                    notifier.cancelledByClinic(appointment, doctorHadIt);
+                }
             } else if (doctorHadIt) {
                 notifier.cancelledByCustomer(appointment);
             }
         }
 
         return toResponse(appointment);
+    }
+
+    /** Yêu cầu còn chờ xếp bác sĩ và giờ khách mong muốn đã qua (giờ phòng khám). */
+    private static boolean isOverdueRequest(Appointment a) {
+        if (a.getStatus() != AppointmentStatus.AWAITING_ASSIGNMENT
+                || a.getPreferredDate() == null || a.getPreferredTime() == null) {
+            return false;
+        }
+        LocalDate today = LocalDate.now(ClinicSchedule.ZONE_ID);
+        return a.getPreferredDate().isBefore(today)
+                || (a.getPreferredDate().isEqual(today)
+                && !a.getPreferredTime().isAfter(LocalTime.now(ClinicSchedule.ZONE_ID)));
     }
 
     @Transactional

@@ -165,6 +165,15 @@ public class EmailService {
                                 + "phòng khám để được hỗ trợ.</p>")
                         .append(linkLine("Đặt lịch mới", frontendUrl + "/appointments/create"));
             }
+            case "CANCELLED_OVERDUE" -> {
+                subject = "Yêu cầu đặt lịch của " + pet + " đã bị huỷ";
+                html.append("<p>Yêu cầu khám cho <strong>").append(esc(pet))
+                        .append("</strong> (").append(when(event).replaceAll("\\.$", ""))
+                        .append(") đã quá giờ mà phòng khám chưa xếp được bác sĩ nên đã được huỷ.</p>")
+                        .append("<p>Rất tiếc về sự bất tiện này. Bạn có thể gửi yêu cầu đặt lịch mới, hoặc gọi "
+                                + "phòng khám để được hỗ trợ.</p>")
+                        .append(linkLine("Đặt lịch mới", frontendUrl + "/appointments/create"));
+            }
             default -> {
                 return false;
             }

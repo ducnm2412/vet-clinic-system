@@ -1,0 +1,44 @@
+// Sơ đồ CSDL của payment-service (database payment_db). Dán vào https://dbdiagram.io/d
+
+Table payment_items {
+  id uuid [pk, default: `gen_random_uuid()`]
+  payment_id uuid [not null]
+  medication_name varchar(255) [not null]
+  dosage varchar(100) [not null]
+  frequency varchar(100) [not null]
+  duration_days integer
+  unit_price numeric(12,2)
+  quantity integer
+  line_amount numeric(12,2)
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+}
+
+Table payments {
+  id uuid [pk, default: `gen_random_uuid()`]
+  medical_record_id uuid [not null, unique]
+  appointment_id uuid [not null]
+  customer_user_id uuid [not null]
+  amount numeric(12,2)
+  method varchar(20)
+  status varchar(20) [not null, default: 'PENDING_AMOUNT']
+  paid_at timestamptz
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+  service_name varchar(120)
+  service_amount numeric(12,2)
+}
+
+// ===== Khoá ngoại trong database =====
+Ref: payment_items.payment_id > payments.id
+
+// ===== Tham chiếu sang service khác (UUID, không có FK thật; không vẽ vì bảng nằm ở DB khác) =====
+// payments.customer_user_id > users.id  [auth-service]
+// payments.appointment_id > appointments.id  [booking-service]
+// payments.medical_record_id > medical_records.id  [pet-service]
+// orders.exam_payment_id - payments.id  [order-service]
+
+TableGroup payment_service {
+  payment_items
+  payments
+}

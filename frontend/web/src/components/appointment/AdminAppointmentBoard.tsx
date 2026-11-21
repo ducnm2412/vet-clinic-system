@@ -36,6 +36,15 @@ function askedWhen(a: Appointment): { date: string; time: string } {
     : { date: a.date, time: a.startTime };
 }
 
+/** Giờ đã trôi qua chưa: ngày trước hôm nay, hoặc hôm nay mà giờ đã tới (backend chặn đúng như vậy). */
+function isPast(date: string, time: string): boolean {
+  const today = todayISO();
+  if (date !== today) return date < today;
+  const now = new Date();
+  const p = (n: number) => String(n).padStart(2, "0");
+  return time.slice(0, 5) <= `${p(now.getHours())}:${p(now.getMinutes())}`;
+}
+
 function doctorName(fullName: string | null | undefined): string {
   return fullName?.trim() ? `BS. ${fullName.trim()}` : "Bác sĩ phòng khám";
 }
@@ -89,7 +98,7 @@ export function AdminAppointmentBoard() {
   const selected =
     [...waitingRows, ...dayRows].find((a) => a.id === selectedId && a.status === "AWAITING_ASSIGNMENT") ?? null;
   const asked = selected ? askedWhen(selected) : null;
-  const askedPast = asked !== null && asked.date < todayISO();
+  const askedPast = asked !== null && isPast(asked.date, asked.time);
 
   const availability = useQuery({
     queryKey: ["available-doctors", selected?.id, "assign", "", ""],
@@ -147,8 +156,6 @@ export function AdminAppointmentBoard() {
     }
   }
 
-  const today = todayISO();
-
   const columns: Column<Appointment>[] = [
     {
       key: "time",
@@ -172,8 +179,10 @@ export function AdminAppointmentBoard() {
             <span>
               <span className="tnum font-medium text-ink">{formatTime(w.time)}</span>
               <span className="text-ink-soft"> · {formatDate(w.date)}</span>
-              {a.status === "AWAITING_ASSIGNMENT" && w.date < today && (
-                <span className="ml-2 text-xs text-danger">Đã quá giờ</span>
+              {a.status === "AWAITING_ASSIGNMENT" && isPast(w.date, w.time) && (
+                <span className="ml-2 rounded-full bg-danger/10 px-2 py-0.5 text-xs font-medium text-danger">
+                  Quá giờ
+                </span>
               )}
             </span>
           </span>
@@ -353,7 +362,11 @@ export function AdminAppointmentBoard() {
             </div>
           ) : doctorsError ? (
             <ErrorState
-              message="Không tải được danh sách bác sĩ."
+              message={
+                assignable && availability.error instanceof ApiError
+                  ? availability.error.message
+                  : "Không tải được danh sách bác sĩ."
+              }
               onRetry={() => (assignable ? availability.refetch() : (directory.refetch(), dayShifts.refetch()))}
             />
           ) : doctorBoxes.length === 0 ? (
