@@ -18,7 +18,7 @@ export function SocialSignInButtons() {
         hoặc
         <span className="absolute inset-y-1/2 right-0 h-px w-[42%] bg-mist" aria-hidden />
       </div>
-      <div className="flex justify-center gap-4">
+      <div className="flex w-full justify-center">
         <GoogleSignInButton />
       </div>
     </div>

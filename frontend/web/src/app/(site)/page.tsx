@@ -40,12 +40,14 @@ import { Reveal } from "@/components/site/Reveal";
 import { CountUp } from "@/components/site/CountUp";
 import { FullHero } from "@/components/site/FullHero";
 import { CareProcess, EmergencyBanner, PromoBanners } from "@/components/site/HomeSections";
+import { WorkspaceRedirect } from "@/components/site/WorkspaceRedirect";
 
 const ORANGE = "#f57c1f";
 const GREEN = "#1f4a3c";
 export default function HomePage() {
   return (
     <div className="bg-white">
+      <WorkspaceRedirect />
       <FullHero />
       <div id="noi-dung" className="mx-auto mt-4 max-w-[1440px] scroll-mt-24 space-y-10 px-4 pb-0 sm:px-6">
         <Hero />

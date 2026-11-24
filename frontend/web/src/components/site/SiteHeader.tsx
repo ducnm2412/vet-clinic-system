@@ -9,6 +9,7 @@ import { ArrowRight, ChevronDown, KeyRound, LayoutGrid, LogOut, Menu, PawPrint, 
 import { CustomerAvatar } from "@/components/user/UserSidebar";
 import { clinicServiceApi } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { homeFor } from "@/config/nav";
 import { useCart } from "@/lib/useCart";
 import { cn } from "@/lib/utils/cn";
 import { BrandLockup } from "./Brand";
@@ -36,7 +37,7 @@ const CUSTOMER_LINKS: NavLink[] = [
 export function SiteHeader() {
   const pathname = usePathname();
   const router = useRouter();
-  const { email, hasRole, signOut } = useAuth();
+  const { email, roles, hasRole, signOut } = useAuth();
   const { itemCount, enabled: hasCart } = useCart();
 
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -190,7 +191,7 @@ export function SiteHeader() {
                       </>
                     )}
                     {!isCustomer && (
-                      <AccountItem href="/" onClick={() => setAccountOpen(false)}>
+                      <AccountItem href={homeFor(roles)} onClick={() => setAccountOpen(false)}>
                         Về khu làm việc
                       </AccountItem>
                     )}

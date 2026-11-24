@@ -16,7 +16,15 @@ interface GoogleAccountsId {
   }) => void;
   renderButton: (
     parent: HTMLElement,
-    options: { theme: string; size: string; shape: string; text: string },
+    options: {
+      theme: string;
+      size: string;
+      shape: string;
+      text: string;
+      width?: number;
+      locale?: string;
+      logo_alignment?: string;
+    },
   ) => void;
 }
 
@@ -46,11 +54,9 @@ function loadGoogleScript(): Promise<void> {
 }
 
 /**
- * Nút icon tròn "Đăng nhập bằng Google" — renderButton kiểu "icon" chính chủ của Google
- * đang lỗi (SVG bên trong co về 0px, đã kiểm chứng trực tiếp), nên dùng nút "standard" —
- * loại luôn render đúng — rồi đặt trong khung tròn 40px overflow-hidden, chỉ để lộ đúng góc
- * icon (khớp vì bán kính bo của cạnh trái nút pill cũng là 20px, bằng bán kính khung). Vẫn
- * là nút thật của Google, chỉ cắt khung hiển thị — không giả lập, click vẫn rơi đúng chỗ.
+ * Nút "Đăng nhập bằng Google" chính chủ, kiểu "standard", rộng bằng khung chứa (Google giới
+ * hạn 400px). Không cắt khung tròn nữa: khi trình duyệt đã đăng nhập Google, Google tự đổi
+ * sang nút cá nhân hoá (avatar + "Tiếp tục với tên …"), cắt khung sẽ chỉ lộ avatar và chữ vỡ.
  * Tự ẩn nếu chưa cấu hình NEXT_PUBLIC_GOOGLE_CLIENT_ID (xem .env.example).
  */
 export function GoogleSignInButton() {
@@ -83,11 +89,15 @@ export function GoogleSignInButton() {
             }
           },
         });
+        const width = Math.min(400, Math.max(200, containerRef.current.offsetWidth));
         window.google.accounts.id.renderButton(containerRef.current, {
           theme: "outline",
           size: "large",
-          shape: "pill",
+          shape: "rectangular",
           text: "signin_with",
+          width,
+          locale: "vi",
+          logo_alignment: "center",
         });
       })
       .catch(() => setError("Không tải được Google Sign-In."));
@@ -100,10 +110,8 @@ export function GoogleSignInButton() {
   if (!clientId) return null;
 
   return (
-    <div className="flex flex-col items-center">
-      <div className="relative size-10 overflow-hidden rounded-full">
-        <div ref={containerRef} className="absolute left-0 top-0" />
-      </div>
+    <div className="flex w-full flex-col items-center">
+      <div ref={containerRef} className="flex min-h-11 w-full justify-center" />
       {error && <p className="mt-2 text-center text-[12px] text-coral-deep">{error}</p>}
     </div>
   );

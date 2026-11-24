@@ -108,7 +108,7 @@ function SidebarPanel({
       <div className="flex items-center justify-end gap-1 px-4 pt-3 pb-2">
         <NotificationBell variant="sidebar" />
         <Link
-          href="/"
+          href="/?xem=website"
           target="_blank"
           aria-label="Mở website khách hàng"
           title="Mở website khách hàng"

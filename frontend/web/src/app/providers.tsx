@@ -5,6 +5,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "@/lib/auth";
 import { ToastProvider } from "@/components/ui";
 import { ApiError } from "@/lib/api";
+// Ghi lại đường dẫn của lần tải trang đầu tiên ngay khi app khởi động (xem WorkspaceRedirect).
+import "@/lib/initialPath";
 
 export function Providers({ children }: { children: ReactNode }) {
   const [client] = useState(
