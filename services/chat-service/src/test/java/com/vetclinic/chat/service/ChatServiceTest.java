@@ -73,7 +73,7 @@ class ChatServiceTest {
         ChatProperties properties = new ChatProperties(20, 1000, 4, 45,
                 new ChatProperties.Gemini("k", "http://x", "m", List.of(), 15, 3, 25),
                 new ChatProperties.RateLimit(10, guestLimit, 60, 3000),
-                new ChatProperties.IntentSettings(ChatProperties.IntentMode.RULES, "classpath:none.json", null));
+                new ChatProperties.IntentSettings(ChatProperties.IntentMode.RULES, "classpath:none.json", null, ChatProperties.A2.disabled()));
         return new ChatService(classifier, new RuleIntentClassifier(), new CannedReplies(clinic),
                 new RateLimiter(properties, clock), gemini, tools, new PromptBuilder(clinic, clock),
                 properties, mapper);
@@ -418,6 +418,36 @@ class ChatServiceTest {
         service.reply(afterBot("Bên mình có tiêm phòng.", "giá sao"), guest);
 
         assertThat(sentPrompt()).doesNotContain(PromptBuilder.hintLine(Intent.PRICE));
+    }
+
+    /** Ghi lại cờ allowRemote mà ChatService truyền cho bộ phân loại. */
+    private static final class RecordingClassifier implements IntentClassifier {
+        final List<Boolean> allowRemote = new ArrayList<>();
+
+        @Override
+        public Intent classify(String message) {
+            return classify(message, true);
+        }
+
+        @Override
+        public Intent classify(String message, boolean allow) {
+            allowRemote.add(allow);
+            return Intent.PRICE;
+        }
+    }
+
+    @Test
+    void shortReplyAfterBotDoesNotWaitForRemoteIntentLayer() {
+        RecordingClassifier classifier = new RecordingClassifier();
+        service = buildService(20, classifier);
+        geminiReturns(text("ok"));
+
+        service.reply(afterBot("Bên mình có tiêm phòng.", "giá sao"), guest);
+        service.reply(afterBot("Bên mình có tiêm phòng.", "tiêm phòng cho mèo giá bao nhiêu"), guest);
+        service.reply(userSays("giá sao"), guest);
+
+        // B1 (tin ngắn ngay sau tin bot) → không gọi A2; tin dài hoặc tin đầu tiên → được phép.
+        assertThat(classifier.allowRemote).containsExactly(false, true, true);
     }
 
     @Test

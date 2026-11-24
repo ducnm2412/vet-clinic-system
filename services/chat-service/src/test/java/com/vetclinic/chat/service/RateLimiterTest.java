@@ -46,7 +46,7 @@ class RateLimiterTest {
         ChatProperties properties = new ChatProperties(20, 1000, 4, 45,
                 new ChatProperties.Gemini("k", "http://x", "m", List.of(), 15, 3, 25),
                 new ChatProperties.RateLimit(10, guest, user, dailyCap),
-                new ChatProperties.IntentSettings(ChatProperties.IntentMode.RULES, "", null));
+                new ChatProperties.IntentSettings(ChatProperties.IntentMode.RULES, "", null, ChatProperties.A2.disabled()));
         return new RateLimiter(properties, clock);
     }
 

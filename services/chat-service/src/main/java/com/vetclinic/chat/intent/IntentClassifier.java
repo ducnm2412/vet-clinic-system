@@ -8,4 +8,12 @@ package com.vetclinic.chat.intent;
 public interface IntentClassifier {
 
     Intent classify(String message);
+
+    /**
+     * Như {@link #classify(String)}, nhưng {@code allowRemote = false} cấm gọi dịch vụ ngoài (tầng A2 gọi Gemini
+     * embedContent) — dùng khi nhãn gần như không ảnh hưởng câu trả lời, để không chờ mạng vô ích.
+     */
+    default Intent classify(String message, boolean allowRemote) {
+        return classify(message);
+    }
 }

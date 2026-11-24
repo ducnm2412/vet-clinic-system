@@ -76,7 +76,7 @@ class GeminiClientTest {
         ChatProperties properties = new ChatProperties(20, 1000, 4, 45,
                 new ChatProperties.Gemini(apiKey, baseUrl, model, fallbacks, 10, hedgeSeconds, totalSeconds),
                 new ChatProperties.RateLimit(10, 20, 60, 3000),
-                new ChatProperties.IntentSettings(ChatProperties.IntentMode.RULES, "", null));
+                new ChatProperties.IntentSettings(ChatProperties.IntentMode.RULES, "", null, ChatProperties.A2.disabled()));
         return new GeminiClient(properties);
     }
 

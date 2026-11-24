@@ -29,12 +29,55 @@ public record ChatProperties(
      * @param mode      rules | ml | hybrid
      * @param modelPath file JSON của mô hình ML (Spring resource: classpath:..., file:...)
      * @param threshold ghi đè ngưỡng tin cậy trong file mô hình; null = dùng ngưỡng trong file
+     * @param a2        tầng phụ A2 (embedding Gemini + hồi quy logistic), chỉ gọi khi A1 không chắc
      */
     public record IntentSettings(
             @DefaultValue("hybrid") IntentMode mode,
             @DefaultValue("classpath:ml/intent-model.json") String modelPath,
-            Double threshold
+            Double threshold,
+            @DefaultValue A2 a2
     ) {
+    }
+
+    /**
+     * Tầng phụ A2 của bộ phân loại ý định (xem CompositeIntentClassifier, ml/chat-intent/MODEL_FORMAT.md mục A2).
+     * Dùng chung GEMINI_API_KEY và base-url với app.chat.gemini; tên model embedding lấy từ file mô hình.
+     *
+     * @param enabled               bật/tắt; tự tắt khi không có API key hoặc không nạp được file mô hình
+     * @param modelPath             file JSON A2 (Spring resource)
+     * @param triggerBelow          chỉ gọi A2 khi confidence của A1 nhỏ hơn giá trị này
+     * @param minWords              câu (đã chuẩn hoá) ít hơn chừng này từ thì không gọi A2
+     * @param dailyCap              trần số lần gọi embedContent mỗi ngày (giờ Việt Nam)
+     * @param connectTimeoutMs      timeout kết nối tới Gemini
+     * @param timeoutMs             timeout đọc phản hồi
+     * @param cacheSize             số câu nhớ embedding (LRU); 0 = không cache
+     * @param rateLimitPauseMinutes gặp HTTP 429 (hạn mức theo phút) thì tạm tắt A2 chừng này phút
+     * @param failureThreshold      số lỗi 5xx/timeout liên tiếp thì ngắt mạch
+     * @param circuitOpenSeconds    thời gian ngắt mạch
+     */
+    public record A2(
+            @DefaultValue("true") boolean enabled,
+            @DefaultValue("classpath:ml/intent-model-a2.json") String modelPath,
+            @DefaultValue("0.6") double triggerBelow,
+            @DefaultValue("3") int minWords,
+            @DefaultValue("900") int dailyCap,
+            @DefaultValue("500") int connectTimeoutMs,
+            @DefaultValue("1200") int timeoutMs,
+            @DefaultValue("2000") int cacheSize,
+            @DefaultValue("15") int rateLimitPauseMinutes,
+            @DefaultValue("3") int failureThreshold,
+            @DefaultValue("60") int circuitOpenSeconds
+    ) {
+
+        /** A2 tắt — dùng trong test và khi cần dựng IntentSettings bằng tay. */
+        public static A2 disabled() {
+            return new A2(false, "", 0.6, 3, 900, 500, 1200, 2000, 15, 3, 60);
+        }
+
+        /** Giá trị mặc định (như application.yml), bật. */
+        public static A2 defaults() {
+            return new A2(true, "classpath:ml/intent-model-a2.json", 0.6, 3, 900, 500, 1200, 2000, 15, 3, 60);
+        }
     }
 
     public record Gemini(

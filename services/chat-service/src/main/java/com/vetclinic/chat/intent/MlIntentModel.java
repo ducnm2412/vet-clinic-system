@@ -119,7 +119,7 @@ public final class MlIntentModel {
         return new MlIntentModel(List.copyOf(labels), threshold, List.copyOf(blocks), coef, intercept, featureCount);
     }
 
-    private static List<Intent> parseLabels(JsonNode node) {
+    static List<Intent> parseLabels(JsonNode node) {
         if (!node.isArray() || node.isEmpty()) {
             throw invalid("labels phải là mảng không rỗng");
         }
@@ -188,7 +188,7 @@ public final class MlIntentModel {
         return value.asInt();
     }
 
-    private static double[] doubles(JsonNode node, String what) {
+    static double[] doubles(JsonNode node, String what) {
         if (node == null || !node.isArray()) {
             throw invalid(what + " phải là mảng số");
         }

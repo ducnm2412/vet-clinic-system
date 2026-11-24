@@ -87,14 +87,16 @@ public class ChatService {
     public ChatResponse reply(List<ChatMessage> messages, Caller caller) {
         String latest = messages.get(messages.size() - 1).content();
 
-        Intent intent = intentClassifier.classify(latest);
+        boolean shortReplyToBot = isShortReplyToBot(messages, latest);
+        // Tin ngắn ngay sau tin bot (B1): nhãn chỉ còn dùng để bắt EMERGENCY (luật + A1 đã lo) và THANKS (phải được
+        // luật xác nhận), nên không gọi tầng A2 qua mạng — tránh chờ Gemini embedContent vô ích.
+        Intent intent = intentClassifier.classify(latest, !shortReplyToBot);
         // Khẩn cấp luôn thắng, kể cả khi tin ngắn hay khách đang chê câu trả lời trước.
         if (intent == Intent.EMERGENCY) {
             return new ChatResponse(cannedReplies.forIntent(intent), ChatResponse.RULE);
         }
 
         boolean correction = CorrectionDetector.isCorrection(latest);
-        boolean shortReplyToBot = isShortReplyToBot(messages, latest);
         Intent hint = intent;
         if (correction || shortReplyToBot) {
             // Nhãn của tin ngắn / tin sửa lại không đáng tin: chỉ giữ câu soạn sẵn mà luật xác nhận

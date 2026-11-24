@@ -61,3 +61,23 @@ app:
       model-path: ${CHAT_INTENT_MODEL_PATH:classpath:ml/intent-model.json}
       # Ghi đè ngưỡng tin cậy trong file mô hình (bỏ trống = dùng ngưỡng trong file).
       # threshold: 0.55
+      # Tầng phụ A2: embedding Gemini (embedContent, dùng chung GEMINI_API_KEY) + hồi quy logistic
+      # (ml/chat-intent/MODEL_FORMAT.md mục A2). Chỉ gọi khi mô hình A1 không chắc (confidence < trigger-below);
+      # lỗi / timeout / hết hạn mức → dùng kết quả như chưa có A2. Không có API key hoặc không đọc được file → tự tắt.
+      a2:
+        enabled: ${CHAT_INTENT_A2_ENABLED:true}
+        model-path: classpath:ml/intent-model-a2.json
+        # ~42% tin gọi API, giữ phần lớn lợi ích A2 (mô phỏng trong ml/chat-intent/results/a2.md).
+        trigger-below: 0.6
+        # Câu (đã chuẩn hoá) ít hơn chừng này từ thì không gọi A2.
+        min-words: 3
+        # Gói miễn phí ~1000 embed/ngày/model, dùng chung với script huấn luyện → chừa lại một phần.
+        daily-cap: ${CHAT_INTENT_A2_DAILY_CAP:900}
+        connect-timeout-ms: 500
+        timeout-ms: 1200
+        cache-size: 2000
+        # HTTP 429 → tạm tắt A2 chừng này phút (429 do hạn mức NGÀY → tắt tới 0 giờ hôm sau giờ Thái Bình Dương).
+        rate-limit-pause-minutes: 15
+        # Lỗi 5xx/timeout liên tiếp chừng này lần → ngắt mạch circuit-open-seconds giây.
+        failure-threshold: 3
+        circuit-open-seconds: 60
