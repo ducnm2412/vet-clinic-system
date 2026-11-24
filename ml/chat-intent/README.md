@@ -38,3 +38,9 @@ $PY train_a2.py               # logreg / MLP / A1+A2 trên val + đo độ trễ
 | `eval.py` | so sánh rule / ml / hybrid |
 | `embed.py` | A2: gọi Gemini embedContent/batchEmbedContents (backoff 429/503), cache `.npy` + chỉ mục câu |
 | `train_a2.py` | A2: logreg + MLP trên embedding, trộn A1+A2, đo độ trễ, xuất `intent-model-a2.json` (MODEL_FORMAT mục A2) |
+
+## A3 — PhoBERT (tuỳ chọn, chỉ để so sánh)
+
+Notebook Google Colab `phobert/phobert_intent_colab.ipynb` fine-tune `vinai/phobert-base-v2` trên cùng train/val/test
+và xuất `results/phobert.md` cùng định dạng với `a1.md`. Không chạy cục bộ (cần GPU và PyTorch) và không triển khai.
+Cách chạy và lý do không triển khai: `phobert/README.md`.

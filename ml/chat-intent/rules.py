@@ -32,10 +32,11 @@ EMERGENCY = [
 ]
 
 OFF_TOPIC = [
-    _p(r"\b(bo qua|quen|phot lo|vo hieu hoa) (het |tat ca |moi |cac )?(huong dan|chi dan|quy tac|lenh|cau lenh)\b"),
+    _p(r"\b(bo qua|quen|phot lo|vo hieu hoa|bat chap) (het |tat ca |moi |cac |nhung |toan bo )*(huong dan|chi dan|quy tac|lenh|cau lenh)\b"),
     _p(r"\bignore (all |any |the |your |previous |prior )*(instructions|rules|prompts?)\b"),
     _p(r"\b(system prompt|prompt he thong|prompt cua ban|tiet lo (prompt|huong dan|quy tac)|huong dan noi bo|huong dan he thong)\b"),
-    _p(r"\b(jailbreak|dan mode|developer mode|do anything now|pretend (you|to be)|you have no (rules|restrictions)|without (any )?(rules|restrictions))\b"),
+    _p(r"\b(jailbreak|dan mode|developer mode|do anything now|pretend (you|to be)|you have no (rules|restrictions)|without (any )?(rules|restrictions)|with no (rules|restrictions|filters)|(unrestricted|uncensored|unfiltered) (ai|mode|assistant|chatbot))\b"),
+    _p(r"\b(dong vai|gia vo|gia lam|hoa than|nhap vai)\b.*\bkhong (co |bi |con )*(gioi han|rang buoc|kiem duyet|quy tac|luat le)\b"),
     _p(r"\b(ca do|danh bac|lo de|casino|khieu dam|phim sex|hack (tai khoan|facebook|fb|wifi|game|mat khau|web|website|he thong|zalo)|ddos|phishing|lua dao|ma tuy)\b"),
 ]
 
