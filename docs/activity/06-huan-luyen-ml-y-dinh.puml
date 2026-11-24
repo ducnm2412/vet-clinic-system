@@ -1,0 +1,152 @@
+@startuml 06-huan-luyen-ml-y-dinh
+' Sơ đồ hoạt động Huấn luyện mô hình ML nhận diện ý định cho chatbot
+' (A1: TF-IDF + hồi quy logistic; A2: embedding Gemini + hồi quy logistic, tầng phụ)
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam dpi 150
+skinparam shadowing false
+skinparam ArrowColor #333333
+skinparam ActivityBackgroundColor #FFFFFF
+skinparam ActivityBorderColor #333333
+skinparam ActivityDiamondBackgroundColor #FFFFFF
+skinparam ActivityDiamondBorderColor #333333
+skinparam SwimlaneBorderColor #333333
+skinparam SwimlaneTitleFontStyle bold
+skinparam NoteBackgroundColor #FFFFFF
+skinparam NoteBorderColor #333333
+
+' Đối chiếu code (ml/chat-intent/):
+'  - data/raw/*.csv: cột text, label, source; source = persona | variant | hard_negative; nhãn theo LABELING.md (12 nhãn,
+'    trùng enum Intent.java).
+'  - prepare.py: canon_label (bỏ nhãn lạ), normalize() giống TextNormalizer.java (bỏ câu rỗng), câu trùng khác nhãn -> bỏ hết,
+'    trùng cùng nhãn -> giữ 1, gom nhóm biến thể Jaccard 3-gram >= 0.6 (union-find), chia phân tầng theo nhãn 70/15/15
+'    seed 42 -> data/train.csv (716 câu), val.csv (154), test.csv (155).
+'  - eval_rules.py: baseline luật (rules.py = bản Python của RuleIntentClassifier) trên val -> results/rules_val.md.
+'  - train.py: TfidfVectorizer analyzer tự viết (word: unigram + bigram; char: n-gram 2..5 trong " token "), sublinear tf,
+'    L2 từng khối; LogisticRegression(class_weight=balanced, lbfgs); lưới C_GRID = 0.5..50 x có/không khối char;
+'    chọn: recall EMERGENCY cao nhất -> macro-F1 -> C nhỏ; chọn threshold (0.20..0.90) trên val bằng mô phỏng hybrid
+'    (macro-F1 cao nhất, hoà trong 0.005 -> lấy ngưỡng lớn hơn); mô hình cuối chỉ học trên train; export_model ->
+'    model/intent-model.json, build_parity -> parity.json, training-log.json. Lần chạy hiện tại: C = 5, có khối char,
+'    threshold = 0.3, 7361 đặc trưng.
+'  - eval.py: so sánh rule / ml / hybrid trên val -> results/a1.md; eval.py --test chỉ chạy một lần ở bước cuối (CHƯA chạy).
+'  - embed.py (A2): gọi Gemini embedContent / batchEmbedContents (taskType CLASSIFICATION, 768 chiều) cho
+'    gemini-embedding-001 và gemini-embedding-2, backoff 429/503, cache .npy trong data/embeddings/ (không commit).
+'  - train_a2.py (A2): logreg (C 0.1..100), MLP (hidden 64/128/256 x alpha), trộn A1+A2 (w 0..1) trên val; tiêu chí giống A1;
+'    chọn ngưỡng bằng choose_threshold của train.py; xuất model/intent-model-a2.json (gemini-embedding-2, logreg C = 30,
+'    threshold 0.4), parity-a2.json (20 câu), training-log-a2.json, results/a2.md.
+'  - MODEL_FORMAT.md: hợp đồng Python <-> Java (mục A2 cho file A2); dung sai xác suất 1e-4.
+'  - chat-service: MlIntentParityTest / EmbeddingParityTest đọc src/test/resources/ml/*.json; CompositeIntentClassifier nạp
+'    app.chat.intent.model-path (classpath:ml/intent-model.json), mode mặc định hybrid; không có file -> lùi về rules;
+'    sai hợp đồng -> InvalidModelException, lỗi khởi động. loadA2: a2.enabled, có GEMINI_API_KEY, đọc được
+'    classpath:ml/intent-model-a2.json -> bật A2; thiếu / lỗi / sai hợp đồng -> cảnh báo, chạy không có A2.
+
+|Nhóm phát triển|
+|Python (ml/chat-intent)|
+|Gemini API|
+|Java (chat-service)|
+
+|Nhóm phát triển|
+start
+:Soạn câu mẫu có gán nhãn (12 ý định)
+vào data/raw/*.csv: text, label, source;
+note right
+  source:
+  persona: câu theo vai khách thật
+  variant: biến thể (không dấu, viết tắt...)
+  hard_negative: câu dễ nhầm nhãn
+end note
+|Python (ml/chat-intent)|
+:prepare.py: chuẩn hoá nhãn, bỏ nhãn lạ;
+:Chuẩn hoá chữ (bỏ dấu, chữ thường, bỏ ký tự lạ)
+giống hệt TextNormalizer.java, bỏ câu rỗng;
+:Khử trùng: câu trùng khác nhãn → bỏ hết,
+trùng cùng nhãn → giữ một câu;
+:Gom các biến thể gần giống nhau thành nhóm
+(Jaccard 3-gram ký tự ≥ 0.6);
+:Chia phân tầng theo nhãn 70 / 15 / 15 (seed 42),
+cả nhóm vào cùng một tập
+→ train.csv, val.csv, test.csv;
+:eval_rules.py: đo mốc chuẩn của bộ luật trên val;
+:train.py (A1): lấy tổ hợp siêu tham số đầu tiên;
+repeat
+  :Trích đặc trưng TF-IDF khối word
+(unigram + bigram)
+[+ khối char n-gram 2–5],
+tf tuyến tính hoá log, chuẩn hoá L2 từng khối;
+  :Huấn luyện hồi quy logistic đa lớp
+trên train (class_weight = balanced);
+  :Đo trên val: accuracy, macro-F1,
+recall và báo nhầm EMERGENCY;
+repeat while (Còn tổ hợp C trong {0.5, 1, 2, 5, 10, 20, 50}\n× có / không khối char?) is (còn) not (hết)
+:Chọn tổ hợp: recall EMERGENCY cao nhất
+→ macro-F1 cao nhất → C nhỏ hơn
+(lần chạy hiện tại: C = 5, có khối char);
+:Huấn luyện lại trên train với tổ hợp đã chọn;
+:Chọn ngưỡng tin cậy trên val bằng mô phỏng
+hybrid (ML ≥ ngưỡng → nhãn ML, dưới → nhãn luật),
+lấy macro-F1 cao nhất (hiện tại: 0.3);
+:Xuất intent-model.json
+(nhãn, vocab, idf, coef, intercept, ngưỡng);
+:Đọc lại file đã xuất, tạo parity.json
+(câu mẫu + xác suất sklearn) và training-log.json;
+:eval.py: so sánh rule / ml / hybrid trên val
+(tập test chỉ chạy đúng một lần ở bước cuối);
+if (Làm tầng phụ A2?) then (có)
+  :embed.py: gửi câu train / val / test
+(chỉ câu chưa có trong cache);
+  |Gemini API|
+  :embedContent / batchEmbedContents
+(taskType CLASSIFICATION, 768 chiều)
+cho gemini-embedding-001 và gemini-embedding-2;
+  |Python (ml/chat-intent)|
+  :Lưu embedding vào cache .npy
+(429 / 503 → chờ rồi thử lại);
+  :train_a2.py: thử logreg (C 0.1–100), MLP,
+trộn A1 + A2 trên val; chọn recall EMERGENCY
+→ macro-F1 (hiện tại: gemini-embedding-2, logreg C = 30);
+  :Chọn ngưỡng tin cậy A2 trên val (hiện tại: 0.4);
+  :Xuất intent-model-a2.json, parity-a2.json,
+training-log-a2.json, results/a2.md;
+else (không)
+endif
+|Java (chat-service)|
+:Chép các file mô hình + parity
+vào src/test/resources/ml/;
+:Chạy MlIntentParityTest (A1) và EmbeddingParityTest (A2):
+Java tính lại xác suất, so với Python (dung sai 1e-4);
+if (Khớp?) then (không)
+  |Nhóm phát triển|
+  :Sửa phần lệch giữa Python và Java
+(textnorm.py / TextNormalizer, MlIntentModel,
+EmbeddingIntentModel) theo MODEL_FORMAT.md,
+rồi chạy lại từ bước huấn luyện;
+  stop
+else (có)
+endif
+|Java (chat-service)|
+:Chép intent-model.json (và intent-model-a2.json)
+vào src/main/resources/ml/;
+:Khởi động chat-service: CompositeIntentClassifier
+nạp mô hình A1 (app.chat.intent.model-path),
+chế độ mặc định hybrid;
+if (Có file mô hình A1
+và đọc được?) then (không)
+  :Cảnh báo, lùi về chế độ rules
+(chỉ dùng luật, không dùng A2);
+elseif (Đúng hợp đồng
+(nhãn, kích thước ma trận)?) then (không)
+  :Dừng khởi động với lỗi rõ ràng
+(InvalidModelException);
+  stop
+else (có)
+  if (A2 bật, có GEMINI_API_KEY và
+nạp được intent-model-a2.json?) then (có)
+    :Phân loại bằng luật + A1,
+gọi A2 khi A1 tin cậy < 0,6;
+  else (không)
+    :Cảnh báo, chạy luật + A1
+(không có A2);
+  endif
+endif
+stop
+@enduml

@@ -53,6 +53,15 @@ Chạy một lượt qua giao diện, ghi kết quả đạt/không đạt vào 
 11. Tải lại trang, đổi trang → lịch sử còn; "Cuộc trò chuyện mới" xoá sạch.
 12. Điện thoại 375px: không tràn ngang, bàn phím không che ô nhập.
 
+#### Chạy tự động bằng script
+`scripts/chatbot-acceptance.py` (chỉ dùng thư viện chuẩn Python) gọi thẳng API chat và in bảng PASS/FAIL/MANUAL/SKIP cho các mục 1–7, 9, B1, B2 và A1; mục 8, 10, 11, 12 in ra dạng MANUAL kèm hướng dẫn. `--base-url` là gốc API không kèm `/chat` (gateway `http://localhost:8080` hoặc `https://<tên-miền>/api`). Không có `--token` thì script tự giữ ≤ 18 lượt Gemini (hạn mức khách 20 lượt/10 phút) và A1 chỉ kiểm tra lời nhắc đăng nhập; có `--token` (JWT tài khoản khách, không bị in ra) thì kiểm tra giờ trống thật. `--include-rate-limit` chạy mục 9: tốn tới ~20 lượt Gemini và chặn IP của bạn tới 10 phút.
+```bash
+python scripts/chatbot-acceptance.py --dry-run                                   # xem kế hoạch, không gọi mạng
+python scripts/chatbot-acceptance.py --base-url https://<tên-miền>/api           # khách vãng lai
+python scripts/chatbot-acceptance.py --base-url https://<tên-miền>/api --token "$CUSTOMER_JWT"
+python scripts/chatbot-acceptance.py --base-url http://localhost:8080 --only A2.9 --include-rate-limit   # riêng mục hạn mức
+```
+
 ### A3. Dọn dẹp kỹ thuật
 - Chạy `npm ci && npx eslint src/components/site/ChatWidget.tsx src/lib/chatText.ts src/lib/api/chat.ts` trong `frontend/web` (cần cài `node_modules` một lần); sửa cảnh báo, đặc biệt quy tắc `react-hooks/set-state-in-effect` có thể báo ở `ChatWidget` (đọc lịch sử trong `useEffect`).
 - Xoá key Gemini cũ trong AI Studio và tạo key mới nếu bạn từng dán key vào chat/ảnh chụp (key hiện nằm trong lịch sử cuộc trò chuyện này).
@@ -196,10 +205,15 @@ Cách làm: sơ đồ vẽ bằng cùng quy ước các sơ đồ trước (ti�
 
 ## Kết quả nghiệm thu (điền khi làm)
 
-- [ ] A1 Giờ trống khi đăng nhập
-- [ ] A2 Checklist 12 mục
-- [ ] A3 ESLint, key, `.env`
-- [ ] B1/B2 (B3)
-- [ ] C1–C5 (C6, C7)
-- [ ] D Tài liệu
-- [ ] E Rà soát, commit
+- [ ] A1 Giờ trống khi đăng nhập — chờ thử trên production
+- [ ] A2 Checklist 12 mục — chờ thử trên production
+- [x] A3 ESLint `ChatWidget` sạch, `.env` không bị git theo dõi
+- [x] B1/B2 (B3 bỏ theo quyết định) — `ChatService`, `CorrectionDetector`
+- [x] C1–C4, C6: dữ liệu, A1, A2, tích hợp hybrid (val n=154: rule 0.26 / A1 hybrid 0.83 / A2 0.93 macro-F1)
+- [x] C5 Tập test (n=155, macro-F1): rule 0.33 / A1 hybrid 0.80 / A2 0.95 / A1+A2 0.91; EMERGENCY recall A1+A2 20/20, A1 một mình 19/20 (chưa đạt ≥ 0.98 khi A2 tắt) — xem `ml/chat-intent/results/final.md`
+- [ ] C7 PhoBERT: đã có notebook Colab `ml/chat-intent/phobert/`, chờ chạy
+- [x] Script nghiệm thu `scripts/chatbot-acceptance.py` cho A1/A2
+- [x] D Sơ đồ use case/tuần tự/hoạt động, `phan-tich-chuc-nang.md`, `tien-do-du-an.md`, `bao-cao-chatbot.md` (bạn tự chép vào báo cáo)
+- [x] E1 Rà bảo mật: chỉ GET, log không chứa hội thoại/key/JWT, test prompt injection, `CHAT_TRUSTED_PROXY_HOPS=1` (chỉ tin header từ địa chỉ nội bộ)
+- [x] E2 Healthcheck `chat-service`, README vận hành; nhiều instance thì cần chuyển bộ đếm sang Redis (chưa cần)
+- [ ] E3 Commit bước D/E — chờ lệnh

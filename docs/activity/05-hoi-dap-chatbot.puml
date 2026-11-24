@@ -1,0 +1,209 @@
+@startuml 05-hoi-dap-chatbot
+' Sơ đồ hoạt động Hỏi đáp với chatbot (luồng ChatService.reply)
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam dpi 150
+skinparam shadowing false
+skinparam ArrowColor #333333
+skinparam ActivityBackgroundColor #FFFFFF
+skinparam ActivityBorderColor #333333
+skinparam ActivityDiamondBackgroundColor #FFFFFF
+skinparam ActivityDiamondBorderColor #333333
+skinparam SwimlaneBorderColor #333333
+skinparam SwimlaneTitleFontStyle bold
+skinparam NoteBackgroundColor #FFFFFF
+skinparam NoteBorderColor #333333
+
+' Đối chiếu code:
+'  - ChatWidget.tsx: submit() -> request(): 20 tin gần nhất, mỗi tin <= 1000 ký tự, lịch sử ở sessionStorage;
+'    errorText(): 429 hiện câu máy chủ, 400 "Tin nhắn chưa hợp lệ".
+'  - ChatController.send: @Valid ChatRequest (1..60 tin, role user|assistant, content không rỗng)
+'    + validate() (tin cuối của khách, mỗi tin <= max-message-chars 1000) -> 400; callerOf() -> Caller.user / guest(IP).
+'  - ChatService.reply: isShortReplyToBot (B1: tin ngay trước là của bot, tin mới <= 4 từ sau chuẩn hoá);
+'    classify(tin, allowRemote = !B1); EMERGENCY -> câu khẩn cấp ngay; CorrectionDetector.isCorrection (B2);
+'    B1 hoặc B2: RuleIntentClassifier.classify lại -> OFF_TOPIC -> câu soạn sẵn; THANKS (không B2, cả hai bộ cùng THANKS)
+'    -> câu soạn sẵn; còn lại -> Gemini (B1: hint = null; B2: PromptBuilder thêm CORRECTION_LINE).
+'    Không B1/B2: intent.hasCannedReply() -> CannedReplies (source rule).
+'  - CompositeIntentClassifier.classify (mode mặc định hybrid; không có mô hình -> lùi về rules):
+'    luật EMERGENCY / OFF_TOPIC ghi đè; ML lỗi khi dự đoán -> nhãn luật; A1 confidence < a2.trigger-below (0.6),
+'    allowRemote và A2 đang bật -> EmbeddingIntentClassifier.predict (câu >= min-words 3, GeminiEmbeddingClient
+'    embedContent: cache, trần 900/ngày, timeout 1200 ms, 429 -> tạm dừng 1 phút, ngắt mạch sau 3 lỗi);
+'    A2 >= ngưỡng 0.4 -> nhãn A2; còn lại: A1 >= threshold (0.3) -> nhãn ML, dưới ngưỡng -> nhãn luật (hybrid) / OTHER (ml).
+'  - !gemini.isEnabled() -> fallback; RateLimiter.acquire (daily-cap 3000; window 10 phút: guest 20, user 60) -> 429 + Retry-After;
+'    askGemini: PromptBuilder.build(hint, correction), toContents (max-history-messages 20), ToolDefinitions (4 công cụ),
+'    for round 0..max-tool-rounds (4): quá reply-timeout-seconds (45) -> fallback; allowTools = round < 4;
+'    promptFeedback.blockReason / finishReason SAFETY... -> blocked(); có chữ -> source ai; không chữ -> fallback;
+'    vòng cuối vẫn đòi công cụ -> fallback; GeminiUnavailableException -> fallback.
+'  - GeminiClient.generate: model chính, sau hedge-seconds 3 chạy thêm model dự phòng song song, model lỗi -> model
+'    kế tiếp ngay, total-timeout-seconds 25.
+'  - ToolExecutor.execute: tên lạ -> {"error"}; get_clinic_hours khi vãng lai -> login_required;
+'    lỗi HTTP 401/403 -> login_required, lỗi khác -> {"error"}; không bao giờ ném lỗi.
+
+|Khách|
+|Giao diện web (ChatWidget)|
+|Chat Service|
+|Gemini API|
+|Booking / Product Service|
+
+|Khách|
+start
+:Nhập câu hỏi, bấm Gửi;
+|Giao diện web (ChatWidget)|
+:Thêm tin vào lịch sử của tab,
+gửi tối đa 20 tin gần nhất
+(mỗi tin ≤ 1000 ký tự);
+|Chat Service|
+if (Yêu cầu hợp lệ?
+(1–60 tin, tin cuối của khách,
+mỗi tin ≤ 1000 ký tự)) then (không)
+  :Trả 400 Bad Request;
+  |Giao diện web (ChatWidget)|
+  :Báo "Tin nhắn chưa hợp lệ";
+  stop
+else (có)
+endif
+|Chat Service|
+:Xác định người hỏi: có token hợp lệ
+→ theo mã tài khoản, không có → theo IP;
+:B1: đánh dấu "tin ngắn theo mạch" nếu tin ngay trước
+là của bot và tin mới ≤ 4 từ;
+:Áp luật regex lên tin mới nhất
+(RuleIntentClassifier);
+if (Chế độ "rules" hoặc
+không nạp được mô hình ML?) then (có)
+  :Dùng nhãn luật;
+elseif (Luật ra EMERGENCY
+hoặc OFF_TOPIC?) then (có)
+  :Dùng nhãn luật
+(ghi đè ML);
+else (không)
+  :A1 dự đoán nhãn và độ tin cậy
+(TF-IDF + hồi quy logistic);
+  if (A1 tin cậy < 0,6, không phải tin B1,
+A2 đang bật và câu ≥ 3 từ?) then (có)
+    |Gemini API|
+    :embedContent (gemini-embedding-2):
+trả vector 768 chiều
+(cache, trần 900 lần/ngày, timeout 1,2 giây);
+    |Chat Service|
+  else (không)
+  endif
+  if (A2 có vector và tin cậy ≥ 0,4?) then (có)
+    :Dùng nhãn A2;
+  elseif (A1 tin cậy ≥ ngưỡng 0,3?) then (có)
+    :Dùng nhãn A1;
+  else (không)
+    :Dùng nhãn luật
+(chế độ "ml": OTHER);
+  endif
+endif
+
+if (Nhãn là EMERGENCY?) then (có)
+  :Trả câu hướng dẫn khẩn cấp
+(source = rule, không tốn hạn mức);
+else (không)
+  :B2: kiểm tra khách chê / sửa câu trước
+("sai rồi", "không phải", "ý mình là"...);
+  if (Tin B1 hoặc B2?) then (có)
+    if (Luật nhận OFF_TOPIC, hoặc THANKS
+(khi không phải B2)?) then (có)
+      :Trả câu soạn sẵn (source = rule);
+    else (không)
+      :Chuyển cho Gemini
+(B1: bỏ gợi ý nhãn,
+B2: prompt thêm "xin lỗi ngắn
+rồi trả lời lại");
+    endif
+  elseif (Nhãn có câu soạn sẵn?
+(lạc đề, chào hỏi, cảm ơn,
+liên hệ, giờ mở cửa)) then (có)
+    :Trả câu soạn sẵn
+(source = rule, không tốn hạn mức);
+  else (không: giá, dịch vụ, sản phẩm,
+đặt lịch, chăm sóc, khác)
+    :Chuyển cho Gemini
+(kèm gợi ý nhãn);
+  endif
+endif
+
+if (Cần Gemini?) then (có)
+  if (Đã cấu hình GEMINI_API_KEY?) then (chưa)
+    :Trả câu dự phòng
+(source = fallback);
+  else (rồi)
+    if (Còn hạn mức?
+(≤ 3000 lượt/ngày toàn hệ thống;
+mỗi 10 phút: vãng lai 20, đăng nhập 60)) then (hết)
+      :Trả 429 kèm Retry-After;
+      |Giao diện web (ChatWidget)|
+      :Hiện "Bạn nhắn hơi nhiều,
+thử lại sau n giây";
+      stop
+    else (còn)
+    endif
+    |Chat Service|
+    :Ghi nhận một lượt;
+    :Dựng system prompt + ≤ 20 tin gần nhất
++ khai báo 4 công cụ, hạn chót 45 giây, vòng = 0;
+    while (Chưa có câu trả lời, vòng ≤ 4\nvà chưa quá hạn chót 45 giây?) is (đúng)
+      :Gửi yêu cầu cho Gemini
+(vòng < 4: kèm công cụ,
+vòng 4: cấm dùng công cụ);
+      |Gemini API|
+      :Sinh phản hồi (model chính, sau 3 giây
+chưa xong hoặc model lỗi → chạy thêm
+model dự phòng song song, tối đa 25 giây);
+      |Chat Service|
+      if (Mọi model lỗi / quá 25 giây?) then (có)
+        :Chọn câu dự phòng;
+      elseif (Bị bộ lọc an toàn chặn?) then (có)
+        :Chọn câu từ chối nhẹ nhàng;
+      elseif (Gemini yêu cầu công cụ?) then (có)
+        if (Đang ở vòng 4
+(vòng cuối)?) then (có)
+          :Chọn câu dự phòng;
+        else (không)
+          repeat :Lấy lời gọi công cụ tiếp theo;
+            :Kiểm tra tên và tham số do mô hình sinh
+(từ khoá ≤ 100 ký tự, ngày trong 60 ngày tới...);
+            if (get_clinic_hours mà
+khách chưa đăng nhập?) then (có)
+              :Kết quả "login_required"
+(hướng dẫn đăng nhập);
+            else (không)
+              |Booking / Product Service|
+              :Trả dữ liệu chỉ đọc: dịch vụ & giá,
+giờ còn trống, sản phẩm, danh mục;
+              |Chat Service|
+              :Rút gọn kết quả
+(lỗi → {"error": ...}, không ném lỗi);
+            endif
+          repeat while (Còn lời gọi công cụ?) is (còn) not (hết)
+          :Nối lượt của mô hình và kết quả công cụ
+vào hội thoại, vòng = vòng + 1;
+        endif
+      elseif (Có nội dung chữ?) then (có)
+        :Chọn câu trả lời AI
+(source = ai);
+      else (không)
+        :Chọn câu dự phòng;
+      endif
+    endwhile (sai)
+    if (Đã có câu trả lời?) then (chưa:
+quá hạn chót)
+      :Chọn câu dự phòng
+(source = fallback);
+    else (có)
+    endif
+  endif
+else (không: đã có câu soạn sẵn)
+endif
+|Chat Service|
+:Trả 200 OK {reply, source};
+|Giao diện web (ChatWidget)|
+:Thêm câu trả lời vào lịch sử,
+hiển thị cho khách;
+|Khách|
+:Đọc câu trả lời;
+stop
+@enduml

@@ -43,6 +43,7 @@ là tổng báo cáo của `bash scripts/test.sh`.
 | `reporting-service` | 8089 | — | 13 / 2 | — | 7 |
 | `staff-service` | 8090 | `staff_db` | 21 / 5 | V1 | 9 |
 | `pet-service` | 8091 | `pet_db` | 39 / 7 | V1–V3 | 17 |
+| `chat-service` | 8092 | — (không lưu hội thoại) | 37 / 20 | — | 2 |
 
 Hạ tầng đi kèm: `api-gateway` (8080), `eureka-server` (8761), `frontend` Next.js (3000),
 RabbitMQ (5672 / 15672), Redis (6379), MailHog (1025 / 8025).
@@ -189,6 +190,40 @@ Dữ liệu cũ chuyển sang bằng hai script `scripts/migrate-pets-to-pet-ser
 cưng và `payment_db` trỏ tới id bệnh án. Bảng cũ ở hai database kia chỉ đổi tên thành
 `*_moved_to_pet_service_backup`, không xoá.
 
+### 3.11. `chat-service` — chatbot tư vấn (bổ sung 24/11/2026)
+
+Khung chat trên website trả lời khách về dịch vụ, giá tham khảo, sản phẩm, giờ khám còn trống, liên hệ và
+giờ mở cửa. Hai endpoint, đều công khai: `GET /chat/status` (có hiện nút chat không, đã cấu hình Gemini chưa) và
+`POST /chat/messages`. Không có database: lịch sử hội thoại chỉ nằm trong `sessionStorage` của tab trình duyệt.
+
+- **Tầng rule + ML:** mỗi tin được phân loại vào 12 ý định bằng luật regex + mô hình A1 (TF-IDF + hồi quy logistic,
+  chạy cục bộ) + tầng phụ A2 (embedding Gemini + hồi quy logistic, chỉ gọi khi A1 không chắc). Khẩn cấp, chào hỏi,
+  cảm ơn, liên hệ, giờ mở cửa, lạc đề → câu soạn sẵn, không gọi Gemini, không tốn hạn mức.
+- **Gemini + công cụ chỉ đọc:** câu còn lại do Google Gemini trả lời; Gemini lấy dữ liệu thật qua 4 công cụ chỉ đọc
+  gọi `booking-service` / `product-service` (tối đa 4 vòng, hạn chót 45 giây). Hỏi giờ trống cần đăng nhập.
+- **Hạn mức:** 20 tin / 10 phút cho khách vãng lai, 60 tin / 10 phút cho khách đăng nhập, trần 3000 lượt gọi Gemini
+  mỗi ngày; vượt → 429. Gemini lỗi → câu dự phòng, khách không thấy lỗi kỹ thuật.
+- **An toàn:** không chẩn đoán, không nêu thuốc / liều; nội dung khách gửi chỉ là dữ liệu (chống prompt injection).
+
+Chi tiết viết cho báo cáo: [bao-cao-chatbot.md](bao-cao-chatbot.md). Kế hoạch: [ke-hoach-chatbot.md](ke-hoach-chatbot.md).
+
+#### Các mốc phát triển chatbot
+
+| Ngày | Commit | Nội dung |
+|---|---|---|
+| 24/11/2026 | `0aab68b` | Lập kế hoạch chatbot (`docs/ke-hoach-chatbot.md`) |
+| 24/11/2026 | `0e2400b` | `chat-service` đầu tiên: tầng rule, Gemini + 4 công cụ chỉ đọc, hạn mức, route gateway, docker-compose; `ChatWidget` trên frontend |
+| 24/11/2026 | `11bee75` | Phân loại ý định hybrid luật + ML (A1: TF-IDF + hồi quy logistic); thêm 5 ý định cần Gemini; B1 (tin ngắn theo mạch), B2 (khách sửa lại câu trước); test đối chiếu Python ↔ Java |
+| 24/11/2026 | `8b0e778` | `scripts/start.sh` khởi động `chat-service` |
+| 24/11/2026 | `3991122` | Nút mở chat bằng logo Vet Clinic, sửa lỗi ESLint trong `ChatWidget` |
+| 24/11/2026 | `fd8e767` | (frontend, không thuộc chatbot) nút Google, chuyển hướng tài khoản nội bộ |
+| 24/11/2026 | `a03b948` | `ml/chat-intent`: dữ liệu, pipeline A1 và thử nghiệm A2 (embedding Gemini) |
+| 24/11/2026 | `98ef645` | Tích hợp A2 vào `chat-service` làm tầng phụ khi A1 không chắc |
+| 24/11/2026 | `f1c66c6` | A2 gặp HTTP 429 chỉ tạm dừng ngắn, bỏ cơ chế tắt A2 tới nửa đêm giờ Thái Bình Dương |
+| 24/11/2026 | `70ddc47` | Gợi ý câu hỏi trên ô nhập chat |
+
+Còn lại: đánh giá mô hình trên tập test (chưa chạy), đo độ trễ thật của `embedContent`.
+
 ---
 
 ## 4. Luồng sự kiện RabbitMQ
@@ -232,6 +267,7 @@ Sau khi gộp hai nhánh phát triển song song, cổng được phân lại m�
 | reporting-service | 8089 | — | — |
 | staff-service | 8090 | staff-db | 5439 |
 | pet-service | 8091 | pet-db | 5440 |
+| chat-service | 8092 | — | — |
 | eureka-server | 8761 | — | — |
 | frontend | 3000 | — | — |
 

@@ -16,7 +16,7 @@
 | AC-02 | Bác sĩ thú y (DOCTOR) | Khám bệnh, lập hồ sơ bệnh án, kê đơn, chấm công | Admin tạo (`POST /admin/users`) |
 | AC-03 | Nhân viên (STAFF) | Lễ tân/kho: đặt lịch tại quầy, xử lý đơn hàng, chấm công | Admin tạo (`POST /admin/users`) |
 | AC-04 | Quản trị viên (ADMIN) | Quản lý tài khoản, danh mục, xem báo cáo doanh thu | Seed sẵn khi khởi động hệ thống |
-| AC-05 | Hệ thống ngoài | Cổng thanh toán VNPay/Momo, dịch vụ Email/Zalo OA | — |
+| AC-05 | Hệ thống ngoài | Cổng thanh toán VNPay/Momo, dịch vụ Email/Zalo OA, Google Gemini (chatbot) | — |
 
 ---
 
@@ -151,6 +151,25 @@ Chú thích trạng thái: ✅ Đã hiện thực · ⚠️ Hiện thực một 
 | CN-53 | Giao tiếp bất đồng bộ | RabbitMQ | Truyền sự kiện giữa các service, giảm phụ thuộc trực tiếp | ✅ |
 | CN-54 | Đóng gói & triển khai | Docker Compose | Khởi chạy toàn bộ hệ thống + 7 PostgreSQL + RabbitMQ + Redis | ✅ (khung) |
 
+### 2.11. Module Chatbot tư vấn (`chat-service` — không có DB riêng, không lưu hội thoại)
+
+| Mã CN | Tên chức năng | Tác nhân | Mô tả xử lý | Trạng thái |
+|---|---|---|---|---|
+| CN-55 | Hỏi đáp với chatbot tư vấn | Public, AC-01 | Khung chat trên website (`ChatWidget`), gửi tối đa 20 tin gần nhất, mỗi tin ≤ 1000 ký tự (`POST /chat/messages`); lịch sử chỉ nằm trong `sessionStorage` của tab, nút "Bắt đầu cuộc trò chuyện mới" xoá lịch sử. Câu cần AI do Google Gemini sinh ra; Gemini lỗi / quá hạn chót 45 giây thì trả câu dự phòng | ✅ |
+| CN-56 | Phân loại ý định câu hỏi | Hệ thống | 12 ý định; luật regex + mô hình ML A1 (TF-IDF + hồi quy logistic, chạy cục bộ) + tầng phụ A2 (embedding Gemini + hồi quy logistic, chỉ gọi khi A1 tin cậy < 0,6). Luật khẩn cấp / lạc đề luôn ghi đè ML. Nhận ra tin ngắn theo mạch (B1) và khách chê / sửa câu trước (B2) để chuyển cho Gemini | ✅ |
+| CN-57 | Tra cứu dịch vụ, giá, sản phẩm qua chatbot | Public, AC-01 | Gemini gọi công cụ **chỉ đọc** `list_clinic_services`, `search_products`, `list_categories` (booking-service, product-service) để lấy dữ liệu thật; giá chỉ là giá tham khảo | ✅ |
+| CN-58 | Hỏi giờ khám còn trống qua chatbot | AC-01 | Công cụ `get_clinic_hours` gọi `GET /booking/clinic-hours` bằng token của khách, chỉ ngày từ hôm nay đến 60 ngày tới; khách vãng lai nhận `login_required` và được hướng dẫn đăng nhập rồi tự đặt ở `/appointments/create` | ✅ |
+| CN-59 | Hướng dẫn khẩn cấp & trả lời soạn sẵn | Public, AC-01 | Khẩn cấp (khó thở, co giật, ngộ độc...), chào hỏi, cảm ơn, liên hệ, giờ mở cửa, lạc đề → câu trả lời cố định, không gọi Gemini, không tốn hạn mức | ✅ |
+| CN-60 | Giới hạn hạn mức chatbot | Hệ thống | Cửa sổ trượt 10 phút: khách vãng lai 20 lượt (theo IP), khách đăng nhập 60 lượt (theo tài khoản); trần 3000 lượt gọi Gemini mỗi ngày cho cả hệ thống; vượt → HTTP 429 kèm `Retry-After` | ✅ |
+
+> **Quy tắc nghiệp vụ:**
+> - Chatbot **chỉ tư vấn**: không chẩn đoán bệnh, không nêu tên thuốc hay liều dùng; với tình trạng sức khoẻ cụ thể chỉ khuyên chăm sóc chung và đưa bé đến khám.
+> - Câu khẩn cấp luôn được trả bằng **câu hướng dẫn cố định** (đưa bé đến phòng khám ngay / gọi hotline), kể cả khi tin nhắn ngắn hay khách đang sửa câu trước.
+> - Mọi công cụ đều **chỉ đọc**: chatbot không tự đặt lịch, không tạo đơn hàng, không sửa dữ liệu; chỉ dẫn link để khách tự thao tác.
+> - Nội dung tin nhắn và kết quả công cụ chỉ là dữ liệu, không phải chỉ dẫn (chống prompt injection); luật nhận ra câu dò prompt / jailbreak → trả lời từ chối soạn sẵn.
+> - **Phân quyền:** mọi endpoint `/chat/**` mở công khai; có Bearer token hợp lệ thì được tính là khách đăng nhập (hạn mức cao hơn, hỏi được giờ trống). Câu trả lời soạn sẵn không tính vào hạn mức.
+> - Số liệu cấu hình lấy từ `services/chat-service/src/main/resources/application.yml` (`app.chat.rate-limit.*`, đổi được qua `CHAT_GUEST_LIMIT`, `CHAT_USER_LIMIT`, `CHAT_DAILY_CAP`).
+
 ---
 
 ## 3. Ma trận chức năng – tác nhân
@@ -178,6 +197,8 @@ Chú thích trạng thái: ✅ Đã hiện thực · ⚠️ Hiện thực một 
 | CN-30, CN-36 | | | X | | |
 | CN-38 | | X | X | | |
 | CN-39, CN-40, CN-46 → CN-49 | | | | X | |
+| CN-55, CN-57 → CN-59 | X | | | | |
+| CN-56, CN-60 | | | | | X |
 
 ---
 
@@ -195,7 +216,8 @@ Chú thích trạng thái: ✅ Đã hiện thực · ⚠️ Hiện thực một 
 | Thông báo | 4 | 0 | 0% |
 | Báo cáo & Thống kê | 4 | 0 | 0% |
 | Hạ tầng kỹ thuật | 5 | 4 | 80% |
-| **Tổng cộng** | **54** | **18** | **≈33%** |
+| Chatbot tư vấn | 6 | 6 | 100% |
+| **Tổng cộng** | **60** | **24** | **40%** |
 
 ---
 

@@ -1,0 +1,105 @@
+@startuml 12-chatbot
+' Sơ đồ use case Chatbot tư vấn (chat-service)
+!pragma layout smetana
+left to right direction
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam dpi 150
+skinparam shadowing false
+skinparam ArrowColor #333333
+skinparam usecase {
+  BackgroundColor #FFFFFF
+  BorderColor #333333
+}
+skinparam rectangle {
+  BorderColor #333333
+  FontStyle bold
+}
+skinparam actor {
+  BorderColor #333333
+  BackgroundColor #FFFFFF
+}
+
+' Theo quy ước docs/usecase/README.md: chỉ dùng tác nhân người dùng; Gemini (Google), booking-service,
+' product-service là hệ thống ngoài / service khác nên KHÔNG vẽ thành tác nhân — việc chúng làm thể hiện bằng
+' use case «include» / «extend» (Sinh câu trả lời bằng AI, Tra cứu dữ liệu phòng khám, Nhận câu trả lời dự phòng).
+'
+' Đối chiếu code:
+'  - frontend/web/src/components/site/ChatWidget.tsx: nút chat chỉ hiện khi GET /chat/status trả enabled;
+'    lịch sử giữ trong sessionStorage của tab; nút "Bắt đầu cuộc trò chuyện mới" (reset) xoá lịch sử phía trình duyệt,
+'    không gọi máy chủ (chat-service không lưu hội thoại).
+'  - chat-service SecurityConfig: mọi request permitAll; có Bearer token hợp lệ thì Caller.user (hạn mức 60 tin/10 phút,
+'    gọi được get_clinic_hours), không có thì Caller.guest theo IP (20 tin/10 phút).
+'  - CompositeIntentClassifier: luật regex + A1 (TF-IDF + hồi quy logistic) + A2 (embedding Gemini, chỉ khi A1 không chắc);
+'    luật EMERGENCY / OFF_TOPIC luôn ghi đè.
+'  - Intent.java / CannedReplies: EMERGENCY, OFF_TOPIC, GREETING, THANKS, CONTACT, OPENING_HOURS -> câu soạn sẵn
+'    (không gọi Gemini, không tốn hạn mức); PRICE, SERVICE_INFO, PRODUCT, BOOKING, CARE_ADVICE, OTHER -> Gemini.
+'  - ChatService.reply: RateLimiter.acquire trước khi gọi Gemini; askGemini lặp tối đa max-tool-rounds = 4 vòng công cụ;
+'    Gemini lỗi / quá hạn chót 45 giây / không ra chữ -> CannedReplies.fallback() (source = fallback).
+'  - tool/ToolExecutor.java: 4 công cụ chỉ đọc list_clinic_services (GET /booking/services),
+'    get_clinic_hours (GET /booking/clinic-hours, cần token khách; vãng lai -> login_required),
+'    search_products (GET /products), list_categories (GET /categories).
+'  - PromptBuilder: CARE_ADVICE chỉ lời khuyên chăm sóc chung, không chẩn đoán, không nêu thuốc / liều.
+
+actor "Khách vãng lai" as KVL
+actor "Khách hàng" as KH
+KVL <|- KH
+
+rectangle "Chatbot tư vấn (chat-service)" {
+  ' --- cột trái: use case khách thực hiện ---
+  usecase "Nhận hướng dẫn\nkhẩn cấp" as UC_KC
+  usecase "Hỏi thông tin liên hệ,\ngiờ mở cửa" as UC_LH
+  usecase "Hỏi dịch vụ\nvà giá khám" as UC_DV
+  usecase "Tìm sản phẩm" as UC_SP
+  usecase "Hỏi cách chăm sóc\nthú cưng" as UC_CS
+  usecase "Hỏi giờ khám\ncòn trống" as UC_GK
+  usecase "Bắt đầu cuộc\ntrò chuyện mới" as UC_MOI
+
+  ' --- cột giữa: bước hệ thống luôn làm ---
+  usecase "Phân loại ý định\n(luật + ML)" as UC_PL
+  usecase "Sinh câu trả lời\nbằng AI" as UC_AI
+  usecase "Tra cứu dữ liệu\nphòng khám\n(công cụ chỉ đọc)" as UC_TC
+
+  ' --- cột phải ---
+  usecase "Kiểm tra\nhạn mức" as UC_HM
+  usecase "Nhận câu trả lời\ndự phòng" as UC_DP
+}
+
+' Khẩn cấp, liên hệ, giờ mở cửa (và chào hỏi, cảm ơn, lạc đề) trả bằng câu soạn sẵn: không gọi Gemini, không tốn hạn mức.
+' Bắt đầu cuộc trò chuyện mới: chỉ xoá lịch sử trong trình duyệt (máy chủ không lưu hội thoại).
+' Hỏi giờ khám còn trống: khách vãng lai hỏi thì công cụ trả login_required, chatbot hướng dẫn đăng nhập
+' -> chỉ Khách hàng (đã đăng nhập) thực hiện được use case này.
+
+' --- Khách vãng lai (Khách hàng kế thừa toàn bộ) ---
+KVL -- UC_KC
+KVL -- UC_LH
+KVL -- UC_DV
+KVL -- UC_SP
+KVL -- UC_CS
+KVL -- UC_MOI
+
+' --- chỉ Khách hàng đã đăng nhập ---
+KH -- UC_GK
+
+' --- include: mọi câu hỏi đều qua phân loại ý định ---
+UC_KC ..> UC_PL : <<include>>
+UC_LH ..> UC_PL : <<include>>
+UC_DV ..> UC_PL : <<include>>
+UC_SP ..> UC_PL : <<include>>
+UC_CS ..> UC_PL : <<include>>
+UC_GK ..> UC_PL : <<include>>
+
+' --- include: các ý định cần Gemini ---
+UC_DV ..> UC_AI : <<include>>
+UC_SP ..> UC_AI : <<include>>
+UC_CS ..> UC_AI : <<include>>
+UC_GK ..> UC_AI : <<include>>
+UC_AI ..> UC_HM : <<include>>
+
+' --- extend: Gemini gọi công cụ chỉ đọc khi cần dữ liệu thật (dịch vụ & giá, sản phẩm, giờ trống);
+'     câu hỏi chăm sóc thường không cần công cụ nên đây là extend, không phải include ---
+UC_AI <.. UC_TC : <<extend>>\n[cần dữ liệu thật]
+
+' --- extend ---
+UC_AI <.. UC_DP : <<extend>>\n[Gemini lỗi /\nquá hạn chót]
+@enduml

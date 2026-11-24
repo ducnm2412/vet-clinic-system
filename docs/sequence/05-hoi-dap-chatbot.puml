@@ -1,0 +1,169 @@
+@startuml 05-hoi-dap-chatbot
+' Sơ đồ tuần tự Hỏi đáp với chatbot tư vấn
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam dpi 150
+skinparam shadowing false
+skinparam ArrowColor #333333
+skinparam sequence {
+  LifeLineBorderColor #333333
+  ParticipantBorderColor #333333
+  ParticipantBackgroundColor #FFFFFF
+  ActorBorderColor #333333
+  ActorBackgroundColor #FFFFFF
+  GroupBorderColor #333333
+  GroupHeaderFontStyle bold
+  BoxBorderColor #333333
+  BoxBackgroundColor #FFFFFF
+}
+skinparam ParticipantPadding 6
+hide footbox
+autonumber
+skinparam NoteBackgroundColor #FFFFFF
+skinparam NoteBorderColor #333333
+skinparam BoundaryBackgroundColor #FFFFFF
+skinparam BoundaryBorderColor #333333
+skinparam ControlBackgroundColor #FFFFFF
+skinparam ControlBorderColor #333333
+
+' Đối chiếu code:
+'  - frontend/web/src/components/site/ChatWidget.tsx: submit() -> request(): lấy CHAT_MAX_MESSAGES = 20 tin gần nhất,
+'    mỗi tin cắt CHAT_MAX_CHARS = 1000 ký tự; lịch sử trong sessionStorage; lỗi 429 hiện nguyên message máy chủ,
+'    503 "Trợ lý đang tạm nghỉ", 400 "Tin nhắn chưa hợp lệ".
+'  - frontend/web/src/lib/api/chat.ts: chatApi.send -> POST /chat/messages (BASE = NEXT_PUBLIC_API_BASE_URL ?? "/api"),
+'    không đặt publicRoute nên Bearer token đi kèm khi đã đăng nhập.
+'  - api-gateway application.yml: route id chat-service, Path=/chat/**, uri lb://chat-service.
+'  - ChatController.send: @Valid ChatRequest (1..60 tin, role user|assistant) + validate() (tin cuối của khách,
+'    mỗi tin <= app.chat.max-message-chars = 1000) -> IllegalArgumentException -> 400 (GlobalExceptionHandler);
+'    callerOf(): AuthenticatedUser -> Caller.user(userId, token), ngược lại Caller.guest(IP từ X-Forwarded-For,
+'    chọn phần tử theo app.chat.rate-limit.trusted-proxy-hops; 0 = phần tử đầu).
+'  - ChatService.reply: isShortReplyToBot (B1: tin ngay trước là của bot, tin mới <= 4 từ sau chuẩn hoá) ->
+'    CompositeIntentClassifier.classify(tin cuối, allowRemote = !B1); EMERGENCY -> câu khẩn cấp ngay (luôn thắng);
+'    CorrectionDetector.isCorrection (B2); nếu B1 hoặc B2: RuleIntentClassifier.classify lại -> OFF_TOPIC -> câu soạn sẵn,
+'    THANKS (không phải B2, cả hai bộ phân loại cùng ra THANKS) -> câu soạn sẵn, còn lại -> Gemini (B1: bỏ gợi ý nhãn;
+'    B2: PromptBuilder thêm CORRECTION_LINE "xin lỗi ngắn rồi trả lời lại"); không B1/B2 thì intent.hasCannedReply()
+'    -> CannedReplies (source rule); !gemini.isEnabled() -> fallback; RateLimiter.acquire(caller) ->
+'    RateLimitExceededException -> 429 + Retry-After;
+'    askGemini(): PromptBuilder.build(hint, correction), toContents (max-history-messages 20), ToolDefinitions.declarations,
+'    vòng round = 0..max-tool-rounds (4), vòng cuối không gửi tools, hạn chót reply-timeout-seconds = 45;
+'    promptFeedback.blockReason / finishReason SAFETY... -> blocked(); không có chữ -> fallback;
+'    GeminiUnavailableException -> fallback.
+'  - CompositeIntentClassifier.classify (mode hybrid): luật EMERGENCY / OFF_TOPIC ghi đè; A1 (MlIntentModel) dự đoán;
+'    A1 confidence < a2.trigger-below (0.6) và allowRemote -> EmbeddingIntentClassifier (A2): câu >= 3 từ (min-words),
+'    GeminiEmbeddingClient POST {base-url}/models/gemini-embedding-2:embedContent (cache LRU 2000, trần 900 lần/ngày,
+'    timeout 500 ms / 1200 ms, 429 -> tạm dừng 1 phút, 3 lỗi liên tiếp -> ngắt mạch 60 giây); A2 >= ngưỡng 0.4 -> nhãn A2;
+'    ngược lại A1 >= ngưỡng 0.3 -> nhãn A1, dưới ngưỡng -> nhãn luật.
+'  - GeminiClient.generate: model chính + fallback-models, hedge-seconds 3, total-timeout-seconds 25,
+'    POST {base-url}/models/{model}:generateContent, header x-goog-api-key.
+'  - ToolExecutor.execute: list_clinic_services -> GET http://booking-service/booking/services;
+'    get_clinic_hours -> (vãng lai: login_required) GET http://booking-service/booking/clinic-hours?date= (Bearer khách);
+'    search_products -> GET http://product-service/products?size=8&keyword&categoryId&maxPrice;
+'    list_categories -> GET http://product-service/categories. Lỗi -> {"error": ...}, không ném lỗi.
+
+actor "Khách" as KH
+boundary "ChatWidget" as UI
+control "API Gateway" as GW
+box "chat-service" #FFFFFF
+  control "ChatController" as CC
+  participant "ChatService" as CS
+  participant "Composite\nIntentClassifier" as IC
+  participant "RateLimiter" as RL
+  participant "GeminiClient" as GC
+  participant "ToolExecutor" as TE
+end box
+participant "Gemini API" as GEM
+participant "booking-service /\nproduct-service" as SVC
+
+KH -> UI ++ : Nhập câu hỏi, bấm Gửi (Enter)
+UI -> UI : Thêm tin vào lịch sử (sessionStorage),\nlấy 20 tin gần nhất, mỗi tin ≤ 1000 ký tự
+UI -> GW ++ : POST /api/chat/messages {messages}\n(+ Bearer token nếu đã đăng nhập)
+GW -> CC ++ : POST /chat/messages\n(route /chat/** → lb://chat-service)
+
+break Yêu cầu không hợp lệ (rỗng, > 60 tin, tin cuối không phải\ncủa khách, tin > 1000 ký tự)
+  CC --> GW : 400 Bad Request
+  GW --> UI : 400
+  UI --> KH : "Tin nhắn chưa hợp lệ..."
+end
+  CC -> CC : callerOf(): token hợp lệ → Caller.user(userId, token)\nngược lại → Caller.guest(IP)
+  CC -> CS ++ : reply(messages, caller)
+  CS -> CS : B1: isShortReplyToBot()\n(tin trước của bot, tin mới ≤ 4 từ)
+  CS -> IC ++ : classify(tin mới nhất,\nallowRemote = không phải B1)
+  IC -> IC : Luật regex (RuleIntentClassifier):\nEMERGENCY / OFF_TOPIC → trả luôn (ghi đè ML);\nngược lại A1 (MlIntentModel, TF-IDF + logreg)\ndự đoán nhãn + độ tin cậy
+  opt Tầng A2: độ tin cậy A1 < 0,6, allowRemote, câu ≥ 3 từ
+    IC -> GEM : POST /models/gemini-embedding-2:embedContent\n(GeminiEmbeddingClient: cache, trần 900 lần/ngày,\ntimeout 1,2 giây, 429 → tạm dừng 1 phút)
+    GEM --> IC : Vector 768 chiều (lỗi / hết hạn mức → bỏ qua A2)
+    IC -> IC : A2 (EmbeddingIntentModel) tin cậy ≥ 0,4 → nhãn A2
+  end
+  IC -> IC : Chưa có nhãn A2: A1 tin cậy ≥ 0,3 → nhãn A1,\ndưới ngưỡng → nhãn luật
+  IC --> CS -- : Intent
+  CS -> CS : B2: CorrectionDetector.isCorrection()\n("sai rồi", "ý mình là"...)
+
+  alt Intent = EMERGENCY (luôn thắng, kể cả B1 / B2)
+    CS --> CC : Câu hướng dẫn khẩn cấp (source = "rule")
+  else B1 hoặc B2 và luật nhận OFF_TOPIC\n(hoặc THANKS khi không phải B2)
+    CS --> CC : Câu soạn sẵn (source = "rule")
+  else Không B1 / B2, ý định có câu soạn sẵn (OFF_TOPIC,\nGREETING, THANKS, CONTACT, OPENING_HOURS)
+    CS -> CS : CannedReplies.forIntent(intent)
+    CS --> CC : ChatResponse(reply, source = "rule")
+  else Chưa cấu hình GEMINI_API_KEY
+    CS --> CC : Câu dự phòng (source = "fallback")
+  else Cần Gemini (PRICE, SERVICE_INFO, PRODUCT, BOOKING,\nCARE_ADVICE, OTHER; hoặc tin B1 / B2 còn lại)
+    CS -> RL : acquire(caller)
+    break Vượt hạn mức (trần 3000 lượt/ngày, hoặc 20 lượt/10 phút\nvới khách vãng lai, 60 lượt/10 phút với khách đăng nhập)
+      RL --> CS : RateLimitExceededException
+      CS --> CC : (ném tiếp)
+      CC --> GW : 429 Too Many Requests\n+ Retry-After
+      GW --> UI : 429
+      UI --> KH : "Bạn nhắn hơi nhiều... thử lại sau n giây"
+    end
+    RL --> CS : Còn hạn mức: ghi nhận một lượt
+      CS -> CS : PromptBuilder.build(gợi ý nhãn, B2)\n(B1: không gợi ý nhãn; B2: thêm dòng "xin lỗi ngắn"),\nhội thoại ≤ 20 tin + khai báo 4 công cụ, hạn chót 45 giây
+      loop round = 0..4 (vòng 4 không gửi công cụ), chưa quá hạn chót
+        CS -> GC ++ : generate(body)
+        GC -> GEM : POST /models/{model}:generateContent\n(model chính)
+        opt Sau 3 giây chưa có kết quả, hoặc model lỗi
+          GC -> GEM : Gọi thêm model dự phòng song song
+        end
+        GEM --> GC : Phản hồi JSON đầu tiên thành công
+        GC --> CS -- : response (hạn tối đa 25 giây)
+
+        alt Gemini yêu cầu công cụ (functionCall) và còn vòng
+          loop Mỗi functionCall
+            CS -> TE ++ : execute(name, args, caller)
+            TE -> TE : Kiểm tra tên + tham số\n(từ khoá ≤ 100 ký tự, ngày trong 60 ngày tới...)
+            alt list_clinic_services
+              TE -> SVC : GET /booking/services
+              SVC --> TE : Danh sách dịch vụ, giá tham khảo
+            else get_clinic_hours (khách đã đăng nhập)
+              TE -> SVC : GET /booking/clinic-hours?date=\n(Bearer token của khách)
+              SVC --> TE : Khung giờ còn chỗ
+            else get_clinic_hours (khách vãng lai)
+              TE -> TE : {"error": "login_required"}
+            else search_products / list_categories
+              TE -> SVC : GET /products?keyword&categoryId&maxPrice&size=8\n/ GET /categories
+              SVC --> TE : Sản phẩm (giá, còn hàng) / danh mục
+            end
+            TE --> CS -- : Kết quả rút gọn (lỗi → {"error": ...})
+          end
+          CS -> CS : Nối lượt của mô hình + functionResponse\nvào hội thoại, sang vòng kế tiếp
+        else Gemini trả lời bằng chữ
+          CS --> CC : ChatResponse(text, source = "ai")
+        else Bị bộ lọc an toàn chặn
+          CS --> CC : Câu từ chối nhẹ nhàng (source = "fallback")
+        else Không có chữ, không bị chặn
+          CS --> CC : Câu dự phòng (source = "fallback")
+        end
+      end
+      opt Mọi model lỗi (GeminiUnavailableException), quá hạn chót 45 giây,\nhoặc vòng cuối vẫn đòi công cụ
+        CS --> CC : Câu dự phòng (source = "fallback")
+      end
+  end
+  deactivate CS
+  CC --> GW : 200 OK {reply, source}
+  deactivate CC
+  GW --> UI : 200 OK {reply, source}
+  deactivate GW
+  UI -> UI : Thêm câu trả lời vào lịch sử
+  UI --> KH : Hiển thị câu trả lời
+deactivate UI
+@enduml
