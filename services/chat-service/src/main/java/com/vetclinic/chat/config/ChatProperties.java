@@ -14,8 +14,28 @@ public record ChatProperties(
         /** Tổng thời gian tối đa cho một câu trả lời (cả các vòng công cụ); quá hạn thì trả câu dự phòng. */
         @DefaultValue("45") int replyTimeoutSeconds,
         @DefaultValue Gemini gemini,
-        @DefaultValue RateLimit rateLimit
+        @DefaultValue RateLimit rateLimit,
+        @DefaultValue IntentSettings intent
 ) {
+
+    /** Cách nhận diện ý định: chỉ luật, chỉ ML, hay kết hợp (mặc định). */
+    public enum IntentMode {
+        RULES, ML, HYBRID
+    }
+
+    /**
+     * Bộ phân loại ý định (CompositeIntentClassifier).
+     *
+     * @param mode      rules | ml | hybrid
+     * @param modelPath file JSON của mô hình ML (Spring resource: classpath:..., file:...)
+     * @param threshold ghi đè ngưỡng tin cậy trong file mô hình; null = dùng ngưỡng trong file
+     */
+    public record IntentSettings(
+            @DefaultValue("hybrid") IntentMode mode,
+            @DefaultValue("classpath:ml/intent-model.json") String modelPath,
+            Double threshold
+    ) {
+    }
 
     public record Gemini(
             @DefaultValue("") String apiKey,

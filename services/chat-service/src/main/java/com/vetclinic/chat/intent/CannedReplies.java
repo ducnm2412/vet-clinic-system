@@ -16,6 +16,10 @@ public class CannedReplies {
         this.clinic = clinic;
     }
 
+    /**
+     * Câu soạn sẵn cho ý định có {@link Intent#hasCannedReply()}. Các ý định đi Gemini không có câu
+     * soạn sẵn riêng (ChatService không gọi hàm này cho chúng); nếu bị gọi thì trả câu dự phòng thay vì ném lỗi.
+     */
     public String forIntent(Intent intent) {
         return switch (intent) {
             case EMERGENCY -> emergency();
@@ -24,7 +28,7 @@ public class CannedReplies {
             case THANKS -> thanks();
             case CONTACT -> contact();
             case OPENING_HOURS -> openingHours();
-            case OTHER -> throw new IllegalArgumentException("OTHER không có câu soạn sẵn");
+            case PRICE, SERVICE_INFO, PRODUCT, BOOKING, CARE_ADVICE, OTHER -> fallback();
         };
     }
 

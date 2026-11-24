@@ -52,3 +52,12 @@ app:
       user-per-window: ${CHAT_USER_LIMIT:60}
       # Trần tổng số lượt gọi Gemini mỗi ngày (mọi người cộng lại) — chặn tốn tiền khi bị lạm dụng.
       daily-cap: ${CHAT_DAILY_CAP:3000}
+    intent:
+      # rules = chỉ regex; ml = chỉ mô hình ML (dưới ngưỡng → OTHER); hybrid = luật khẩn cấp trước, ML đủ tin cậy
+      # thì dùng nhãn ML, còn lại dùng nhãn luật. Ở mọi chế độ, câu luật nhận là khẩn cấp luôn ra EMERGENCY.
+      # Không có file mô hình → tự lùi về rules (có cảnh báo trong log).
+      mode: ${CHAT_INTENT_MODE:hybrid}
+      # Mô hình xuất từ ml/chat-intent (định dạng: ml/chat-intent/MODEL_FORMAT.md).
+      model-path: ${CHAT_INTENT_MODEL_PATH:classpath:ml/intent-model.json}
+      # Ghi đè ngưỡng tin cậy trong file mô hình (bỏ trống = dùng ngưỡng trong file).
+      # threshold: 0.55

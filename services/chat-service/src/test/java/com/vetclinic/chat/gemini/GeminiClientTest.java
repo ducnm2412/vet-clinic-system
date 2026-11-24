@@ -75,7 +75,8 @@ class GeminiClientTest {
         String baseUrl = "http://127.0.0.1:" + server.getAddress().getPort() + "/v1beta";
         ChatProperties properties = new ChatProperties(20, 1000, 4, 45,
                 new ChatProperties.Gemini(apiKey, baseUrl, model, fallbacks, 10, hedgeSeconds, totalSeconds),
-                new ChatProperties.RateLimit(10, 20, 60, 3000));
+                new ChatProperties.RateLimit(10, 20, 60, 3000),
+                new ChatProperties.IntentSettings(ChatProperties.IntentMode.RULES, "", null));
         return new GeminiClient(properties);
     }
 

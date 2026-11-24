@@ -1,6 +1,8 @@
 package com.vetclinic.chat.service;
 
 import com.vetclinic.chat.config.ClinicProperties;
+import com.vetclinic.chat.intent.Intent;
+import com.vetclinic.chat.tool.ToolDefinitions;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 
@@ -26,8 +28,25 @@ public class PromptBuilder {
     }
 
     public String build() {
+        return build(null);
+    }
+
+    /**
+     * @param hint ý định đoán được của tin nhắn mới nhất (có thể sai); với PRICE, SERVICE_INFO, PRODUCT,
+     *             BOOKING, CARE_ADVICE thêm một dòng gợi ý công cụ / quy tắc. null hoặc nhãn khác: không thêm gì.
+     */
+    public String build(Intent hint) {
+        return build(hint, false);
+    }
+
+    /**
+     * @param hint       xem {@link #build(Intent)}
+     * @param correction khách cho rằng câu trả lời trước chưa đúng ({@code CorrectionDetector}): thêm dòng
+     *                   yêu cầu xin lỗi ngắn rồi trả lời lại
+     */
+    public String build(Intent hint, boolean correction) {
         LocalDate today = LocalDate.now(clock);
-        return """
+        String prompt = """
                 Bạn là trợ lý chatbot của %1$s, phòng khám thú y cho chó mèo tại Cần Thơ. Bạn trò chuyện với khách hàng trên website.
 
                 QUY TẮC TRẢ LỜI
@@ -50,6 +69,37 @@ public class PromptBuilder {
                 KIẾN THỨC PHÒNG KHÁM
                 %5$s
                 """.formatted(clinic.name(), clinic.phone(), weekday(today.getDayOfWeek()), today, knowledge);
+        StringBuilder hints = new StringBuilder();
+        if (correction) {
+            hints.append(CORRECTION_LINE).append('\n');
+        }
+        String hintLine = hintLine(hint);
+        if (hintLine != null) {
+            hints.append(hintLine).append('\n');
+        }
+        return hints.isEmpty() ? prompt : prompt + "\nGỢI Ý CHO TIN NHẮN MỚI NHẤT\n" + hints;
+    }
+
+    /** Dòng thêm vào prompt khi khách chê / sửa câu trả lời trước. */
+    static final String CORRECTION_LINE = "- Khách cho rằng câu trả lời trước chưa đúng: xin lỗi một câu ngắn "
+            + "rồi trả lời lại đúng điều khách cần.";
+
+    /** Dòng gợi ý theo ý định; null nếu không có. Chỉ là gợi ý: bộ phân loại có thể đoán sai. */
+    static String hintLine(Intent hint) {
+        if (hint == null) {
+            return null;
+        }
+        return switch (hint) {
+            case PRICE, SERVICE_INFO -> "- Khách có vẻ hỏi về dịch vụ hoặc giá dịch vụ: gọi "
+                    + ToolDefinitions.LIST_CLINIC_SERVICES + " để lấy dữ liệu thật trước khi trả lời.";
+            case PRODUCT -> "- Khách có vẻ hỏi về sản phẩm: gọi " + ToolDefinitions.SEARCH_PRODUCTS
+                    + " (có thể kèm từ khoá) để lấy sản phẩm, giá và tình trạng còn hàng thật.";
+            case BOOKING -> "- Khách có vẻ muốn đặt lịch hoặc hỏi giờ còn trống: gọi " + ToolDefinitions.GET_CLINIC_HOURS
+                    + " với ngày cụ thể (hỏi lại ngày nếu khách chưa nói), rồi hướng dẫn khách tự đặt ở [trang đặt lịch](/appointments/create).";
+            case CARE_ADVICE -> "- Khách có vẻ hỏi về chăm sóc / sức khoẻ thú cưng: chỉ nêu lời khuyên chăm sóc chung, "
+                    + "KHÔNG chẩn đoán bệnh, KHÔNG nêu tên thuốc hay liều dùng; khuyên đưa bé đến khám nếu triệu chứng kéo dài hoặc nặng hơn.";
+            default -> null;
+        };
     }
 
     private static String weekday(DayOfWeek day) {

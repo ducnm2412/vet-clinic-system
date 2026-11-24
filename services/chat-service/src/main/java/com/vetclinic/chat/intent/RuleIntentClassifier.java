@@ -25,10 +25,10 @@ public class RuleIntentClassifier implements IntentClassifier {
             p("\\b(kho tho|tho gap|tho rit|tho khe khe|khong tho duoc|ngung tho|tho hon hen|tho bang mieng)\\b"),
             p("\\b(ngo doc|an nham|nuot nham|nuot phai|an phai)\\b"),
             p("\\b(chay mau|ra mau|non ra mau|ia ra mau|dai ra mau|mau chay)\\b"),
-            p("\\b(bat tinh|hon me|ngat|xiu|liet|te liet|khong dung duoc|khong dung vung)\\b"),
+            p("\\b(bat tinh|hon me|ngat|bi xiu|xiu (luon|roi|di|mat|xuong)|liet|te liet|khong dung duoc|khong dung vung)\\b"),
             p("\\b(bi xe (dam|tong|can)|tai nan|bi tong|roi tu (cao|tang|ban cong|lau))\\b"),
             p("\\b(tim tai|luoi tim|say nang|say nang|dot quy)\\b"),
-            p("\\b(sung tac|bi tac|nghen|de kho|de khong ra)\\b"),
+            p("\\b(sung tac|bi tac|bi nghen|nghen (thuc an|xuong|hong|co|tho)|hoc xuong|hoc di vat|de kho|de khong ra)\\b"),
             p("\\bcap cuu\\b")
     );
 
@@ -37,8 +37,8 @@ public class RuleIntentClassifier implements IntentClassifier {
             p("\\b(bo qua|quen|phot lo|vo hieu hoa) (het |tat ca |moi |cac )?(huong dan|chi dan|quy tac|lenh|cau lenh)\\b"),
             p("\\bignore (all |any |the |your |previous |prior )*(instructions|rules|prompts?)\\b"),
             p("\\b(system prompt|prompt he thong|prompt cua ban|tiet lo (prompt|huong dan|quy tac)|huong dan noi bo|huong dan he thong)\\b"),
-            p("\\b(jailbreak|dan mode|developer mode|do anything now)\\b"),
-            p("\\b(ca do|danh bac|lo de|casino|khieu dam|phim sex|hack|ddos|ma tuy)\\b")
+            p("\\b(jailbreak|dan mode|developer mode|do anything now|pretend (you|to be)|you have no (rules|restrictions)|without (any )?(rules|restrictions))\\b"),
+            p("\\b(ca do|danh bac|lo de|casino|khieu dam|phim sex|hack (tai khoan|facebook|fb|wifi|game|mat khau|web|website|he thong|zalo)|ddos|phishing|lua dao|ma tuy)\\b")
     );
 
     private static final Pattern GREETING =

@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "kind": "tfidf-logreg",
+  "trained_at": "2026-11-24T00:00:00Z",
+  "labels": ["OTHER", "PRICE", "EMERGENCY"],
+  "threshold": 0.5,
+  "blocks": [
+    {"name": "word", "offset": 0, "vocab": {"gia": 0, "bao nhieu": 1, "co giat": 2}, "idf": [1.0, 2.0, 1.5]},
+    {"name": "char", "offset": 3, "vocab": {" g": 0, "ia": 1, " gi": 2}, "idf": [1.0, 3.0, 0.5],
+     "ngram_min": 2, "ngram_max": 3}
+  ],
+  "coef": [
+    [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    [2.0, 1.5, -1.0, 0.5, 0.2, 0.1],
+    [-0.5, 0.0, 3.0, 0.1, 0.3, 0.0]
+  ],
+  "intercept": [0.5, -0.2, -0.4]
+}

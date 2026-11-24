@@ -10,8 +10,11 @@ import com.vetclinic.chat.dto.ChatResponse;
 import com.vetclinic.chat.exception.GeminiUnavailableException;
 import com.vetclinic.chat.gemini.GeminiClient;
 import com.vetclinic.chat.intent.CannedReplies;
+import com.vetclinic.chat.intent.CorrectionDetector;
 import com.vetclinic.chat.intent.Intent;
 import com.vetclinic.chat.intent.IntentClassifier;
+import com.vetclinic.chat.intent.RuleIntentClassifier;
+import com.vetclinic.chat.intent.TextNormalizer;
 import com.vetclinic.chat.tool.ToolDefinitions;
 import com.vetclinic.chat.tool.ToolExecutor;
 import org.slf4j.Logger;
@@ -24,11 +27,19 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Luồng xử lý một lượt chat:
- * 1. Tầng rule: khẩn cấp, chào hỏi, liên hệ, giờ mở cửa, lạc đề → câu soạn sẵn, không tốn hạn mức.
- * 2. Còn lại cần Gemini: chưa có API key thì trả câu dự phòng, nếu có thì trừ hạn mức, rồi vòng lặp "Gemini yêu cầu công cụ →
+ * 1. Phân loại ý định (CompositeIntentClassifier: luật + ML). Khẩn cấp, chào hỏi, cảm ơn, liên hệ,
+ *    giờ mở cửa, lạc đề → câu soạn sẵn, không tốn hạn mức.
+ * 2. Còn lại (PRICE, SERVICE_INFO, PRODUCT, BOOKING, CARE_ADVICE, OTHER) cần Gemini; nhãn được đưa vào
+ *    system prompt làm gợi ý. Gemini: chưa có API key thì trả câu dự phòng, nếu có thì trừ hạn mức, rồi vòng lặp "Gemini yêu cầu công cụ →
  *    chạy công cụ → trả kết quả" tối đa maxToolRounds vòng; vòng cuối không cho dùng công cụ để
  *    buộc Gemini trả lời bằng chữ.
  * 3. Gemini lỗi hoặc không ra chữ → câu dự phòng, không để khách nhìn thấy lỗi kỹ thuật.
+ *
+ * Ngoại lệ ở bước 1 (EMERGENCY luôn thắng cả hai):
+ * - Bảo vệ ngữ cảnh: tin ≤ 4 từ ngay sau tin của bot ("có", "ở đâu", "còn mèo thì sao?") chỉ được trả soạn
+ *   sẵn khi luật nhận OFF_TOPIC hoặc THANKS; còn lại đi Gemini KHÔNG kèm gợi ý nhãn, để Gemini hiểu theo lịch sử.
+ * - Khách chê / sửa ({@link CorrectionDetector}): không trả soạn sẵn (trừ OFF_TOPIC theo luật); prompt thêm dòng
+ *   yêu cầu xin lỗi ngắn rồi trả lời lại.
  */
 @Service
 public class ChatService {
@@ -39,7 +50,11 @@ public class ChatService {
     private static final Set<String> BLOCKED_FINISH_REASONS =
             Set.of("SAFETY", "PROHIBITED_CONTENT", "BLOCKLIST", "SPII", "RECITATION");
 
+    /** Tin của khách tối đa bao nhiêu từ thì coi là "tin ngắn" cho bảo vệ ngữ cảnh. */
+    static final int SHORT_REPLY_MAX_WORDS = 4;
+
     private final IntentClassifier intentClassifier;
+    private final RuleIntentClassifier ruleClassifier;
     private final CannedReplies cannedReplies;
     private final RateLimiter rateLimiter;
     private final GeminiClient gemini;
@@ -48,10 +63,12 @@ public class ChatService {
     private final ChatProperties properties;
     private final ObjectMapper mapper;
 
-    public ChatService(IntentClassifier intentClassifier, CannedReplies cannedReplies, RateLimiter rateLimiter,
+    public ChatService(IntentClassifier intentClassifier, RuleIntentClassifier ruleClassifier,
+                       CannedReplies cannedReplies, RateLimiter rateLimiter,
                        GeminiClient gemini, ToolExecutor toolExecutor, PromptBuilder promptBuilder,
                        ChatProperties properties, ObjectMapper mapper) {
         this.intentClassifier = intentClassifier;
+        this.ruleClassifier = ruleClassifier;
         this.cannedReplies = cannedReplies;
         this.rateLimiter = rateLimiter;
         this.gemini = gemini;
@@ -71,7 +88,28 @@ public class ChatService {
         String latest = messages.get(messages.size() - 1).content();
 
         Intent intent = intentClassifier.classify(latest);
-        if (intent != Intent.OTHER) {
+        // Khẩn cấp luôn thắng, kể cả khi tin ngắn hay khách đang chê câu trả lời trước.
+        if (intent == Intent.EMERGENCY) {
+            return new ChatResponse(cannedReplies.forIntent(intent), ChatResponse.RULE);
+        }
+
+        boolean correction = CorrectionDetector.isCorrection(latest);
+        boolean shortReplyToBot = isShortReplyToBot(messages, latest);
+        Intent hint = intent;
+        if (correction || shortReplyToBot) {
+            // Nhãn của tin ngắn / tin sửa lại không đáng tin: chỉ giữ câu soạn sẵn mà luật xác nhận
+            // (OFF_TOPIC; THANKS khi không phải tin sửa lại), còn lại để Gemini hiểu theo lịch sử.
+            Intent ruleIntent = ruleClassifier.classify(latest);
+            if (ruleIntent == Intent.OFF_TOPIC) {
+                return new ChatResponse(cannedReplies.forIntent(ruleIntent), ChatResponse.RULE);
+            }
+            if (!correction && intent == Intent.THANKS && ruleIntent == Intent.THANKS) {
+                return new ChatResponse(cannedReplies.forIntent(intent), ChatResponse.RULE);
+            }
+            if (shortReplyToBot) {
+                hint = null;
+            }
+        } else if (intent.hasCannedReply()) {
             return new ChatResponse(cannedReplies.forIntent(intent), ChatResponse.RULE);
         }
 
@@ -82,15 +120,27 @@ public class ChatService {
         rateLimiter.acquire(caller);
 
         try {
-            return askGemini(messages, caller);
+            return askGemini(messages, caller, hint, correction);
         } catch (GeminiUnavailableException e) {
             log.warn("Gemini không phản hồi, trả câu dự phòng");
             return new ChatResponse(cannedReplies.fallback(), ChatResponse.FALLBACK);
         }
     }
 
-    private ChatResponse askGemini(List<ChatMessage> messages, Caller caller) {
-        String systemPrompt = promptBuilder.build();
+    /**
+     * Tin mới của khách ngắn (≤ {@value #SHORT_REPLY_MAX_WORDS} từ sau khi chuẩn hoá) và ngay trước đó là tin
+     * của bot: nhiều khả năng là câu trả lời theo mạch ("có", "còn mèo thì sao?", "ở đâu").
+     */
+    static boolean isShortReplyToBot(List<ChatMessage> messages, String latest) {
+        if (messages.size() < 2 || messages.get(messages.size() - 2).fromUser()) {
+            return false;
+        }
+        String text = TextNormalizer.normalize(latest);
+        return !text.isEmpty() && text.split(" ").length <= SHORT_REPLY_MAX_WORDS;
+    }
+
+    private ChatResponse askGemini(List<ChatMessage> messages, Caller caller, Intent hint, boolean correction) {
+        String systemPrompt = promptBuilder.build(hint, correction);
         ArrayNode contents = toContents(messages);
         ArrayNode tools = ToolDefinitions.declarations(mapper);
         int maxRounds = properties.maxToolRounds();

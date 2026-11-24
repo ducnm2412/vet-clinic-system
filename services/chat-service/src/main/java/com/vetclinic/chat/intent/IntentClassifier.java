@@ -1,8 +1,9 @@
 package com.vetclinic.chat.intent;
 
 /**
- * Nhận diện ý định của tin nhắn. Hiện là RuleIntentClassifier (regex trên chữ đã bỏ dấu); chỗ này
- * để sau cắm bộ phân loại ML mà ChatService không phải sửa.
+ * Nhận diện ý định của tin nhắn. Có RuleIntentClassifier (regex trên chữ đã bỏ dấu),
+ * MlIntentClassifier (TF-IDF + hồi quy logistic) và CompositeIntentClassifier (bean chính,
+ * kết hợp hai cái trên theo app.chat.intent.mode).
  */
 public interface IntentClassifier {
 
