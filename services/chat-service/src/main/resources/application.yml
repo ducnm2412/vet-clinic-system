@@ -1,0 +1,54 @@
+spring:
+  application:
+    name: chat-service
+
+server:
+  port: ${SERVER_PORT:8092}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URI:http://localhost:8761/eureka/}
+  instance:
+    prefer-ip-address: true
+
+jwt:
+  # Dùng chung secret với auth-service — chỉ để nhận ra khách đã đăng nhập (tuỳ chọn), không bắt buộc.
+  secret: ${JWT_SECRET}
+
+app:
+  # Thông tin phòng khám dùng cho câu trả lời soạn sẵn và system prompt. Khớp frontend/web/src/config/clinic.ts
+  # và trang Liên hệ; sửa ở đây (hoặc qua biến môi trường) khi thông tin thật thay đổi.
+  clinic:
+    name: ${CLINIC_NAME:Vet Clinic}
+    address: ${CLINIC_ADDRESS:128 Nguyễn Văn Cừ, phường An Hoà, Thành phố Cần Thơ}
+    phone: ${CLINIC_PHONE:0292 3838 686}
+    email: ${CLINIC_EMAIL:support@vetclinic.vn}
+    hours: ${CLINIC_HOURS:Thứ Hai đến Chủ Nhật, 7:30 – 20:00}
+    zalo: ${CLINIC_ZALO:https://zalo.me/02923838686}
+  chat:
+    # Mỗi lượt chỉ lấy ngần này tin gần nhất gửi cho Gemini; tin dài hơn mức cho phép bị từ chối.
+    max-history-messages: 20
+    max-message-chars: 1000
+    # Số vòng Gemini được gọi công cụ trước khi bắt buộc trả lời bằng chữ.
+    max-tool-rounds: 4
+    # Tổng thời gian tối đa cho một câu trả lời, kể cả các vòng gọi công cụ.
+    reply-timeout-seconds: 45
+    gemini:
+      # Để trống = chatbot chỉ trả lời câu soạn sẵn (khẩn cấp, liên hệ, giờ mở cửa...); câu cần AI nhận câu dự phòng.
+      api-key: ${GEMINI_API_KEY:}
+      base-url: https://generativelanguage.googleapis.com/v1beta
+      model: ${GEMINI_MODEL:gemini-3.5-flash-lite}
+      # Model dự phòng, cách nhau bằng dấu phẩy; thử lần lượt khi model chính lỗi/hết quota.
+      fallback-models: ${GEMINI_FALLBACK_MODELS:gemini-3.8-flash,gemini-3.7-flash,gemini-flash-lite-latest}
+      # Thời gian chờ tối đa của một lần gọi model; chưa có kết quả sau hedge-seconds thì chạy thêm model
+      # dự phòng song song (Gemini bản miễn phí hay quá tải); total-timeout-seconds là hạn chót mỗi lượt.
+      timeout-seconds: 15
+      hedge-seconds: 3
+      total-timeout-seconds: 25
+    rate-limit:
+      window-minutes: 10
+      guest-per-window: ${CHAT_GUEST_LIMIT:20}
+      user-per-window: ${CHAT_USER_LIMIT:60}
+      # Trần tổng số lượt gọi Gemini mỗi ngày (mọi người cộng lại) — chặn tốn tiền khi bị lạm dụng.
+      daily-cap: ${CHAT_DAILY_CAP:3000}

@@ -196,6 +196,27 @@ services:
       mailhog:
         condition: service_started
 
+  # Chatbot tu van khach hang (Gemini + tang rule). Khong co database, khong luu hoi thoai.
+  chat-service:
+    build: ./services/chat-service
+    container_name: chat-service
+    ports:
+      - "8092:8092"
+    environment:
+      EUREKA_URI: http://eureka-server:8761/eureka/
+      # Chi de nhan ra khach da dang nhap (han muc cao hon, tra duoc gio kham con trong).
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      # De trong thi chatbot chi tra loi cau soan san (nut chat van hien). KHONG commit gia tri that vao .env.example.
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.5-flash-lite}
+      GEMINI_FALLBACK_MODELS: ${GEMINI_FALLBACK_MODELS:-gemini-3.8-flash,gemini-3.7-flash,gemini-flash-lite-latest}
+      CHAT_GUEST_LIMIT: ${CHAT_GUEST_LIMIT:-20}
+      CHAT_USER_LIMIT: ${CHAT_USER_LIMIT:-60}
+      CHAT_DAILY_CAP: ${CHAT_DAILY_CAP:-3000}
+    depends_on:
+      eureka-server:
+        condition: service_started
+
   mailhog:
     image: mailhog/mailhog
     container_name: mailhog

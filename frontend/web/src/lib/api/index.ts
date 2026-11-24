@@ -19,6 +19,7 @@ export { cartApi, orderApi, orderManageApi, nextActions } from "./orders";
 export { bookingApi, clinicServiceApi, suggestionsFrom } from "./bookings";
 export { paymentApi } from "./payments";
 export { notificationApi } from "./notifications";
+export { chatApi, CHAT_MAX_MESSAGES, CHAT_MAX_CHARS, type ChatTurn, type ChatReply } from "./chat";
 export { reportingApi, type ReportRange } from "./reporting";
 export { attendanceApi, leaveApi, shiftApi, type DateRange } from "./staff";
 export { MISSING, type MissingEndpoint, type MissingKey } from "./missing";
