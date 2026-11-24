@@ -17,7 +17,6 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -31,8 +30,8 @@ import java.util.Map;
  *       "bán"/"bận"/"ban" khác nghĩa và embedding phân biệt được): câu lặp lại không gọi API.</li>
  *   <li>Trần số lần gọi mỗi ngày theo giờ Việt Nam (gói miễn phí ~1000 embed/ngày/model). Hết trần → bỏ qua tới
  *       ngày sau.</li>
- *   <li>HTTP 429: tạm dừng {@code rate-limit-pause-minutes}; nếu phản hồi nói hạn mức THEO NGÀY ("PerDay" trong
- *       thông báo/quotaId) thì dừng tới 0 giờ hôm sau theo giờ Thái Bình Dương (Google đặt lại hạn mức ngày lúc đó).</li>
+ *   <li>HTTP 429 (mọi loại hạn mức): chỉ tạm dừng {@code rate-limit-pause-minutes} rồi thử lại — không tắt A2 tới
+ *       hết ngày, vì gói trả phí có hạn mức theo phút và đổi key/nâng gói phải có tác dụng ngay.</li>
  *   <li>Ngắt mạch: {@code failure-threshold} lỗi liên tiếp (5xx, timeout, lỗi mạng, phản hồi hỏng, 4xx khác 429)
  *       → bỏ qua {@code circuit-open-seconds}; một lần thành công đặt lại bộ đếm.</li>
  * </ul>
@@ -42,9 +41,6 @@ import java.util.Map;
 public class GeminiEmbeddingClient {
 
     private static final Logger log = LoggerFactory.getLogger(GeminiEmbeddingClient.class);
-
-    /** Google đặt lại hạn mức theo ngày vào nửa đêm giờ Thái Bình Dương. */
-    static final ZoneId QUOTA_RESET_ZONE = ZoneId.of("America/Los_Angeles");
 
     /** Lớp gửi HTTP; tách ra để test thay bằng bản giả. Lỗi HTTP ném {@link RestClientResponseException}. */
     @FunctionalInterface
@@ -179,7 +175,7 @@ public class GeminiEmbeddingClient {
         } catch (RestClientResponseException e) {
             int status = e.getStatusCode().value();
             if (status == 429) {
-                onRateLimited(isDailyQuota(e));
+                onRateLimited();
                 return Result.of(Status.RATE_LIMITED);
             }
             onFailure("HTTP " + status);
@@ -247,22 +243,12 @@ public class GeminiEmbeddingClient {
         return null;
     }
 
-    private static boolean isDailyQuota(RestClientResponseException e) {
-        String body = e.getResponseBodyAsString();
-        String lower = body == null ? "" : body.toLowerCase(Locale.ROOT);
-        return lower.contains("perday") || lower.contains("per day");
-    }
-
-    private synchronized void onRateLimited(boolean daily) {
-        Instant now = clock.instant();
-        Instant until = daily
-                ? now.atZone(QUOTA_RESET_ZONE).toLocalDate().plusDays(1).atStartOfDay(QUOTA_RESET_ZONE).toInstant()
-                : now.plus(Duration.ofMinutes(settings.rateLimitPauseMinutes()));
+    private synchronized void onRateLimited() {
+        Instant until = clock.instant().plus(Duration.ofMinutes(settings.rateLimitPauseMinutes()));
         if (until.isAfter(pausedUntil)) {
             pausedUntil = until;
         }
-        log.warn("A2: Gemini embedContent hết hạn mức (429{}), tạm tắt A2 tới {}",
-                daily ? ", theo ngày" : "", pausedUntil);
+        log.warn("A2: Gemini embedContent hết hạn mức (429), tạm tắt A2 tới {}", pausedUntil);
     }
 
     private synchronized void onFailure(String reason) {

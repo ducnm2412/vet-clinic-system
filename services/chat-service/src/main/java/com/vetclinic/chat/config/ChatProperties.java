@@ -51,7 +51,7 @@ public record ChatProperties(
      * @param connectTimeoutMs      timeout kết nối tới Gemini
      * @param timeoutMs             timeout đọc phản hồi
      * @param cacheSize             số câu nhớ embedding (LRU); 0 = không cache
-     * @param rateLimitPauseMinutes gặp HTTP 429 (hạn mức theo phút) thì tạm tắt A2 chừng này phút
+     * @param rateLimitPauseMinutes gặp HTTP 429 (mọi loại hạn mức) thì tạm tắt A2 chừng này phút rồi thử lại
      * @param failureThreshold      số lỗi 5xx/timeout liên tiếp thì ngắt mạch
      * @param circuitOpenSeconds    thời gian ngắt mạch
      */
@@ -64,7 +64,7 @@ public record ChatProperties(
             @DefaultValue("500") int connectTimeoutMs,
             @DefaultValue("1200") int timeoutMs,
             @DefaultValue("2000") int cacheSize,
-            @DefaultValue("15") int rateLimitPauseMinutes,
+            @DefaultValue("1") int rateLimitPauseMinutes,
             @DefaultValue("3") int failureThreshold,
             @DefaultValue("60") int circuitOpenSeconds
     ) {

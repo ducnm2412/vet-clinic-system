@@ -16,8 +16,6 @@ import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executors;
@@ -85,7 +83,7 @@ class GeminiEmbeddingClientTest {
     }
 
     private ChatProperties.A2 settings(int dailyCap, int timeoutMs, int cacheSize) {
-        return new ChatProperties.A2(true, "", 0.6, 3, dailyCap, 500, timeoutMs, cacheSize, 15, 3, 60);
+        return new ChatProperties.A2(true, "", 0.6, 3, dailyCap, 500, timeoutMs, cacheSize, 1, 3, 60);
     }
 
     private GeminiEmbeddingClient client(String apiKey, ChatProperties.A2 settings) {
@@ -205,14 +203,15 @@ class GeminiEmbeddingClientTest {
         assertThat(client.isAvailable()).isFalse();
         assertThat(paths).hasSize(1); // lần sau không gọi mạng
 
-        clock.advance(Duration.ofMinutes(14));
+        clock.advance(Duration.ofSeconds(50));
         assertThat(client.embed("câu thứ hai nè").status()).isEqualTo(Status.RATE_LIMITED);
-        clock.advance(Duration.ofMinutes(2));
+        clock.advance(Duration.ofSeconds(15));
         assertThat(client.embed("câu thứ hai nè").status()).isEqualTo(Status.OK);
     }
 
     @Test
-    void dailyQuota429PausesUntilPacificMidnight() {
+    void dailyQuota429OnlyPausesForConfiguredMinutesToo() {
+        // Không tắt A2 tới nửa đêm Pacific nữa: đổi key / nâng gói phải có tác dụng sau ~1 phút.
         GeminiEmbeddingClient client = client();
         status = 429;
         errorBody = "{\"error\":{\"code\":429,\"details\":[{\"violations\":[{\"quotaId\":"
@@ -220,13 +219,8 @@ class GeminiEmbeddingClientTest {
 
         assertThat(client.embed("câu thứ nhất nè").status()).isEqualTo(Status.RATE_LIMITED);
         status = 200;
-
-        ZoneId pacific = ZoneId.of("America/Los_Angeles");
-        Instant pacificMidnight = ZonedDateTime.ofInstant(clock.instant(), pacific).toLocalDate().plusDays(1)
-                .atStartOfDay(pacific).toInstant();
-        clock.set(pacificMidnight.minusSeconds(60));
         assertThat(client.embed("câu thứ hai nè").status()).isEqualTo(Status.RATE_LIMITED);
-        clock.set(pacificMidnight.plusSeconds(1));
+        clock.advance(Duration.ofSeconds(61));
         assertThat(client.embed("câu thứ hai nè").status()).isEqualTo(Status.OK);
     }
 

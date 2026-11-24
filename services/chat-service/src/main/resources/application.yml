@@ -77,7 +77,7 @@ app:
         timeout-ms: 1200
         cache-size: 2000
         # HTTP 429 → tạm tắt A2 chừng này phút (429 do hạn mức NGÀY → tắt tới 0 giờ hôm sau giờ Thái Bình Dương).
-        rate-limit-pause-minutes: 15
+        rate-limit-pause-minutes: 1
         # Lỗi 5xx/timeout liên tiếp chừng này lần → ngắt mạch circuit-open-seconds giây.
         failure-threshold: 3
         circuit-open-seconds: 60
