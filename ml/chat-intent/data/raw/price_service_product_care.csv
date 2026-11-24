@@ -1,0 +1,331 @@
+text,label,source
+Cho em hỏi khám tổng quát cho chó bao nhiêu tiền ạ?,PRICE,persona
+Phí khám bệnh cho mèo ở phòng khám mình là nhiêu vậy?,PRICE,persona
+Tiêm phòng 5 bệnh cho chó con giá sao chị?,PRICE,persona
+Mũi 7 bệnh cho chó bên mình lấy bao nhiêu?,PRICE,persona
+Tiêm dại cho mèo hết bao nhiêu tiền?,PRICE,persona
+Triệt sản mèo cái giá bao nhiêu vậy ad?,PRICE,persona
+Thiến mèo đực bên mình lấy nhiêu tiền nhen?,PRICE,persona
+Triệt sản chó cái tầm 20kg thì chi phí khoảng bao nhiêu?,PRICE,persona
+Chó đực 8 ký triệt sản hết bao nhiêu tiền?,PRICE,persona
+Siêu âm bụng cho chó giá bao nhiêu?,PRICE,persona
+Chụp X-quang chân cho mèo hết nhiêu tiền vậy?,PRICE,persona
+Xét nghiệm máu tổng quát cho chó già bao nhiêu tiền ạ?,PRICE,persona
+Tắm sấy cho chó dưới 5kg giá sao?,PRICE,persona
+Chó Golden 30 ký tắm spa trọn gói hết bao nhiêu?,PRICE,persona
+Tắm cho mèo lông dài bên mình tính giá thế nào?,PRICE,persona
+Lấy cao răng cho chó bao nhiêu tiền vậy shop?,PRICE,persona
+Cạo vôi răng cho mèo có đắt không ạ?,PRICE,persona
+Phí cấp cứu ban đêm tính sao vậy?,PRICE,persona
+Khoảng 11h đêm đưa chó qua khám thì phụ thu thêm bao nhiêu?,PRICE,persona
+Cho mình xin bảng giá dịch vụ của phòng khám với.,PRICE,persona
+"Có bảng giá tiêm phòng cho mèo không, gửi tui xem với.",PRICE,persona
+Triệt sản ở đây có đắt không mấy bạn?,PRICE,persona
+Gói tiêm phòng trọn gói cho chó con từ mũi đầu tới mũi cuối bao nhiêu tiền?,PRICE,persona
+"Mèo nhà em mới nhận nuôi, khám với tiêm mũi đầu tổng cộng tầm bao nhiêu ạ?",PRICE,persona
+Siêu âm thai cho mèo giá bao nhiêu vậy chị?,PRICE,persona
+Chụp phim X-quang phổi cho chó lớn tính tiền sao?,PRICE,persona
+Xét nghiệm sinh hóa máu trước mổ tốn thêm bao nhiêu?,PRICE,persona
+"Mổ triệt sản mèo cái đã gồm thuốc và tái khám chưa, tổng hết bao nhiêu?",PRICE,persona
+"Em là sinh viên, mới nuôi mèo đầu tiên, muốn đưa bé đi khám tổng quát mà sợ không đủ tiền, cho em hỏi khám lần đầu tầm bao nhiêu ạ?",PRICE,persona
+"Nhà tui có 3 con chó lớn, tính tiêm phòng một lượt cả 3 con thì có bớt giá không?",PRICE,persona
+Cắt tỉa lông cho Poodle bao nhiêu tiền?,PRICE,persona
+"Vệ sinh tai, cắt móng cho mèo giá nhiêu?",PRICE,persona
+Tái khám có tính tiền không hay miễn phí vậy?,PRICE,persona
+Tiêm vaccine 4 bệnh cho mèo giá bao nhiêu vậy?,PRICE,persona
+Khám da cho chó bị nấm tính phí sao chị?,PRICE,persona
+Cắt chỉ sau mổ có mất tiền không?,PRICE,persona
+Lưu chuồng theo dõi sau mổ một đêm tính bao nhiêu?,PRICE,persona
+Gửi mèo ở khách sạn 1 ngày giá bao nhiêu?,PRICE,persona
+Truyền dịch cho chó một lần bao nhiêu tiền?,PRICE,persona
+Mổ lấy sỏi bàng quang cho chó chi phí khoảng nhiêu?,PRICE,persona
+Tiền khám cho chó lớn với chó nhỏ có khác nhau không?,PRICE,persona
+Giá tắm chó 10-15kg là bao nhiêu nhen?,PRICE,persona
+Khám tại nhà cho mèo thì phí đi lại tính sao?,PRICE,persona
+Gắn chip định danh cho chó giá bao nhiêu?,PRICE,persona
+"Combo tắm, cắt móng, vệ sinh tai cho chó nhỏ bao nhiêu tiền?",PRICE,persona
+"Mình muốn làm gói khám sức khỏe cho mèo 10 tuổi, có xét nghiệm máu và siêu âm, trọn gói khoảng nhiêu?",PRICE,persona
+"Chào bác sĩ, cho hỏi tiêm phòng dại cho chó nhiêu tiền 1 mũi?",PRICE,persona
+Chi phí điều trị viêm da cho chó thường rơi vào khoảng bao nhiêu?,PRICE,persona
+Mổ u da nhỏ cho chó già tốn khoảng bao nhiêu vậy bác sĩ?,PRICE,persona
+kham benh cho meo bao nhieu tien vay ad,PRICE,variant
+tiem 7 benh cho cho con gia sao a,PRICE,variant
+triet san meo cai bn tien z shop,PRICE,variant
+thien meo duc het nhiu tien nhe,PRICE,variant
+sieu am cho cho gia bnhieu,PRICE,variant
+chup x quang cho meo bn tien,PRICE,variant
+xet nghiem mau cho cho het bao nhieu,PRICE,variant
+tam cho 7kg gia sao ad oi,PRICE,variant
+lay cao rang cho cho mat bao nhiu tien,PRICE,variant
+cap cuu ban dem tinh phi the nao vay,PRICE,variant
+cho xin bang gia dv vs ad,PRICE,variant
+triet san o day co mac k,PRICE,variant
+tiem dai cho cho 1 mui bn,PRICE,variant
+gia tron goi tiem phong cho meo con la bn ạ,PRICE,variant
+spa cho cho bec 35kg bn tien v,PRICE,variant
+kham tong quat cho meo gia bao nhieu z ạ,PRICE,variant
+tiem ngua 5 benh bao nhiu tien,PRICE,variant
+trietsan cho duc nhiu tien vay shop,PRICE,variant
+tắm sấy mèo bnhiu tiền ạ,PRICE,variant
+xét nghiệm máu cho mèo hết bn tiền vậy ad,PRICE,variant
+phí khám ngoài giờ tính sao z,PRICE,variant
+Phòng khám mình có dịch vụ triệt sản cho mèo không ạ?,SERVICE_INFO,persona
+Bên mình có khám tại nhà không chị? Nhà em ở Ninh Kiều.,SERVICE_INFO,persona
+Có máy X-quang ở phòng khám không hay phải đi chỗ khác chụp?,SERVICE_INFO,persona
+Phòng khám có siêu âm không ạ?,SERVICE_INFO,persona
+"Có dịch vụ lưu chuồng, gửi chó khi đi du lịch không?",SERVICE_INFO,persona
+Bên mình có khách sạn cho mèo không nhen?,SERVICE_INFO,persona
+Triệt sản mèo cái mất bao lâu thì xong?,SERVICE_INFO,persona
+Mổ triệt sản xong bao lâu thì đón bé về được?,SERVICE_INFO,persona
+Trước khi mổ triệt sản có cần cho bé nhịn ăn không ạ?,SERVICE_INFO,persona
+Nhịn ăn mấy tiếng trước khi gây mê vậy bác sĩ?,SERVICE_INFO,persona
+Quy trình tiêm phòng ở phòng khám mình như thế nào?,SERVICE_INFO,persona
+Lấy cao răng cho chó có phải gây mê không?,SERVICE_INFO,persona
+Bác sĩ bên mình có ai chuyên về da liễu không?,SERVICE_INFO,persona
+Có bác sĩ chuyên khoa mèo không ạ?,SERVICE_INFO,persona
+"Phòng khám có làm xét nghiệm máu tại chỗ không, có kết quả liền không?",SERVICE_INFO,persona
+Xét nghiệm máu mất bao lâu thì có kết quả?,SERVICE_INFO,persona
+Tắm spa cho chó mất khoảng bao lâu?,SERVICE_INFO,persona
+Bên mình có cắt tỉa lông tạo kiểu cho Poodle không?,SERVICE_INFO,persona
+"Có dịch vụ vệ sinh tai, cắt móng cho mèo không?",SERVICE_INFO,persona
+"Có làm phẫu thuật xương, bó bột cho chó không?",SERVICE_INFO,persona
+"Phòng khám có nhận khám cho thỏ, hamster không hay chỉ chó mèo?",SERVICE_INFO,persona
+Có tiêm phòng dại cho chó không ạ?,SERVICE_INFO,persona
+Có làm giấy chứng nhận tiêm phòng để mang chó đi máy bay không?,SERVICE_INFO,persona
+"Siêu âm thai cho chó thì làm như thế nào, có đau bé không?",SERVICE_INFO,persona
+Có dịch vụ đưa đón thú cưng tận nhà không?,SERVICE_INFO,persona
+Khi đến khám lần đầu cần mang theo giấy tờ gì không?,SERVICE_INFO,persona
+Lưu chuồng thì có camera cho chủ xem bé không?,SERVICE_INFO,persona
+"Mèo nhà em nhát lắm, lúc khám em có được ở cạnh bé không ạ?",SERVICE_INFO,persona
+Khám tổng quát gồm những hạng mục gì vậy?,SERVICE_INFO,persona
+Mổ xong có cần ở lại theo dõi không hay về luôn?,SERVICE_INFO,persona
+Bên mình có truyền dịch nội trú không?,SERVICE_INFO,persona
+Phòng khám có làm siêu âm tim cho chó không?,SERVICE_INFO,persona
+"Triệt sản bên mình mổ theo phương pháp gì, có mổ nội soi không?",SERVICE_INFO,persona
+Có lưu hồ sơ bệnh án online để xem lại lịch tiêm không?,SERVICE_INFO,persona
+"Chó nhà mình to 40 ký, phòng khám có chuồng đủ lớn để lưu trú không?",SERVICE_INFO,persona
+"Bên mình có dịch vụ tắm khử mùi, diệt ve rận cho chó không?",SERVICE_INFO,persona
+Chụp X-quang cho mèo có phải gây mê không?,SERVICE_INFO,persona
+Cạo vôi răng cho chó làm mất bao lâu vậy?,SERVICE_INFO,persona
+Phòng khám có xét nghiệm nước tiểu không?,SERVICE_INFO,persona
+Phòng khám có hỗ trợ triệt sản cho mèo hoang không?,SERVICE_INFO,persona
+Gửi mèo ở khách sạn thì bé có được cho ăn theo chế độ riêng không?,SERVICE_INFO,persona
+Bác sĩ có tư vấn dinh dưỡng riêng cho chó béo phì không?,SERVICE_INFO,persona
+"Có dịch vụ cắt chỉ, thay băng sau mổ không?",SERVICE_INFO,persona
+"Em có 2 bé mèo mới nhặt về, muốn đưa qua kiểm tra tổng quát rồi tiêm luôn, phòng khám mình có làm hết trong một buổi được không ạ?",SERVICE_INFO,persona
+Phòng khám có phòng mổ vô trùng riêng không?,SERVICE_INFO,persona
+co dich vu triet san cho cho k ad,SERVICE_INFO,variant
+ben minh co kham tai nha hong,SERVICE_INFO,variant
+pk co may x quang ko,SERVICE_INFO,variant
+co sieu am k shop,SERVICE_INFO,variant
+co luu chuong cho meo ko a,SERVICE_INFO,variant
+co khach san cho cho ko vay,SERVICE_INFO,variant
+triet san meo mat bao lau,SERVICE_INFO,variant
+mo xong bao lau dc ve,SERVICE_INFO,variant
+truoc khi mo co can nhin an ko bs,SERVICE_INFO,variant
+lay cao rang co gay me k,SERVICE_INFO,variant
+co bs chuyen khoa da lieu ko a,SERVICE_INFO,variant
+xet nghiem mau bao lau co kq,SERVICE_INFO,variant
+tam cho cho mat bao lau z,SERVICE_INFO,variant
+co cat tia long cho poodle hok,SERVICE_INFO,variant
+quy trinh tiem phong ntn vay,SERVICE_INFO,variant
+co ve sinh tai cat mong cho meo ko ad,SERVICE_INFO,variant
+kham tong quat gom nhung gi z,SERVICE_INFO,variant
+co dua don thu cung tan nha ko,SERVICE_INFO,variant
+phòng khám có siu âm tim hok ạ,SERVICE_INFO,variant
+có dv tắm diệt ve cho chó ko vậy,SERVICE_INFO,variant
+Shop có bán hạt Royal Canin cho mèo con không ạ?,PRODUCT,persona
+Hạt Pedigree Puppy 400g còn hàng không chị?,PRODUCT,persona
+Pate Whiskas Kitten gói 85g giá bao nhiêu vậy?,PRODUCT,persona
+Bên mình có pate Me-O Delite vị cá ngừ không?,PRODUCT,persona
+Sữa bột KMR cho mèo sơ sinh còn hàng không ạ?,PRODUCT,persona
+Có sữa Goat Gold cho chó con không shop?,PRODUCT,persona
+Cát đậu phụ cho mèo loại nào khử mùi tốt vậy shop?,PRODUCT,persona
+Cát Neko túi lớn bao nhiêu tiền?,PRODUCT,persona
+"Cát TinkerBell còn không, giao 2 bao được không?",PRODUCT,persona
+Sữa tắm cho chó lông trắng có loại nào không?,PRODUCT,persona
+Bột tắm khô cho mèo bên mình bán giá sao?,PRODUCT,persona
+Có thuốc nhỏ gáy trị ve cho chó 10kg không ạ?,PRODUCT,persona
+Frontline nhỏ gáy cho mèo giá bao nhiêu một ống?,PRODUCT,persona
+NexGard viên nhai trị ve còn hàng không chị?,PRODUCT,persona
+Có bán vòng cổ chống ve không vậy?,PRODUCT,persona
+Vòng cổ có chuông cho mèo bên mình có màu hồng không?,PRODUCT,persona
+Dây dắt cho chó lớn 30kg có loại nào chắc chắn không?,PRODUCT,persona
+Rọ mõm cho chó Becgie có size không?,PRODUCT,persona
+Đồ chơi gặm cho chó con đang mọc răng có bán không?,PRODUCT,persona
+Có cần câu mèo hay bóng lông đồ chơi không shop?,PRODUCT,persona
+Chuồng cho chó cỡ vừa bên mình bán bao nhiêu tiền?,PRODUCT,persona
+Có chuồng mèo 2 tầng không ạ?,PRODUCT,persona
+Khay vệ sinh có nắp cho mèo giá nhiêu nhen?,PRODUCT,persona
+Bình nước gài chuồng 500ml còn hàng không?,PRODUCT,persona
+Shop có giao hàng tận nhà ở Cái Răng không?,PRODUCT,persona
+Phí ship đơn thức ăn hạt về Bình Thủy là bao nhiêu?,PRODUCT,persona
+Đặt hàng online thì bao lâu nhận được?,PRODUCT,persona
+Mua hạt về mà bé không chịu ăn thì có đổi được không?,PRODUCT,persona
+Chính sách đổi trả sản phẩm của shop như thế nào vậy?,PRODUCT,persona
+Mua bao nhiêu thì được miễn phí giao hàng?,PRODUCT,persona
+"Có giao hàng đi Vĩnh Long, Sóc Trăng không chị?",PRODUCT,persona
+Thức ăn hạt cho chó già có loại nào dễ tiêu không?,PRODUCT,persona
+Có hạt cho mèo đã triệt sản không ạ?,PRODUCT,persona
+Pate SmartHeart cho chó lớn gói 400g bán sao?,PRODUCT,persona
+Hạt Zoi Dog 1kg giá bao nhiêu vậy?,PRODUCT,persona
+Bên mình có bán bánh thưởng Me-O Creamy Treats không?,PRODUCT,persona
+Có bán hạt giống cỏ mèo giảm búi lông không?,PRODUCT,persona
+Sữa tắm trị nấm cho chó có bán không ạ?,PRODUCT,persona
+Nước hoa cho chó mùi nào thơm lâu vậy shop?,PRODUCT,persona
+"Tôi muốn mua 1 bao hạt 20kg cho đàn chó ở nhà, shop có loại bao lớn không, giao tận nơi được không?",PRODUCT,persona
+"Em sinh viên mới nuôi mèo, chưa biết mua gì hết, shop tư vấn giúp em bộ đồ cơ bản gồm cát, khay, hạt với nha.",PRODUCT,persona
+Bình sữa cho mèo con có bán không chị?,PRODUCT,persona
+Lược chải lông cho mèo lông dài có không?,PRODUCT,persona
+Áo mưa cho chó nhỏ có bán không vậy?,PRODUCT,persona
+Có túi vận chuyển mèo đi xe máy không ạ?,PRODUCT,persona
+Bát ăn inox cho chó lớn giá bao nhiêu?,PRODUCT,persona
+Sản phẩm mua về bị lỗi thì được đổi trong mấy ngày?,PRODUCT,persona
+Có thể đặt sản phẩm trên web rồi ghé phòng khám lấy không?,PRODUCT,persona
+Thức ăn ướt cho mèo kén ăn shop có gợi ý loại nào không?,PRODUCT,persona
+co hat royal canin cho meo ko shop,PRODUCT,variant
+pate whiskas con hang k ad,PRODUCT,variant
+sua kmr cho meo bn tien,PRODUCT,variant
+cat dau phu tfor gia sao a,PRODUCT,variant
+cat neko con k shop,PRODUCT,variant
+sua tam cho cho long trang co ko,PRODUCT,variant
+thuoc nho gay tri ve cho cho bn tien,PRODUCT,variant
+nexgard con hag ko,PRODUCT,variant
+vong co cho meo co chuong ko,PRODUCT,variant
+do choi gam cho cho con co ban hok,PRODUCT,variant
+chuong cho cho bn tien vay,PRODUCT,variant
+shop co ship ve cai rang ko,PRODUCT,variant
+ship ve ninh kieu mat bn,PRODUCT,variant
+mua hat ve be ko an doi dc ko shop,PRODUCT,variant
+co giao hang di vinh long hok,PRODUCT,variant
+hat cho meo triet san co ko a,PRODUCT,variant
+khay ve sinh meo co nap gia nhieu,PRODUCT,variant
+co ban bat an inox ko shop,PRODUCT,variant
+pate cho chó hug còn hông shop,PRODUCT,variant
+sữa tắm cho mèo có loại nào k ad,PRODUCT,variant
+frontline cho meo bn 1 ong z,PRODUCT,variant
+Mèo con 2 tháng tuổi nên ăn gì là tốt nhất ạ?,CARE_ADVICE,persona
+Chó con mới về nhà nên cho ăn mấy bữa một ngày?,CARE_ADVICE,persona
+Mèo con mấy tháng thì tiêm mũi đầu tiên được?,CARE_ADVICE,persona
+"Lịch tiêm phòng cho chó con gồm mấy mũi, cách nhau bao lâu?",CARE_ADVICE,persona
+Chó con bao nhiêu tuần tuổi thì bắt đầu tẩy giun?,CARE_ADVICE,persona
+Mèo trưởng thành nên tẩy giun mấy tháng một lần?,CARE_ADVICE,persona
+Chó nên tắm mấy lần một tuần là hợp lý?,CARE_ADVICE,persona
+Mèo có cần tắm thường xuyên không hay để bé tự liếm lông?,CARE_ADVICE,persona
+Làm sao dạy chó con đi vệ sinh đúng chỗ vậy mọi người?,CARE_ADVICE,persona
+Mèo không chịu đi vệ sinh trong khay thì phải làm sao?,CARE_ADVICE,persona
+"Mèo nhà em mấy hôm nay ăn ít hơn bình thường, vẫn chơi bình thường, có sao không ạ?",CARE_ADVICE,persona
+Chó rụng lông nhiều quá phải làm sao?,CARE_ADVICE,persona
+"Mèo hay gãi tai với cổ, có phải bị ve không?",CARE_ADVICE,persona
+"Chó cứ gãi ngứa suốt mà không thấy ve, bị gì vậy?",CARE_ADVICE,persona
+Mèo hắt hơi vài lần trong ngày có sao không bác sĩ?,CARE_ADVICE,persona
+"Mắt mèo con có ghèn màu nâu nhẹ, lau bằng gì được ạ?",CARE_ADVICE,persona
+"Chó đi ngoài hơi lỏng một lần sau khi đổi thức ăn, có cần lo không?",CARE_ADVICE,persona
+Sau khi triệt sản mèo cái cần chăm sóc vết mổ thế nào?,CARE_ADVICE,persona
+Chó đực triệt sản xong có cần đeo loa không?,CARE_ADVICE,persona
+Mèo triệt sản xong bao lâu thì cho ăn lại được?,CARE_ADVICE,persona
+Mèo mang thai cần ăn uống gì để khỏe mẹ khỏe con?,CARE_ADVICE,persona
+Mèo bầu có cần bổ sung canxi không?,CARE_ADVICE,persona
+Mèo mang thai thì có tẩy giun được không?,CARE_ADVICE,persona
+Cho chó ăn cơm với thịt luộc hằng ngày có đủ chất không?,CARE_ADVICE,persona
+Những loại trái cây nào chó ăn được vậy?,CARE_ADVICE,persona
+Mèo có uống sữa tươi được không hay bị đau bụng?,CARE_ADVICE,persona
+Mèo con mới nhận nuôi cần chuẩn bị và chăm sóc những gì?,CARE_ADVICE,persona
+Chó Husky ở Cần Thơ trời nóng thì chăm sao cho bé đỡ mệt?,CARE_ADVICE,persona
+Có nên cạo lông cho chó lông dài vào mùa nóng không?,CARE_ADVICE,persona
+Bao lâu thì nên cắt móng cho mèo một lần?,CARE_ADVICE,persona
+"Chó hay cắn phá đồ đạc khi ở nhà một mình, huấn luyện sao ạ?",CARE_ADVICE,persona
+Làm sao để chó không sủa inh ỏi khi có người lạ?,CARE_ADVICE,persona
+"Mèo hay cào sofa, có cách nào dạy bé không?",CARE_ADVICE,persona
+Chó con mới tiêm xong có tắm được không?,CARE_ADVICE,persona
+"Tiêm xong bé hơi mệt, sốt nhẹ có sao không?",CARE_ADVICE,persona
+Mèo con mấy tuần thì cai sữa mẹ được?,CARE_ADVICE,persona
+Chó bao nhiêu tháng tuổi thì nên triệt sản là tốt nhất?,CARE_ADVICE,persona
+Mèo béo quá thì giảm cân cho bé thế nào?,CARE_ADVICE,persona
+Chó già 12 tuổi nên ăn uống thế nào cho hợp?,CARE_ADVICE,persona
+Mèo bị rụng lông thành mảng nhỏ ở sau tai có sao không?,CARE_ADVICE,persona
+Chó hay ăn cỏ ngoài vườn có bình thường không?,CARE_ADVICE,persona
+Mèo nôn ra búi lông một lần có sao không?,CARE_ADVICE,persona
+Vệ sinh răng miệng cho chó ở nhà như thế nào?,CARE_ADVICE,persona
+Chó bị hôi miệng nhẹ thì xử lý sao?,CARE_ADVICE,persona
+Mèo Ba Tư hay chảy nước mắt có phải do giống không?,CARE_ADVICE,persona
+"Tui mới nuôi con mèo đầu tiên trong đời, ở phòng trọ nhỏ, đi học cả ngày, không biết để bé ở nhà một mình có buồn không, nên làm gì cho bé?",CARE_ADVICE,persona
+"Nhà mình có 2 chó Becgie lớn, mỗi ngày nên cho đi dạo bao lâu?",CARE_ADVICE,persona
+"Chó con nhà em cứ ăn xong là nằm ngủ liền, vậy có bình thường không ạ?",CARE_ADVICE,persona
+"Có nên cho mèo ăn hạt kết hợp pate không, tỉ lệ sao cho hợp lý?",CARE_ADVICE,persona
+Mèo có cần tiêm nhắc lại hằng năm không?,CARE_ADVICE,persona
+Chó con mới về hay khóc đêm thì dỗ sao?,CARE_ADVICE,persona
+"Mèo đực đánh dấu lãnh thổ tè bậy khắp nhà, khắc phục sao?",CARE_ADVICE,persona
+Chó tắm xong nên sấy khô hay để tự khô?,CARE_ADVICE,persona
+"Mèo con bị bọ chét thì chăm sao, mấy tháng mới tắm được?",CARE_ADVICE,persona
+Bao lâu thì nên cho chó đi khám sức khỏe định kỳ một lần?,CARE_ADVICE,persona
+Mèo hay liếm lông quá nhiều có phải bị stress không?,CARE_ADVICE,persona
+meo con 2 thang an gi vay mn,CARE_ADVICE,variant
+cho con may tuan thi tay giun dc,CARE_ADVICE,variant
+lich tiem cho meo con ntn a,CARE_ADVICE,variant
+cho tam may lan 1 tuan la dc,CARE_ADVICE,variant
+day cho di ve sinh dung cho sao z,CARE_ADVICE,variant
+meo an it may bua nay co sao ko,CARE_ADVICE,variant
+cho rung long nhiu qua lam sao,CARE_ADVICE,variant
+meo ngua gai hoai la bi gi v,CARE_ADVICE,variant
+meo hat hoi nhe co sao hok bs,CARE_ADVICE,variant
+mat meo co ghen nau lau sao a,CARE_ADVICE,variant
+cho di ngoai hoi long 1 lan co sao ko,CARE_ADVICE,variant
+triet san xong cham soc vet mo sao a,CARE_ADVICE,variant
+meo bau can an gi bac si,CARE_ADVICE,variant
+meo mang thai co tam dc ko,CARE_ADVICE,variant
+cho gia nen an gi,CARE_ADVICE,variant
+meo cao ghe sofa day sao z,CARE_ADVICE,variant
+cho con tiem xong tam dc chua,CARE_ADVICE,variant
+tiem xong meo sot nhe co sao k,CARE_ADVICE,variant
+mèo con mấy tháng cai sữa đc ạ,CARE_ADVICE,variant
+chó ăn cỏ hoài có sao hông,CARE_ADVICE,variant
+cún nhà e cắn phá đồ quá dạy sao ạ,CARE_ADVICE,variant
+bao lâu cắt móng cho mèo 1 lần v,CARE_ADVICE,variant
+mèo liếm lông nhìu có sao ko,CARE_ADVICE,variant
+chó Husky trời nóng chăm sao cho mát z,CARE_ADVICE,variant
+Tẩy giun tại phòng khám cho mèo con bao nhiêu tiền?,PRICE,hard_negative
+Nhỏ gáy trị ve tại phòng khám cho chó tính phí sao?,PRICE,hard_negative
+Tắm diệt ve cho chó ở phòng khám hết bao nhiêu?,PRICE,hard_negative
+"Tiêm phòng ở phòng khám bao nhiêu tiền, chứ không phải mua vaccine về tự tiêm nha",PRICE,hard_negative
+"Siêu âm bao nhiêu tiền, làm mất bao lâu vậy?",PRICE,hard_negative
+"Có khám tại nhà không, phí bao nhiêu?",PRICE,hard_negative
+Lưu chuồng bên mình 1 ngày nhiêu tiền?,PRICE,hard_negative
+"Mèo bị rụng lông, đem qua khám da thì tốn khoảng bao nhiêu?",PRICE,hard_negative
+"Lấy cao răng cho chó bao nhiêu tiền, và nên lấy mấy tháng một lần?",PRICE,hard_negative
+"Triệt sản giá bao nhiêu, có cần mua thêm loa chống liếm không?",PRICE,hard_negative
+tay giun o phong kham cho cho het bn tien,PRICE,hard_negative
+Cắt móng cho mèo tại phòng khám bao nhiêu tiền?,PRICE,hard_negative
+"Thuốc tẩy giun cho mèo giá bao nhiêu một viên, em mua về tự cho uống?",PRODUCT,hard_negative
+Thuốc nhỏ gáy trị ve bên mình bán giá sao?,PRODUCT,hard_negative
+Vaccine có bán lẻ để mua về tự tiêm không?,PRODUCT,hard_negative
+Bên mình có bán thuốc tẩy giun cho chó không?,PRODUCT,hard_negative
+Sữa tắm trị ve giá bao nhiêu một chai?,PRODUCT,hard_negative
+Loa chống liếm sau triệt sản có bán không?,PRODUCT,hard_negative
+"Hạt cho mèo bầu có loại nào, giá sao?",PRODUCT,hard_negative
+"Mèo hay rụng lông, shop có bán dầu cá hay vitamin cho lông không?",PRODUCT,hard_negative
+Shop có kem đánh răng cho chó không?,PRODUCT,hard_negative
+Có bán khay dạy chó đi vệ sinh đúng chỗ không?,PRODUCT,hard_negative
+thuoc tay giun cho cho con con hang ko shop,PRODUCT,hard_negative
+Kìm cắt móng cho mèo bán bao nhiêu?,PRODUCT,hard_negative
+Phòng khám có tẩy giun không ạ?,SERVICE_INFO,hard_negative
+Có tắm diệt ve cho chó tại phòng khám không?,SERVICE_INFO,hard_negative
+Có cắt móng cho mèo tại phòng khám không hay phải tự làm?,SERVICE_INFO,hard_negative
+"Tẩy giun ở phòng khám là cho uống hay tiêm, làm mất bao lâu?",SERVICE_INFO,hard_negative
+Có dịch vụ tư vấn dinh dưỡng cho mèo mang thai không?,SERVICE_INFO,hard_negative
+Có tiêm phòng tại nhà không ạ?,SERVICE_INFO,hard_negative
+Bên mình có khám da cho chó bị rụng lông không?,SERVICE_INFO,hard_negative
+Có lấy cao răng cho mèo không?,SERVICE_INFO,hard_negative
+co tay giun cho meo ko ad,SERVICE_INFO,hard_negative
+"Huấn luyện chó đi vệ sinh, bên mình có nhận dạy không?",SERVICE_INFO,hard_negative
+Bao lâu thì tẩy giun cho chó một lần?,CARE_ADVICE,hard_negative
+Nhỏ gáy trị ve bao lâu thì nhỏ lại một lần?,CARE_ADVICE,hard_negative
+Mèo con ăn hạt hay pate thì tốt hơn?,CARE_ADVICE,hard_negative
+Bao lâu nên lấy cao răng cho chó một lần?,CARE_ADVICE,hard_negative
+Tự cắt móng cho mèo ở nhà thế nào cho đúng?,CARE_ADVICE,hard_negative
+Sau khi tắm diệt ve bao lâu mới tắm lại được?,CARE_ADVICE,hard_negative
+Tắm chó bằng sữa tắm của người được không?,CARE_ADVICE,hard_negative
+Mèo mang thai có tiêm phòng được không?,CARE_ADVICE,hard_negative
+Uống thuốc tẩy giun xong chó đi ngoài hơi lỏng có sao không?,CARE_ADVICE,hard_negative
+bao lau tay giun cho meo 1 lan,CARE_ADVICE,hard_negative
+Cát mèo nên thay hoàn toàn mấy ngày một lần?,CARE_ADVICE,hard_negative

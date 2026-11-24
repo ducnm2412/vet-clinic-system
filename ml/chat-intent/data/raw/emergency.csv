@@ -1,0 +1,181 @@
+text,label,source
+"Dạ thưa bác sĩ, con mèo tôi nuôi đã 10 năm, sáng nay nó tự nhiên nằm thở hắt ra, gọi không dậy, kính nhờ bác sĩ chỉ giúp tôi nên làm gì gấp ạ",EMERGENCY,persona
+"Chào bác sĩ, con chó nhà tôi vừa lên cơn giật, tay chân co quắp, miệng sùi bọt, xin hỏi tôi phải làm gì ạ",EMERGENCY,persona
+"Xin lỗi làm phiền, con chó già 13 tuổi nhà tôi tự nhiên đi xiêu vẹo, đầu nghiêng một bên, té liên tục, không biết có phải đột quỵ không ạ",EMERGENCY,persona
+"Bác sĩ cho tôi hỏi, con mèo nhà tôi uống nhầm nước tẩy Javel, giờ chảy dãi nhiều lắm, tôi lo quá",EMERGENCY,persona
+"Thưa phòng khám, chó nhà tôi bị ong vò vẽ đốt, mặt sưng vù, giờ thở có vẻ khó khăn",EMERGENCY,persona
+"Tôi xin hỏi, con mèo của tôi bị liệt hai chân sau đột ngột, chân lạnh ngắt, nó kêu đau dữ lắm",EMERGENCY,persona
+"Nhờ bác sĩ giúp, chó cái nhà tôi đẻ xong được 1 tuần thì run cầm cập, co giật từng cơn",EMERGENCY,persona
+"Dạ cho tôi hỏi, chó nhà tôi nôn ra máu bầm như bã cà phê, có nguy hiểm không ạ",EMERGENCY,persona
+"Kính chào bác sĩ, mèo tôi bị kẹt chân vô quạt máy, chảy máu nhiều quá không cầm được",EMERGENCY,persona
+"Bác sĩ ơi, con chó nhà tôi nằm li bì, nướu trắng nhợt, thở rất nhanh, không ăn uống gì",EMERGENCY,persona
+"em ở trọ gần ĐH Cần Thơ, con mèo em vừa té từ lan can tầng 3, giờ nó nằm im không cử động, em phải làm sao ạ",EMERGENCY,persona
+"Mình là sinh viên, mèo mình lỡ liếm nước chống đông xe máy của bạn cùng phòng, giờ nó đi loạng choạng",EMERGENCY,persona
+"em mới nuôi chó con 2 tháng, nó tiêu chảy ra máu mùi tanh lắm, bỏ ăn 2 ngày rồi",EMERGENCY,persona
+"Mèo của em nuốt sợi chỉ có gắn kim khâu, em thấy sợi chỉ còn lòi ra ở miệng, em có nên kéo ra không",EMERGENCY,persona
+Bé chó của em ăn nhầm nửa vỉ thuốc giảm đau của em để trên bàn học,EMERGENCY,persona
+"Em vừa thấy mèo nhà ngồi rặn trong khay cát cả tiếng mà không ra giọt nước tiểu nào, nó kêu la quá",EMERGENCY,persona
+"chó em cắn dây sạc laptop bị điện giật, giờ nằm run, mép miệng cháy xém",EMERGENCY,persona
+"Mèo em bị cửa sổ kẹp ngang bụng, giờ thở bằng miệng, lưỡi hơi tím",EMERGENCY,persona
+"Em đi học về thấy chó nằm bất động, gọi không phản ứng gì hết",EMERGENCY,persona
+"mèo nhà em ăn mấy lá hoa ly trong bình, giờ nôn hoài",EMERGENCY,persona
+"trời đất ơi con chó nhà tui nó cắn trúng con cóc, giờ miệng sùi bọt quá trời nè, làm sao nhen",EMERGENCY,persona
+"Con chó nhà tui ăn trúng thuốc diệt ốc ngoài ruộng, giờ nó giật giật run rẩy hà",EMERGENCY,persona
+"Bé mèo nhà chị đẻ từ chiều tới giờ mà mới ra có 1 con, nó rặn hoài hông ra nữa em ơi",EMERGENCY,persona
+"Con chó vện nhà tui bị bò đá trúng đầu, chảy máu lỗ tai rồi nè",EMERGENCY,persona
+"Chó nhà chị ăn trúng bả của ai bỏ ngoài đường, giờ sùi bọt mép, giật giật hà em",EMERGENCY,persona
+"Con chó nhà tui té xuống ao, vớt lên thở yếu xìu, bụng căng nước, làm sao đây",EMERGENCY,persona
+Chó cái nhà chị đẻ xong mà chỗ đó ra máu hoài không ngừng nè em,EMERGENCY,persona
+"mèo nhà tui nhảy lên bếp bị phỏng nước sôi hết một mảng lưng, da nó tróc ra luôn",EMERGENCY,persona
+"Con chó becgie nhà tui ăn no xong chạy giỡn, giờ bụng chướng căng như cái trống, nôn khan mà hông ra gì",EMERGENCY,persona
+"chó nhà chị bị xe ba gác cán ngang lưng, hai chân sau mềm oặt hông cử động được",EMERGENCY,persona
+"Con mèo đực nhà tui hông đi tiểu được cả ngày nay, bụng dưới cứng ngắc, đụng vô là nó cắn",EMERGENCY,persona
+"con cún nhà tui ăn mấy trái nho khô để trên bàn thờ, nghe nói độc phải hông em",EMERGENCY,persona
+cuu voi cho bi xe tong ngoai duong nam tho yeu lam,EMERGENCY,persona
+meo te lau tang 4 chay mau mui gap gap,EMERGENCY,persona
+cho nuot nguyen cai nap chai nhua non oe hoai,EMERGENCY,persona
+cho dang co giat 10 phut chua dung lam sao day,EMERGENCY,persona
+meo khong tho duoc ha mieng ra tho cao cao mieng,EMERGENCY,persona
+cho bi cho khac can rach bung loi ruot ra ngoai roi,EMERGENCY,persona
+cho an het thanh socola den 70% roi phai lam sao,EMERGENCY,persona
+cho bi hoc xuong ga ho khac khong ra tho khong noi,EMERGENCY,persona
+meo uong nham thuoc tri ve cua cho run ray co giat,EMERGENCY,persona
+cho bi ran can o mom mat sung vu len roi,EMERGENCY,persona
+"Chuyện là sáng nay mình đi làm để con chó trong xe ngoài bãi có 30 phút thôi, lúc quay ra thì nó thở hồng hộc, chảy dãi ròng ròng, người nóng ran, giờ nó nằm lả ra rồi, mình phải làm gì trước khi tới phòng khám",EMERGENCY,persona
+"Hôm qua mèo nhà mình vẫn bình thường, tới tối thì bắt đầu ói, sáng nay ói ra máu đỏ lẫn với đồ ăn, nằm một chỗ không chịu dậy, mình định chờ thêm nhưng thấy sợ quá",EMERGENCY,persona
+"Nhà mình có con chó shih tzu, chiều nay nó giỡn với con lớn bị va mạnh, giờ con mắt bên trái lồi hẳn ra ngoài, mình không dám đụng vô, phải làm sao",EMERGENCY,persona
+"Mình có con mèo đực 3 tuổi chưa triệt sản, mấy hôm nay hay ra vào khay cát, tối nay thì rặn mãi không ra, nó còn liếm chỗ kín liên tục và kêu thảm thiết",EMERGENCY,persona
+"Con chó nhà mình 8 tuổi chưa triệt sản, mấy ngày nay uống nước nhiều, bụng to ra, hôm nay nôn và nằm li bì, có mủ chảy ra ở âm hộ",EMERGENCY,persona
+"Mình dắt chó đi dạo thì nó bị con chó lạ cắn ngay cổ, vết cắn sâu thấy cả thịt đỏ, máu vẫn rỉ ra, mình đang băng tạm bằng khăn",EMERGENCY,persona
+"Tối qua nhà làm tiệc, sáng ra mới phát hiện con chó gặm hết đống xương sườn heo, giờ nó chảy dãi, cào miệng liên tục và nôn khan",EMERGENCY,persona
+"Mèo nhà mình đang mang bầu được khoảng 1 tháng rưỡi, nay tự nhiên ra máu nhiều, người lả đi, không chịu ăn",EMERGENCY,persona
+"Hồi trưa mình tắm cho chó rồi sấy lâu quá, giờ nó nằm thở dốc, lưỡi đỏ thẫm, nôn mấy lần, mình sợ nó bị sốc nhiệt",EMERGENCY,persona
+"Con mèo con mình nhặt về được 1 tháng tuổi, từ chiều tới giờ nó lạnh ngắt, không bú, nằm thoi thóp, mình ủ ấm rồi mà không đỡ",EMERGENCY,persona
+"ad ơi cứu bé mèo nhà e vs, nó đang co giật dữ lắm luôn ạ",EMERGENCY,persona
+ad ơi chó nhà e ăn kẹo cao su xylitol xog h run rẩy quá ạ,EMERGENCY,persona
+"bé mèo nhà mk nuốt dây thun cột tóc, ói mấy lần mà k ra",EMERGENCY,persona
+"cún nhà e chạy chơi xog tự nhiên ngất xỉu, tỉnh lại thì yếu xìu luôn ad",EMERGENCY,persona
+chó nhà t bị chảy máu mũi hoài k ngừng nè ad,EMERGENCY,persona
+"mèo nhà e bị cháy lông do lửa, da phồng rộp hết trơn r",EMERGENCY,persona
+"ad ơi bé cún nhà e bị kẹt đầu trong hàng rào, kéo ra xong mặt nó tím luôn",EMERGENCY,persona
+"mèo e đi tè ra máu, rặn hoài, kêu quá trời luôn ad",EMERGENCY,persona
+"Chó bị đứt chân do giẫm mảnh chai, máu chảy không cầm được",EMERGENCY,persona
+"Mèo đi ngoài ra máu tươi, còn nôn nữa",EMERGENCY,persona
+"Con chó vừa bị xe hơi tông, không thấy máu nhưng nằm thở yếu",EMERGENCY,persona
+"Chó tông cửa kính, rách đầu chảy máu ròng ròng",EMERGENCY,persona
+"Chó bị gãy chân, xương lòi ra ngoài",EMERGENCY,persona
+"Mèo bị người đá, giờ ho ra máu",EMERGENCY,persona
+Chó nhai trúng thuốc diệt gián,EMERGENCY,persona
+"Mèo bị té từ nóc tủ đập đầu, hai đồng tử giãn không đều",EMERGENCY,persona
+"Chó bị vòng cổ siết chặt, lưỡi tím tái",EMERGENCY,persona
+"Chó nuốt nguyên viên bi ve, nôn khan liên tục",EMERGENCY,persona
+Chó bị lòi một khúc ruột ra ở hậu môn,EMERGENCY,persona
+"Con tôi lỡ cho chó ăn bánh có nhân nho, giờ nó nôn liên tục, phải làm sao",EMERGENCY,persona
+"Tôi giữ chó giùm người quen, nó ăn phải miếng gan xào hành, giờ lừ đừ, nướu trắng bệch",EMERGENCY,persona
+"Bé nhà tôi làm rơi viên thuốc hạ sốt paracetamol, con mèo liếm mất rồi",EMERGENCY,persona
+"Con trai tôi ôm mèo làm rơi từ ban công tầng 2, giờ mèo đi khập khiễng và rên",EMERGENCY,persona
+"Mèo nhà tôi bị chó hàng xóm cắn thủng bụng, nó thở yếu lắm",EMERGENCY,persona
+"Ông xã tôi xịt thuốc muỗi trong phòng, giờ con mèo nằm run, chảy dãi",EMERGENCY,persona
+"Chó nhà tôi bị dập đuôi do kẹt cửa, từ đó tới giờ không tè được, bụng căng lên",EMERGENCY,persona
+"Chó tôi nằm phơi nắng trưa xong lả đi, nôn, đi không vững",EMERGENCY,persona
+Chó nhà tôi bị hóc trái bóng tennis nhỏ ngay cổ họng,EMERGENCY,persona
+"Thưa bác sĩ, mèo nhà tôi bị kẹt đầu trong lon sữa, rút ra được thì mặt nó tím lại, thở rất yếu ạ",EMERGENCY,persona
+"chi oi meo nha em bi cho can o co, mau ra nhieu qua, em dang de khan chan lai",EMERGENCY,persona
+"Con chó nhà tui ăn nguyên hộp sô-cô-la sữa của tụi nhỏ, giờ nó bồn chồn, tim đập nhanh, ói mấy lần rồi nhen",EMERGENCY,persona
+meo nha e dang co giat sui bot mep lam sao ad oi,EMERGENCY,variant
+"cho nha toi len con giat, tay chan co quap, mieng sui bot",EMERGENCY,variant
+"meo te tu lan can tang 3 nam im ko cu dong, gio sao a",EMERGENCY,variant
+"cho con 2 thang ia ra mau tanh lam, bo an may bua r",EMERGENCY,variant
+meo duc ngoi ran trong khay cat ca tieng ko ra giot nao,EMERGENCY,variant
+"cho e can day sac bi giat dien, nam run, mep chay xem",EMERGENCY,variant
+"con cho nha tui can trung con coc, mieng sui bot qua troi",EMERGENCY,variant
+"cho an trung thuoc diet oc ngoai ruong, run ray giat giat",EMERGENCY,variant
+"meo de tu chieu toi gio moi ra 1 con, ran hoai hong ra",EMERGENCY,variant
+"cho bi bo da trung dau, chay mau lo tai",EMERGENCY,variant
+con cho te xuong ao vot len tho yeu xiu bung cang nuoc,EMERGENCY,variant
+"bung cho chuong cang nhu cai trong, non khan ko ra gi",EMERGENCY,variant
+"meo duc hong tieu dc ca ngay, bung duoi cung ngac",EMERGENCY,variant
+"cho an nho kho tren ban tho, co doc ko",EMERGENCY,variant
+chó bị xe tông ngoài đường giờ nằm thở yếu lắm cứu với,EMERGENCY,variant
+"mèo té lầu 4 chảy máu mũi, chỗ nào cấp cứu gấp",EMERGENCY,variant
+"cho de lau qua, ran hoai ma con khong ra",EMERGENCY,variant
+"meo bi oi ra mau do lan do an, nam mot cho",EMERGENCY,variant
+mat con shih tzu loi han ra ngoai sau khi bi va manh,EMERGENCY,variant
+"cho bi cho la can sau o co, mau van ri ra",EMERGENCY,variant
+"cho gam het dong xuong suon heo, chay dai cao mieng",EMERGENCY,variant
+"meo bau ra mau nhieu, nguoi la di ko an",EMERGENCY,variant
+"cho bi soc nhiet sau khi say long, tho doc luoi do tham",EMERGENCY,variant
+meo con 1 thang lanh ngat ko bu thoi thop,EMERGENCY,variant
+ad oi cho nha e an keo xylitol r run ray,EMERGENCY,variant
+meo nuot day thun cot toc oi may lan ko ra,EMERGENCY,variant
+"cun chay choi tu nhien xiu, tinh lai yeu xiu",EMERGENCY,variant
+cho bi chay mau mui ko ngung,EMERGENCY,variant
+"chó bị đứt chân do mảnh chai, máu cứ tuôn ra",EMERGENCY,variant
+mèo ỉa ra máu tươi rồi ói nữa ad,EMERGENCY,variant
+cho bi gay chan xuong loi ra,EMERGENCY,variant
+chó nhai thuốc diệt gián rồi ad ơi,EMERGENCY,variant
+cho an nham thuoc chuot r,EMERGENCY,variant
+"meo an banh co nhan nho, non lien tuc",EMERGENCY,variant
+con meo liem vien paracetamol cua be nha toi,EMERGENCY,variant
+"cho phoi nang trua xong la di, non, di ko vung",EMERGENCY,variant
+"con cho tho khe khe, luoi tim tai het r",EMERGENCY,variant
+"cho bi te liet 2 chan sau, ko dung len dc tu sang",EMERGENCY,variant
+"meo ngat xiu tu nhien, keu ko tinh",EMERGENCY,variant
+"chó đẻ mà kẹt con giữa chừng, thấy cái chân thò ra mà không ra hẳn",EMERGENCY,variant
+"meo bi bong nuoc soi, da troc ra",EMERGENCY,variant
+"con cún bị sốc điện ổ cắm ngoài sân, thở khó",EMERGENCY,variant
+"meo bi lua dot chay long, da phong rop",EMERGENCY,variant
+cho nuot bi ve non khan hoai,EMERGENCY,variant
+"cho dang mang bau bi ra mau xanh den, ran hoai ko de dc",EMERGENCY,variant
+"mèo há mồm thở hổn hển, nằm im không nhúc nhích",EMERGENCY,variant
+"chó ăn hành tây xào, giờ nước tiểu đỏ như máu",EMERGENCY,variant
+"Mèo nôn 1 lần sau khi ăn xong rồi vẫn chạy chơi bình thường, có sao không ạ",CARE_ADVICE,hard_negative
+"Chó nhà em tiêm phòng xong hơi sốt nhẹ, mệt mệt có sao không ạ",CARE_ADVICE,hard_negative
+chó ngủ ngáy to quá có bị gì không ad,CARE_ADVICE,hard_negative
+Mèo hắt hơi mấy cái từ sáng nhưng vẫn ăn uống bình thường,CARE_ADVICE,hard_negative
+Chó con đi phân hơi lỏng sau khi đổi thức ăn mới,CARE_ADVICE,hard_negative
+Mèo nôn ra búi lông có cần lo không,CARE_ADVICE,hard_negative
+"Chó bị trầy nhẹ ở chân do chạy chơi, nên rửa bằng gì",CARE_ADVICE,hard_negative
+"Mấy hôm nay trời nóng chó ăn ít hơn, có cần bổ sung gì không",CARE_ADVICE,hard_negative
+"Chó chạy bộ xong thở nhanh, nghỉ chút là thở lại bình thường, vậy có sao không",CARE_ADVICE,hard_negative
+"Chó lâu lâu hắt hơi ngược khụt khịt nghe như nghẹt mũi, có nguy hiểm không",CARE_ADVICE,hard_negative
+Những đồ ăn nào chó không được ăn để tránh bị ngộ độc vậy ad,CARE_ADVICE,hard_negative
+"mèo ăn sô cô la có độc không vậy, hỏi để biết mà tránh",CARE_ADVICE,hard_negative
+"Chó cái đang mang thai thì cho ăn gì, cần chuẩn bị gì trước khi đẻ",CARE_ADVICE,hard_negative
+"Mèo đực triệt sản rồi có hay bị sỏi tiểu không, phòng bằng cách nào",CARE_ADVICE,hard_negative
+"Cắt móng cho mèo lỡ cắt sâu rướm chút máu, giờ hết chảy rồi, có cần bôi gì không",CARE_ADVICE,hard_negative
+Mèo con hay bị ghèn mắt thì vệ sinh sao cho đúng,CARE_ADVICE,hard_negative
+Chó run run khi trời lạnh có sao không,CARE_ADVICE,hard_negative
+"Chó già đi lại chậm, sáng dậy khớp hơi cứng, có nên cho uống bổ khớp",CARE_ADVICE,hard_negative
+meo oi ra chut nuoc vang luc sang doi bung co sao ko,CARE_ADVICE,hard_negative
+"Chó ăn cỏ xong ói ra, vậy có bình thường không",CARE_ADVICE,hard_negative
+cún con nấc cục hoài là bị gì vậy ad,CARE_ADVICE,hard_negative
+"Chó bị say xe mỗi lần chở đi xa, có cách nào đỡ không",CARE_ADVICE,hard_negative
+Mùa nắng nóng làm sao để mèo không bị say nắng,CARE_ADVICE,hard_negative
+Tẩy giun xong chó đi ngoài ra giun có sao không,CARE_ADVICE,hard_negative
+"Chó tiêu chảy nhẹ 1 lần, vẫn ăn và chơi giỡn bình thường, có cần đi khám không",CARE_ADVICE,hard_negative
+mèo nhà em hay chảy nước mắt nâu nâu ở khóe mắt,CARE_ADVICE,hard_negative
+"chó con mới mua về đêm nào cũng rên ư ử, làm sao cho nó quen",CARE_ADVICE,hard_negative
+"Mèo sau triệt sản 3 ngày vết mổ hơi đỏ, có cần lo không",CARE_ADVICE,hard_negative
+"Chó bị muỗi đốt sưng một cục nhỏ ở bụng, có cần bôi thuốc không",CARE_ADVICE,hard_negative
+"Chó nhảy từ ghế sofa xuống bị trượt chân, giờ vẫn chạy nhảy bình thường, có cần đi khám không",CARE_ADVICE,hard_negative
+"Cho em hỏi để biết trước, nếu chó bị co giật thì sơ cứu tại nhà như thế nào",CARE_ADVICE,hard_negative
+Tủ thuốc ở nhà nên có những gì để sơ cứu cho chó mèo,CARE_ADVICE,hard_negative
+cho bi ve can co can lo ko ad,CARE_ADVICE,hard_negative
+Mèo hay liếm lông nhiều làm rụng mấy mảng nhỏ,CARE_ADVICE,hard_negative
+"Mèo bỏ ăn nửa ngày sau khi chuyển nhà, vẫn uống nước và đi vệ sinh bình thường",CARE_ADVICE,hard_negative
+"Trời nóng chó thở hổn hển lè lưỡi, cho vô chỗ mát thì hết, vậy có sao không",CARE_ADVICE,hard_negative
+"mèo con uống sữa bò xong đi phân mềm, có nên ngưng sữa không",CARE_ADVICE,hard_negative
+Chó bị hôi miệng thì nên đánh răng bằng gì,CARE_ADVICE,hard_negative
+"chó gãy móng chảy chút máu, em cầm được rồi, giờ có cần băng lại không",CARE_ADVICE,hard_negative
+"Chó già hay ho khục khục vào ban đêm, vẫn ăn uống được",CARE_ADVICE,hard_negative
+"Mèo đi tiểu ra ngoài khay cát hoài, làm sao tập lại",CARE_ADVICE,hard_negative
+Phòng khám có nhận cấp cứu 24/7 không ạ,SERVICE_INFO,hard_negative
+Bên mình có máy thở oxy với chụp X-quang không,SERVICE_INFO,hard_negative
+Phòng khám có mổ đẻ cho chó mèo không vậy,SERVICE_INFO,hard_negative
+co dich vu dua don thu cung tan nha khong ad,SERVICE_INFO,hard_negative
+Phí cấp cứu ban đêm bao nhiêu vậy,PRICE,hard_negative
+Mổ lấy dị vật trong bụng chó giá bao nhiêu,PRICE,hard_negative
+chụp X-quang cho mèo hết bao nhiêu tiền ad,PRICE,hard_negative
+mo de cho meo chi phi khoang nhieu vay,PRICE,hard_negative
+"Khám ngoài giờ có tính thêm phí không, tính bao nhiêu",PRICE,hard_negative

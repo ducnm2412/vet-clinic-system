@@ -1,0 +1,251 @@
+text,label,source
+Phòng khám mình ở đâu vậy ạ?,CONTACT,persona
+cho em xin địa chỉ phòng khám với,CONTACT,persona
+Từ bến Ninh Kiều qua phòng khám đi đường nào vậy em?,CONTACT,persona
+"phòng khám nằm trên đường gì vậy, gần chợ nào không?",CONTACT,persona
+Chỗ mình có chỗ gửi xe máy không chị?,CONTACT,persona
+đậu ô tô trước phòng khám được không vậy,CONTACT,persona
+cho xin số hotline phòng khám nha,CONTACT,persona
+Số điện thoại của phòng khám là bao nhiêu vậy?,CONTACT,persona
+"Phòng khám có zalo không, em muốn gửi hình bé qua cho bác sĩ coi",CONTACT,persona
+Email phòng khám là gì vậy ad,CONTACT,persona
+"Phòng khám có fanpage Facebook không em, để chị theo dõi",CONTACT,persona
+Bên mình có chi nhánh nào khác ở Cần Thơ không?,CONTACT,persona
+Có chi nhánh ở Bình Thủy không em?,CONTACT,persona
+"Tui ở Cái Răng, qua phòng khám có xa hông con?",CONTACT,persona
+Chỉ đường giúp chị từ Đại học Cần Thơ tới phòng khám với,CONTACT,persona
+Đi từ cầu Cần Thơ vô thì quẹo chỗ nào vậy?,CONTACT,persona
+gửi giúp mình vị trí Google Map của phòng khám,CONTACT,persona
+Phòng khám có gần bến xe trung tâm không?,CONTACT,persona
+Cho hỏi tên trang Facebook của phòng khám để nhắn tin,CONTACT,persona
+Nhắn zalo cho phòng khám số nào vậy nhen,CONTACT,persona
+"có số tổng đài hông con, bà già rồi gọi cho tiện",CONTACT,persona
+"Tôi muốn gọi điện hỏi trực tiếp, số máy bàn của phòng khám là gì?",CONTACT,persona
+"Mèo nhà em lần đầu đi khám, phòng khám ở khu nào để em chuẩn bị đi ạ",CONTACT,persona
+"Em đi xe buýt được không, xuống trạm nào gần phòng khám nhất?",CONTACT,persona
+"Phòng khám có bãi giữ xe hơi không, nhà chị đi ô tô",CONTACT,persona
+Gửi xe ở phòng khám có mất phí không vậy,CONTACT,persona
+Liên hệ phòng khám bằng cách nào nhanh nhất vậy?,CONTACT,persona
+Bên mình có kênh TikTok hay Instagram gì không?,CONTACT,persona
+Ngoài số hotline còn số nào khác để gọi không em?,CONTACT,persona
+"Phòng khám ở mặt tiền hay trong hẻm vậy, hẻm có vô được xe hơi không",CONTACT,persona
+"Có biển hiệu gì dễ nhận ra không, em sợ chạy qua luôn",CONTACT,persona
+Từ Vincom Xuân Khánh qua phòng khám mất bao lâu vậy,CONTACT,persona
+Địa chỉ cụ thể số nhà mấy vậy ad?,CONTACT,persona
+Cho chị xin số zalo để gửi hình sổ tiêm của bé,CONTACT,persona
+Mail để gửi kết quả xét nghiệm cũ cho bác sĩ là gì ạ,CONTACT,persona
+"Phòng khám có mấy cơ sở, hay chỉ có một chỗ thôi?",CONTACT,persona
+Từ Long Xuyên lên thì đi đường nào tới phòng khám nhanh?,CONTACT,persona
+Phòng khám có Viber hay Messenger không,CONTACT,persona
+Em muốn góp ý thì gửi thư về email nào ạ?,CONTACT,persona
+"Phòng khám nằm bên nào của đường, đối diện cái gì vậy?",CONTACT,persona
+Mình đi taxi thì nói tài xế chở tới đâu?,CONTACT,persona
+Chi nhánh gần quận Ô Môn nhất là ở đâu vậy?,CONTACT,persona
+"Bạn ơi, nhắn qua Messenger được không hay phải gọi?",CONTACT,persona
+Trên Google Maps tìm tên gì thì ra phòng khám?,CONTACT,persona
+"Mình ở Phong Điền, chạy lên phòng khám theo đường nào cho gần nhen",CONTACT,persona
+phong kham o dau z ad,CONTACT,variant
+cho e xin dia chi vs,CONTACT,variant
+tu ben ninh kieu qua sao vay ad,CONTACT,variant
+co cho gui xe ko shop,CONTACT,variant
+sdt pk la j v,CONTACT,variant
+xin hotline pk dc ko,CONTACT,variant
+zalo pk so may z,CONTACT,variant
+"co fanpage ko ad, cho mik link",CONTACT,variant
+email phong kham la gi a,CONTACT,variant
+bên mk có chi nhánh khác hk,CONTACT,variant
+dia chj phong kham o duong nao,CONTACT,variant
+dg nao toi pk gan nhat tu dh can tho,CONTACT,variant
+cho xin cai map vs ad,CONTACT,variant
+pk co bai giu xe oto k,CONTACT,variant
+sđt fhong kham nhiu z,CONTACT,variant
+lam sao lien lac vs pk nhanh nhat,CONTACT,variant
+"nha e o cai rang, toi pk xa ko",CONTACT,variant
+co chi nhanh o quan khac ko a,CONTACT,variant
+face pk ten gi z,CONTACT,variant
+ad cho e xin so dt de goi hoi duong,CONTACT,variant
+Phòng khám mấy giờ mở cửa vậy?,OPENING_HOURS,persona
+Mấy giờ thì đóng cửa ạ?,OPENING_HOURS,persona
+Chủ nhật phòng khám có làm việc không em?,OPENING_HOURS,persona
+Lễ 2/9 có mở cửa không vậy?,OPENING_HOURS,persona
+Tết phòng khám nghỉ từ ngày nào tới ngày nào?,OPENING_HOURS,persona
+"Buổi trưa phòng khám có nghỉ không, em tranh thủ giờ trưa ghé",OPENING_HOURS,persona
+Phòng khám có trực đêm không?,OPENING_HOURS,persona
+Bên mình có làm 24/24 không ạ?,OPENING_HOURS,persona
+Giờ này còn mở không ad?,OPENING_HOURS,persona
+"Bây giờ 8 giờ tối rồi, phòng khám còn mở hông con?",OPENING_HOURS,persona
+Thứ bảy có làm cả ngày không hay chỉ buổi sáng?,OPENING_HOURS,persona
+Sáng mấy giờ là có bác sĩ ở phòng khám rồi?,OPENING_HOURS,persona
+Mùng 1 Tết có ai trực không vậy em?,OPENING_HOURS,persona
+Giờ làm việc của phòng khám từ mấy giờ đến mấy giờ?,OPENING_HOURS,persona
+Tối nay mấy giờ phòng khám nghỉ vậy,OPENING_HOURS,persona
+Ngày 30/4 với 1/5 phòng khám có mở không?,OPENING_HOURS,persona
+Giỗ Tổ Hùng Vương có làm không ạ?,OPENING_HOURS,persona
+Chiều chủ nhật có mở không hay nghỉ luôn?,OPENING_HOURS,persona
+"Sáng sớm 6h30 đã mở cửa chưa vậy, em đi làm sớm",OPENING_HOURS,persona
+Phòng khám nghỉ trưa từ mấy giờ tới mấy giờ?,OPENING_HOURS,persona
+Tối khuya có bác sĩ trực ở phòng khám không,OPENING_HOURS,persona
+Tết Nguyên đán năm nay phòng khám mở lại ngày mấy?,OPENING_HOURS,persona
+"Hôm nay phòng khám có mở cửa không, em thấy cửa đóng im",OPENING_HOURS,persona
+"Mai là ngày lễ, phòng khám có làm như bình thường không?",OPENING_HOURS,persona
+Phòng khám có nghỉ ngày nào trong tuần không?,OPENING_HOURS,persona
+Khu spa có làm cùng giờ với phòng khám không hay đóng sớm hơn?,OPENING_HOURS,persona
+Mấy giờ thì phòng khám ngưng nhận khám trong ngày?,OPENING_HOURS,persona
+Rằm tháng Giêng phòng khám có nghỉ không?,OPENING_HOURS,persona
+"Ngày thường làm tới mấy giờ, cuối tuần thì sao?",OPENING_HOURS,persona
+Giáng sinh có mở không bạn?,OPENING_HOURS,persona
+Chiều nay mấy giờ phòng khám mở lại sau giờ trưa?,OPENING_HOURS,persona
+Phòng khám có mở xuyên trưa không ạ?,OPENING_HOURS,persona
+Ban đêm phòng khám có người trực sẵn không dị?,OPENING_HOURS,persona
+Giờ mở cửa cuối tuần có khác ngày thường không?,OPENING_HOURS,persona
+"Em là sinh viên, học xong 5h chiều chạy qua thì phòng khám còn mở không ạ?",OPENING_HOURS,persona
+Phòng khám làm việc tới tối không hay chỉ giờ hành chính?,OPENING_HOURS,persona
+Bên mình mở cửa sớm nhất là mấy giờ?,OPENING_HOURS,persona
+Lễ Quốc khánh năm nay phòng khám nghỉ mấy ngày?,OPENING_HOURS,persona
+Hôm nay chủ nhật phòng khám có mở không con,OPENING_HOURS,persona
+Mùng 3 Tết đã làm lại chưa vậy em?,OPENING_HOURS,persona
+Tối thứ bảy có ca trực không ạ?,OPENING_HOURS,persona
+"Trưa 12h ghé được không, phòng khám có đóng cửa nghỉ trưa không",OPENING_HOURS,persona
+Cho hỏi lịch làm việc của phòng khám trong tuần,OPENING_HOURS,persona
+Ngày nghỉ bù phòng khám có làm không?,OPENING_HOURS,persona
+Đêm giao thừa phòng khám có người trực hông?,OPENING_HOURS,persona
+may h mo cua v ad,OPENING_HOURS,variant
+pk dong cua luc may h,OPENING_HOURS,variant
+cn co lam ko shop,OPENING_HOURS,variant
+le co mo cua hk,OPENING_HOURS,variant
+tet nghi toi mung may z,OPENING_HOURS,variant
+trua co nghi ko a,OPENING_HOURS,variant
+co truc dem k ad,OPENING_HOURS,variant
+pk co mo 24/24 ko,OPENING_HOURS,variant
+gio nay con mo ko v,OPENING_HOURS,variant
+t7 lam toi may gio,OPENING_HOURS,variant
+h lam viec cua pk la sao,OPENING_HOURS,variant
+tối nay mở tới mấy h dzậy,OPENING_HOURS,variant
+sang may h co bs,OPENING_HOURS,variant
+mung 2 tet co mo k,OPENING_HOURS,variant
+cuoi tuan pk co lam viec ko a,OPENING_HOURS,variant
+gio mo cua ngay le the nao ad,OPENING_HOURS,variant
+toi khuya co ai truc ko z,OPENING_HOURS,variant
+6h sang mo chua ad,OPENING_HOURS,variant
+pk nghi trua tu may h toi may h,OPENING_HOURS,variant
+hum nay pk co mo ko ta,OPENING_HOURS,variant
+Em muốn đặt lịch khám cho mèo,BOOKING,persona
+Cho chị đặt lịch khám tổng quát cho bé chó sáng mai,BOOKING,persona
+Đặt lịch online trên web như thế nào vậy ad?,BOOKING,persona
+Có cần hẹn trước không hay cứ đến thẳng phòng khám là được?,BOOKING,persona
+Mai 9h còn chỗ không ạ?,BOOKING,persona
+Thứ 7 này đặt lịch được không em?,BOOKING,persona
+Em muốn đổi lịch hẹn từ thứ 3 sang thứ 5 được không?,BOOKING,persona
+Chị muốn huỷ lịch khám chiều nay,BOOKING,persona
+Đặt lịch tiêm phòng cho mèo con thế nào ạ?,BOOKING,persona
+Cho em đặt lịch tắm spa cho bé Poodle chiều chủ nhật,BOOKING,persona
+Muốn đặt lịch triệt sản cho mèo cái thì làm sao?,BOOKING,persona
+Khi đặt lịch có chọn được bác sĩ không em?,BOOKING,persona
+Em đặt lịch hôm qua mà sao chưa thấy xác nhận vậy?,BOOKING,persona
+"Lịch hẹn của tôi vẫn đang chờ duyệt, bao giờ phòng khám xác nhận?",BOOKING,persona
+Tuần sau còn ngày nào trống không?,BOOKING,persona
+Chiều nay còn slot khám không ạ?,BOOKING,persona
+Em muốn hẹn khám cho chó bị rụng lông vào sáng thứ 4,BOOKING,persona
+Đặt lịch có cần đăng nhập tài khoản không?,BOOKING,persona
+Làm sao để thêm hồ sơ thú cưng khi đặt lịch?,BOOKING,persona
+"Tui già rồi không rành điện thoại, đặt lịch giùm tui được hông con?",BOOKING,persona
+Mình đặt được 2 bé cùng một khung giờ không?,BOOKING,persona
+"Lần trước bác sĩ hẹn tái khám, giờ em muốn đặt lịch tái khám",BOOKING,persona
+Ngày mai có còn khung giờ buổi sáng nào không ạ?,BOOKING,persona
+Đặt lịch xong có tin nhắn báo không vậy?,BOOKING,persona
+"Em bận quá, đặt lịch giờ trưa 12h được không?",BOOKING,persona
+Có đặt lịch được cho ngày chủ nhật không ạ?,BOOKING,persona
+"Mèo nhà em mới nhận nuôi, em muốn đặt lịch khám tổng quát lần đầu",BOOKING,persona
+"Em lỡ đặt sai ngày, sửa lại ngày khám sao ạ?",BOOKING,persona
+Huỷ lịch hẹn trên web chỗ nào vậy?,BOOKING,persona
+Hủy lịch sát giờ có bị gì không em?,BOOKING,persona
+Muốn đặt lịch tẩy giun cho 3 bé mèo,BOOKING,persona
+Em muốn hẹn đúng bác sĩ đã khám lần trước cho bé được không?,BOOKING,persona
+Khung 15h thứ 6 còn trống không vậy?,BOOKING,persona
+Đến thẳng không hẹn thì có phải chờ lâu không?,BOOKING,persona
+Sao em chọn ngày 20 thì báo kín chỗ hết vậy?,BOOKING,persona
+Em muốn dời lịch khám qua tuần sau,BOOKING,persona
+Lịch hẹn ngày mai em đến trễ 30 phút được không?,BOOKING,persona
+Đặt lịch cắt tỉa lông cho chó cần báo trước mấy ngày?,BOOKING,persona
+Giờ trống gần nhất hôm nay là mấy giờ?,BOOKING,persona
+Cho mình book lịch khám da cho mèo nhé,BOOKING,persona
+Đặt hẹn khám cho chó con 2 tháng tuổi vào cuối tuần,BOOKING,persona
+Em muốn đặt lịch siêu âm cho mèo đang mang thai,BOOKING,persona
+Đặt lịch online xong em có cần gọi lại xác nhận không?,BOOKING,persona
+Thứ 2 tuần sau bác sĩ còn nhận lịch không?,BOOKING,persona
+"Em đặt lịch mà quên chọn giờ, giờ làm sao",BOOKING,persona
+"Chồng chị bận, chị đặt lịch thay được không?",BOOKING,persona
+Phòng khám có nhận khám không hẹn trước không em?,BOOKING,persona
+"Lịch đã đặt bị từ chối, vậy em đặt lại sao?",BOOKING,persona
+Cho em đặt lịch tiêm dại cho chó vào sáng thứ bảy này,BOOKING,persona
+"Nhà em ở xa, muốn hẹn buổi chiều cho tiện, còn giờ nào không?",BOOKING,persona
+Đặt lịch rồi muốn đổi bác sĩ khác được không?,BOOKING,persona
+Ngày kia sáng sớm còn trống không chị?,BOOKING,persona
+Muốn hẹn khám cho mèo vào ngày lễ được không?,BOOKING,persona
+Em muốn đặt lịch khám nhưng không thấy nút đặt lịch đâu hết,BOOKING,persona
+Bác sĩ nào rảnh sáng mai thì xếp giúp em với,BOOKING,persona
+Đặt lịch tắm sấy cho 2 bé chó vào thứ 7 được không nhen,BOOKING,persona
+e mun dat lich kham cho meo,BOOKING,variant
+dat lich online ntn ad,BOOKING,variant
+mai 9h con cho ko,BOOKING,variant
+t7 nay dat dc ko a,BOOKING,variant
+doi lich hen sang chieu mai dc k,BOOKING,variant
+huy lich kham giup e vs,BOOKING,variant
+can hen truoc k hay toi luon dc,BOOKING,variant
+dat lich tiem cho cho con sao z,BOOKING,variant
+book lich spa cho be cun chieu cn,BOOKING,variant
+dat lich triet san meo cai,BOOKING,variant
+co chon bs khi dat lich dc ko,BOOKING,variant
+lich e dat chua dc xac nhan nua ad oi,BOOKING,variant
+chieu nay con slot nao ko shop,BOOKING,variant
+tuan sau con lich trong hk,BOOKING,variant
+e dat lich roi mak chua thay ai goi,BOOKING,variant
+dặt lịck khám cho chó giúp em,BOOKING,variant
+dời lịch qua thứ 5 dc hông ad,BOOKING,variant
+sáng mai còn chỗ trống k ạ,BOOKING,variant
+hen tai kham cho be nha ad,BOOKING,variant
+muon dat lich tay giun cho 2 be,BOOKING,variant
+cho e xin 1 slot chiu mai,BOOKING,variant
+dat lich ma web bao kin cho het la sao,BOOKING,variant
+huy lich hen tren app o dau ad,BOOKING,variant
+dk lich kham online can dang nhap ko,BOOKING,variant
+Có ship tới Cái Răng không?,PRODUCT,hard_negative
+Mua hạt cho mèo có giao tận nhà ở Ninh Kiều không?,PRODUCT,hard_negative
+phong kham co ship cat ve sinh toi binh thuy ko,PRODUCT,hard_negative
+Đặt mua thức ăn online thì mấy giờ giao tới?,PRODUCT,hard_negative
+Đặt hàng trên web thì mấy ngày giao tới Ô Môn?,PRODUCT,hard_negative
+Cho hỏi địa chỉ để qua mua pate cho mèo,PRODUCT,hard_negative
+"Phòng khám còn hạt Royal Canin không, giờ này qua lấy được không",PRODUCT,hard_negative
+"Shop có bán đồ chơi cho mèo không, ghé mua lúc mấy giờ được?",PRODUCT,hard_negative
+Mua thức ăn chó online có giao trong ngày ở Ninh Kiều không?,PRODUCT,hard_negative
+Phí ship về Phong Điền bao nhiêu vậy?,PRODUCT,hard_negative
+"Có bán sữa tắm cho chó không, cho em xin địa chỉ để qua mua",PRODUCT,hard_negative
+"7h tối còn khám được không, đặt luôn được không?",BOOKING,hard_negative
+Số điện thoại để đặt lịch là số nào vậy?,BOOKING,hard_negative
+Chủ nhật này còn chỗ khám buổi sáng không em?,BOOKING,hard_negative
+Gọi hotline để đặt lịch hay phải đặt trên web?,BOOKING,hard_negative
+"Mấy giờ mở cửa, em muốn đặt lịch khám lúc mở cửa luôn",BOOKING,hard_negative
+Tối nay 8h còn lịch trống không ad?,BOOKING,hard_negative
+Zalo phòng khám có nhận đặt lịch không em?,BOOKING,hard_negative
+Ngày lễ có nhận đặt lịch tiêm không?,BOOKING,hard_negative
+"Phòng khám ở đâu vậy, tiện em đặt lịch cho mai luôn",BOOKING,hard_negative
+sdt de dat hen kham la j z ad,BOOKING,hard_negative
+"Trưa có nghỉ không, em muốn hẹn khám 12h30",BOOKING,hard_negative
+giờ này còn đặt lịch spa cho chiều nay kịp ko,BOOKING,hard_negative
+Đến lúc 6h chiều thì có cần đặt trước không?,BOOKING,hard_negative
+Mùng 2 Tết có nhận lịch hẹn triệt sản không?,BOOKING,hard_negative
+Inbox fanpage để đặt lịch được không bạn,BOOKING,hard_negative
+Mấy giờ đóng cửa để em ghé?,OPENING_HOURS,hard_negative
+"Tui đi làm về 7 giờ tối, lúc đó phòng khám đóng chưa con?",OPENING_HOURS,hard_negative
+"Chủ nhật có mở cửa không, em định dắt bé qua chơi",OPENING_HOURS,hard_negative
+"Không cần đặt lịch, chỉ hỏi mấy giờ phòng khám đóng cửa thôi",OPENING_HOURS,hard_negative
+"Tối nay mấy giờ nghỉ, em ghé lấy đơn thuốc cho bé",OPENING_HOURS,hard_negative
+Giờ mở cửa sáng mai là mấy giờ?,OPENING_HOURS,hard_negative
+Phòng khám có mở tới 7h tối không?,OPENING_HOURS,hard_negative
+Cuối tuần có mở để em ghé hỏi thăm không hay nghỉ?,OPENING_HOURS,hard_negative
+Có chi nhánh nào mở cửa tới khuya không?,CONTACT,hard_negative
+"Cho xin địa chỉ, với lại mấy giờ đóng cửa",CONTACT,hard_negative
+"Em hỏi đường thôi, không đặt lịch: từ Hưng Lợi qua phòng khám đi sao?",CONTACT,hard_negative
+"Phòng khám ở đâu, chủ nhật có mở không?",CONTACT,hard_negative
+"Số zalo phòng khám là gì, tối nay mấy giờ còn trực?",CONTACT,hard_negative
+"Đi từ bến Ninh Kiều qua mất bao lâu, có chỗ gửi xe không",CONTACT,hard_negative
