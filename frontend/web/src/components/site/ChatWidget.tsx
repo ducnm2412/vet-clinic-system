@@ -1,6 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type FormEvent,
+  type KeyboardEvent,
+} from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { MessageCircle, PawPrint, RotateCcw, Send, X } from "lucide-react";
@@ -8,6 +17,7 @@ import { ApiError, CHAT_MAX_CHARS, CHAT_MAX_MESSAGES, chatApi } from "@/lib/api"
 import { splitChatText } from "@/lib/chatText";
 import { CLINIC } from "@/config/clinic";
 import { cn } from "@/lib/utils/cn";
+import { BrandMark } from "./Brand";
 
 interface ChatMessage {
   id: string;
@@ -55,6 +65,49 @@ function saveHistory(messages: ChatMessage[]) {
   }
 }
 
+/**
+ * Kho lịch sử dùng chung cho useSyncExternalStore. Server (và lượt hydrate đầu) luôn thấy mảng rỗng,
+ * trình duyệt đọc sessionStorage một lần rồi giữ trong bộ nhớ, nên không lệch hydration và không bao
+ * giờ ghi đè lịch sử bằng mảng rỗng trước khi đọc xong.
+ */
+const EMPTY: ChatMessage[] = [];
+let memory: ChatMessage[] | null = null;
+const listeners = new Set<() => void>();
+
+function getHistory(): ChatMessage[] {
+  if (memory === null) memory = loadHistory();
+  return memory;
+}
+
+function getServerHistory(): ChatMessage[] {
+  return EMPTY;
+}
+
+function subscribeHistory(listener: () => void) {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+function setHistory(update: ChatMessage[] | ((cur: ChatMessage[]) => ChatMessage[])) {
+  memory = typeof update === "function" ? update(getHistory()) : update;
+  saveHistory(memory);
+  listeners.forEach((l) => l());
+}
+
+let idSeq = 0;
+/** Chỉ gọi trong event handler / callback, không gọi lúc render. */
+function newId(): string {
+  return `${Date.now()}-${idSeq++}`;
+}
+
+/** Giãn chiều cao ô nhập theo nội dung, tối đa 96px (max-h-24). */
+function fitHeight(el: HTMLTextAreaElement) {
+  el.style.height = "auto";
+  el.style.height = `${Math.min(el.scrollHeight, 96)}px`;
+}
+
 function errorText(e: unknown): string {
   if (e instanceof ApiError) {
     if (e.status === 429) return e.message; // máy chủ đã viết sẵn câu "thử lại sau ... giây"
@@ -80,25 +133,13 @@ export function ChatWidget() {
   });
 
   const [open, setOpen] = useState(false);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const messages = useSyncExternalStore(subscribeHistory, getHistory, getServerHistory);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
-  const loaded = useRef(false);
-  const counter = useRef(0);
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-
-  // Đọc lịch sử sau khi trang đã hiển thị (không đọc lúc render để khỏi lệch giữa server và trình duyệt).
-  useEffect(() => {
-    setMessages(loadHistory());
-    loaded.current = true;
-  }, []);
-
-  useEffect(() => {
-    if (loaded.current) saveHistory(messages);
-  }, [messages]);
 
   // Luôn cuộn xuống tin mới nhất.
   useEffect(() => {
@@ -118,7 +159,11 @@ export function ChatWidget() {
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
-  const nextId = () => `${Date.now()}-${counter.current++}`;
+  // Ô nhập tự giãn theo nội dung (kể cả khi bị xoá trắng sau khi gửi / làm mới).
+  useLayoutEffect(() => {
+    const el = inputRef.current;
+    if (el) fitHeight(el);
+  }, [input]);
 
   const request = useCallback(async (history: ChatMessage[]) => {
     setSending(true);
@@ -128,7 +173,7 @@ export function ChatWidget() {
         .slice(-CHAT_MAX_MESSAGES)
         .map((m) => ({ role: m.role, content: m.content.slice(0, CHAT_MAX_CHARS) }));
       const res = await chatApi.send(turns);
-      setMessages((cur) => [...cur, { id: `${Date.now()}-${counter.current++}`, role: "assistant", content: res.reply }]);
+      setHistory((cur) => [...cur, { id: newId(), role: "assistant", content: res.reply }]);
     } catch (e) {
       setNotice(errorText(e));
     } finally {
@@ -139,10 +184,9 @@ export function ChatWidget() {
   function submit(text: string) {
     const content = text.trim().slice(0, CHAT_MAX_CHARS);
     if (!content || sending) return;
-    const next: ChatMessage[] = [...messages, { id: nextId(), role: "user", content }];
-    setMessages(next);
+    const next: ChatMessage[] = [...messages, { id: newId(), role: "user", content }];
+    setHistory(next);
     setInput("");
-    resizeInput(null);
     void request(next);
   }
 
@@ -159,18 +203,10 @@ export function ChatWidget() {
     }
   }
 
-  function resizeInput(el: HTMLTextAreaElement | null) {
-    const target = el ?? inputRef.current;
-    if (!target) return;
-    target.style.height = "auto";
-    target.style.height = `${Math.min(target.scrollHeight, 96)}px`;
-  }
-
   function reset() {
-    setMessages([]);
+    setHistory([]);
     setNotice(null);
     setInput("");
-    resizeInput(null);
     inputRef.current?.focus();
   }
 
@@ -273,10 +309,7 @@ export function ChatWidget() {
               <textarea
                 ref={inputRef}
                 value={input}
-                onChange={(e) => {
-                  setInput(e.target.value);
-                  resizeInput(e.target);
-                }}
+                onChange={(e) => setInput(e.target.value)}
                 onKeyDown={onKeyDown}
                 rows={1}
                 maxLength={CHAT_MAX_CHARS}
@@ -305,10 +338,25 @@ export function ChatWidget() {
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-label={open ? "Đóng trò chuyện" : "Mở trò chuyện với trợ lý"}
-        className="fixed bottom-4 right-4 z-50 flex h-14 items-center gap-2 rounded-full bg-teal px-5 text-white shadow-[var(--shadow-lift)] transition-colors hover:bg-teal-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal sm:right-5"
+        title={open ? "Đóng trò chuyện" : "Hỏi trợ lý Vet Clinic"}
+        className="group fixed bottom-4 right-4 z-50 grid size-16 place-items-center rounded-full bg-white shadow-[var(--shadow-lift)] ring-4 ring-white transition-transform hover:scale-105 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal sm:right-5"
       >
-        {open ? <X aria-hidden className="size-6" /> : <MessageCircle aria-hidden className="size-6" />}
-        {!open && <span className="hidden text-sm font-semibold sm:inline">Hỏi trợ lý</span>}
+        {open ? (
+          <span className="grid size-full place-items-center rounded-full bg-teal text-white">
+            <X aria-hidden className="size-7" />
+          </span>
+        ) : (
+          <>
+            {/* Logo phòng khám làm nút mở chat; bong bóng nhỏ ở góc cho biết đây là trò chuyện. */}
+            <BrandMark className="size-full" />
+            <span
+              aria-hidden
+              className="absolute -right-1 -top-1 grid size-6 place-items-center rounded-full bg-coral text-white ring-2 ring-white"
+            >
+              <MessageCircle className="size-3.5" />
+            </span>
+          </>
+        )}
       </button>
     </>
   );
