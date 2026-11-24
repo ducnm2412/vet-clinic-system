@@ -60,7 +60,8 @@ class ChatControllerTest {
         when(chatService.reply(any(), any())).thenReturn(new ChatResponse("Xin chào", ChatResponse.AI));
 
         mockMvc.perform(post("/chat/messages").contentType(MediaType.APPLICATION_JSON).content(BODY)
-                        .header("X-Forwarded-For", "9.9.9.9, 10.0.0.1"))
+                        // phần tử đầu do khách tự đặt; phần tử cuối do api-gateway nối (trusted-proxy-hops mặc định 1)
+                        .header("X-Forwarded-For", "6.6.6.6, 9.9.9.9"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.reply").value("Xin chào"))
                 .andExpect(jsonPath("$.source").value("ai"));
@@ -70,6 +71,23 @@ class ChatControllerTest {
         assertThat(caller.getValue().loggedIn()).isFalse();
         assertThat(caller.getValue().rateKey()).isEqualTo("ip:9.9.9.9");
         assertThat(caller.getValue().bearerToken()).isNull();
+    }
+
+    @Test
+    void guestCallingServiceDirectlyFromPublicAddressCannotSpoofIp() throws Exception {
+        when(chatService.reply(any(), any())).thenReturn(new ChatResponse("Xin chào", ChatResponse.AI));
+
+        mockMvc.perform(post("/chat/messages").contentType(MediaType.APPLICATION_JSON).content(BODY)
+                        .with(request -> {
+                            request.setRemoteAddr("203.0.113.9");
+                            return request;
+                        })
+                        .header("X-Forwarded-For", "6.6.6.6, 9.9.9.9"))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<Caller> caller = ArgumentCaptor.forClass(Caller.class);
+        verify(chatService).reply(any(), caller.capture());
+        assertThat(caller.getValue().rateKey()).isEqualTo("ip:203.0.113.9");
     }
 
     @Test

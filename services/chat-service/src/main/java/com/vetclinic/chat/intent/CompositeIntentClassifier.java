@@ -188,7 +188,8 @@ public class CompositeIntentClassifier implements IntentClassifier {
         try {
             prediction = ml.predict(message);
         } catch (RuntimeException e) {
-            log.warn("Mô hình ý định lỗi khi dự đoán, dùng nhãn luật: {}", e.toString());
+            // Chỉ ghi tên lớp lỗi: thông điệp lỗi có thể chứa nội dung tin nhắn của khách.
+            log.warn("Mô hình ý định lỗi khi dự đoán, dùng nhãn luật: {}", e.getClass().getSimpleName());
             return ruleIntent;
         }
         if (allowRemote && a2 != null && prediction.confidence() < a2TriggerBelow) {

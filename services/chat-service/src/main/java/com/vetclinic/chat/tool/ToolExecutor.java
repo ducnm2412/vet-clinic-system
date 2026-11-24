@@ -20,6 +20,7 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 /**
  * Chạy công cụ Gemini yêu cầu. Chỉ có 4 công cụ chỉ đọc; tham số do mô hình sinh ra luôn được kiểm
@@ -36,6 +37,11 @@ public class ToolExecutor {
     private static final int MAX_SERVICES = 20;
     private static final int MAX_PRODUCTS = 8;
     private static final int MAX_CATEGORIES = 30;
+    /**
+     * slug / id dùng để ghép liên kết nội bộ. Dữ liệu từ service khác là không tin cậy: slug kiểu
+     * "../../x" hay "x)[bấm](https://..." không được biến thành liên kết mà bot chép lại cho khách.
+     */
+    static final Pattern SAFE_PATH_SEGMENT = Pattern.compile("[A-Za-z0-9-]{1,100}");
 
     private final RestClient client;
     private final ObjectMapper mapper;
@@ -90,7 +96,7 @@ public class ToolExecutor {
             out.set("durationMinutes", item.path("durationMinutes"));
             out.set("referencePriceVnd", item.path("referencePrice"));
             String slug = item.path("slug").asText("");
-            if (!slug.isBlank()) {
+            if (SAFE_PATH_SEGMENT.matcher(slug).matches()) {
                 out.put("link", "/services/" + slug);
             }
             services.add(out);
@@ -188,7 +194,7 @@ public class ToolExecutor {
             out.put("unit", item.path("unit").asText(""));
             out.put("inStock", item.path("stockQuantity").asInt(0) > 0);
             String id = item.path("id").asText("");
-            if (!id.isBlank()) {
+            if (SAFE_PATH_SEGMENT.matcher(id).matches()) {
                 out.put("link", "/products/" + id);
             }
             products.add(out);

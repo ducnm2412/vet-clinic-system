@@ -52,6 +52,12 @@ app:
       user-per-window: ${CHAT_USER_LIMIT:60}
       # Trần tổng số lượt gọi Gemini mỗi ngày (mọi người cộng lại) — chặn tốn tiền khi bị lạm dụng.
       daily-cap: ${CHAT_DAILY_CAP:3000}
+      # Số proxy tin cậy đứng trước chat-service, mỗi proxy nối IP nó thấy vào cuối X-Forwarded-For. Mặc định 1 = chỉ
+      # api-gateway (Spring Cloud Gateway nối remote address): lấy phần tử cuối, khách không giả được. Rewrite /api của
+      # Next.js không ghi IP trình duyệt, nên khách vãng lai qua web dùng chung khoá IP container frontend. Header chỉ
+      # được tin khi bên gọi là địa chỉ nội bộ (loopback/10/8/172.16/12/192.168/16); gọi thẳng 8092 từ IP công khai
+      # thì dùng IP đó. 0 = lấy phần tử đầu (khách giả được).
+      trusted-proxy-hops: ${CHAT_TRUSTED_PROXY_HOPS:1}
     intent:
       # rules = chỉ regex; ml = chỉ mô hình ML (dưới ngưỡng → OTHER); hybrid = luật khẩn cấp trước, ML đủ tin cậy
       # thì dùng nhãn ML, còn lại dùng nhãn luật. Ở mọi chế độ, câu luật nhận là khẩn cấp luôn ra EMERGENCY.
@@ -76,7 +82,7 @@ app:
         connect-timeout-ms: 500
         timeout-ms: 1200
         cache-size: 2000
-        # HTTP 429 → tạm tắt A2 chừng này phút (429 do hạn mức NGÀY → tắt tới 0 giờ hôm sau giờ Thái Bình Dương).
+        # HTTP 429 → tạm tắt A2 chừng này phút (kể cả khi là hạn mức ngày).
         rate-limit-pause-minutes: 1
         # Lỗi 5xx/timeout liên tiếp chừng này lần → ngắt mạch circuit-open-seconds giây.
         failure-threshold: 3
