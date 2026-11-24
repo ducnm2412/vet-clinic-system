@@ -36,6 +36,15 @@ const SUGGESTIONS = [
   "Có bán thức ăn cho mèo không?",
 ];
 
+/** Gợi ý hiện ở dải trên ô nhập khi đã trò chuyện: thêm vài câu hay hỏi tiếp, bỏ câu khách đã hỏi. */
+const FOLLOW_UP_SUGGESTIONS = [
+  ...SUGGESTIONS,
+  "Làm sao để đặt lịch khám?",
+  "Triệt sản cho mèo giá bao nhiêu?",
+  "Phòng khám ở đâu?",
+  "Mèo con mấy tháng thì tiêm được?",
+];
+
 function loadHistory(): ChatMessage[] {
   try {
     const raw = window.sessionStorage.getItem(STORAGE_KEY);
@@ -137,6 +146,9 @@ export function ChatWidget() {
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+
+  const asked = new Set(messages.filter((m) => m.role === "user").map((m) => m.content.trim()));
+  const followUps = FOLLOW_UP_SUGGESTIONS.filter((s) => !asked.has(s));
 
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -305,6 +317,21 @@ export function ChatWidget() {
           </div>
 
           <form onSubmit={onSubmit} className="border-t border-mist bg-white p-3">
+            {messages.length > 0 && followUps.length > 0 && (
+              <div aria-label="Câu hỏi gợi ý" className="mb-2 flex flex-wrap gap-1.5">
+                {followUps.slice(0, 2).map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => submit(s)}
+                    disabled={sending}
+                    className="rounded-full border border-teal/40 bg-white px-2.5 py-1 text-left text-[12.5px] leading-tight text-teal-deep transition-colors hover:bg-mist disabled:opacity-60"
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            )}
             <div className="flex items-end gap-2">
               <textarea
                 ref={inputRef}
