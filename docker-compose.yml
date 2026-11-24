@@ -213,6 +213,23 @@ services:
       CHAT_GUEST_LIMIT: ${CHAT_GUEST_LIMIT:-20}
       CHAT_USER_LIMIT: ${CHAT_USER_LIMIT:-60}
       CHAT_DAILY_CAP: ${CHAT_DAILY_CAP:-3000}
+      # Han muc khach vang lai tinh theo IP: 1 = lay phan tu cuoi X-Forwarded-For do api-gateway noi vao
+      # (khach khong gia duoc). Xem README, muc "Van hanh chatbot".
+      CHAT_TRUSTED_PROXY_HOPS: ${CHAT_TRUSTED_PROXY_HOPS:-1}
+      # Bo phan loai y dinh: rules | ml | hybrid. Dat rules de tat ML ngay (khong can build lai).
+      CHAT_INTENT_MODE: ${CHAT_INTENT_MODE:-hybrid}
+      # Tang phu A2 (embedding Gemini, dung chung GEMINI_API_KEY) va tran so lan goi embedding moi ngay.
+      CHAT_INTENT_A2_ENABLED: ${CHAT_INTENT_A2_ENABLED:-true}
+      CHAT_INTENT_A2_DAILY_CAP: ${CHAT_INTENT_A2_DAILY_CAP:-900}
+    # Chi kiem tra tien trinh len va tra HTTP 200 (khong co actuator). /chat/status luon tra 200 ke ca
+    # khi khong co GEMINI_API_KEY (aiEnabled=false), nen Gemini het quota/khong co key khong lam unhealthy.
+    # wget co san trong eclipse-temurin:17-jre (eureka-server dung cung cach).
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8092/chat/status || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
     depends_on:
       eureka-server:
         condition: service_started
