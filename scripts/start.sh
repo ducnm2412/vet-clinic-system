@@ -13,7 +13,7 @@ WAVES=(
   "api-gateway auth-service"                                                                              # 3. Cong vao + dang nhap
   "profile-service pet-service product-service booking-service"                                          # 4. Nghiep vu chinh
   "order-service payment-service"                                                                         # 5. Mua hang, thanh toan
-  "staff-service notification-service reporting-service"                                                 # 6. Phu tro
+  "staff-service notification-service reporting-service chat-service"                                    # 6. Phu tro
   "frontend"                                                                                              # 7. Giao dien
 )
 
