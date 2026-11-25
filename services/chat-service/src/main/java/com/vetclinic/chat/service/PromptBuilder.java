@@ -45,6 +45,16 @@ public class PromptBuilder {
      *                   yêu cầu xin lỗi ngắn rồi trả lời lại
      */
     public String build(Intent hint, boolean correction) {
+        return build(hint, correction, false);
+    }
+
+    /**
+     * @param hint       xem {@link #build(Intent)}
+     * @param correction xem {@link #build(Intent, boolean)}
+     * @param loggedIn   người hỏi có token hợp lệ (do backend xác thực, không phải lời khách tự nói); quyết định
+     *                   câu dặn đăng nhập trong prompt
+     */
+    public String build(Intent hint, boolean correction, boolean loggedIn) {
         LocalDate today = LocalDate.now(clock);
         String prompt = """
                 Bạn là trợ lý chatbot của %1$s, phòng khám thú y cho chó mèo tại Cần Thơ. Bạn trò chuyện với khách hàng trên website.
@@ -54,7 +64,7 @@ public class PromptBuilder {
                 - Chỉ dùng chữ thuần. Không dùng markdown (không **, #, bảng). Muốn liệt kê thì mỗi ý một dòng bắt đầu bằng "- ".
                 - Khi dẫn khách sang một trang, viết liên kết dạng [chữ hiển thị](/đường-dẫn). Chỉ dùng các đường dẫn nội bộ: /services, /services/{slug}, /products, /products/{id}, /appointments/create, /contact, /about. Không bịa đường dẫn hay địa chỉ web khác.
                 - Giá, dịch vụ, sản phẩm, giờ khám còn trống: BẮT BUỘC gọi công cụ để lấy dữ liệu thật, không đoán, không nhớ từ trước. Giá chỉ là giá tham khảo; bác sĩ báo giá chính thức khi khám. Công cụ không có thì nói là chưa có thông tin.
-                - Hỏi giờ khám còn trống: gọi get_clinic_hours với ngày cụ thể. Nếu công cụ báo cần đăng nhập thì hướng dẫn khách đăng nhập rồi vào [trang đặt lịch](/appointments/create).
+                - Hỏi giờ khám còn trống: gọi get_clinic_hours với ngày cụ thể. %6$s
                 - Bạn chỉ tư vấn, không tự đặt lịch hay đặt hàng thay khách; hướng dẫn khách tự thao tác trên website.
 
                 AN TOÀN
@@ -68,7 +78,8 @@ public class PromptBuilder {
 
                 KIẾN THỨC PHÒNG KHÁM
                 %5$s
-                """.formatted(clinic.name(), clinic.phone(), weekday(today.getDayOfWeek()), today, knowledge);
+                """.formatted(clinic.name(), clinic.phone(), weekday(today.getDayOfWeek()), today, knowledge,
+                loggedIn ? HOURS_LINE_LOGGED_IN : HOURS_LINE_GUEST);
         StringBuilder hints = new StringBuilder();
         if (correction) {
             hints.append(CORRECTION_LINE).append('\n');
@@ -79,6 +90,14 @@ public class PromptBuilder {
         }
         return hints.isEmpty() ? prompt : prompt + "\nGỢI Ý CHO TIN NHẮN MỚI NHẤT\n" + hints;
     }
+
+    /** Khách đã đăng nhập (token hợp lệ): không được bảo họ đăng nhập nữa. */
+    static final String HOURS_LINE_LOGGED_IN = "Khách ĐÃ đăng nhập. Nếu công cụ trả được giờ trống thì liệt kê, "
+            + "rồi mời khách vào [trang đặt lịch](/appointments/create) để đặt. TUYỆT ĐỐI không bảo khách đăng nhập.";
+
+    /** Khách vãng lai: công cụ giờ trống sẽ báo cần đăng nhập, lúc đó hướng dẫn đăng nhập. */
+    static final String HOURS_LINE_GUEST = "Khách CHƯA đăng nhập. Nếu công cụ báo cần đăng nhập thì hướng dẫn "
+            + "khách đăng nhập rồi vào [trang đặt lịch](/appointments/create).";
 
     /** Dòng thêm vào prompt khi khách chê / sửa câu trả lời trước. */
     static final String CORRECTION_LINE = "- Khách cho rằng câu trả lời trước chưa đúng: xin lỗi một câu ngắn "

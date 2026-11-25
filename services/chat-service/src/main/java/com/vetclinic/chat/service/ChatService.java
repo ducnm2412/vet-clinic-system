@@ -10,6 +10,7 @@ import com.vetclinic.chat.dto.ChatResponse;
 import com.vetclinic.chat.exception.GeminiUnavailableException;
 import com.vetclinic.chat.gemini.GeminiClient;
 import com.vetclinic.chat.intent.CannedReplies;
+import com.vetclinic.chat.intent.ClinicKeywords;
 import com.vetclinic.chat.intent.CorrectionDetector;
 import com.vetclinic.chat.intent.Intent;
 import com.vetclinic.chat.intent.IntentClassifier;
@@ -111,6 +112,11 @@ public class ChatService {
             if (shortReplyToBot) {
                 hint = null;
             }
+        } else if (intent == Intent.OFF_TOPIC && ruleClassifier.classify(latest) != Intent.OFF_TOPIC
+                && ClinicKeywords.mentions(latest)) {
+            // OFF_TOPIC chỉ do mô hình ML đoán (luật regex dò prompt/vi phạm không xác nhận) mà câu lại nói về
+            // phòng khám ("bên bạn có dịch vụ nào?"): để Gemini trả lời thay vì chặn nhầm.
+            hint = null;
         } else if (intent.hasCannedReply()) {
             return new ChatResponse(cannedReplies.forIntent(intent), ChatResponse.RULE);
         }
@@ -142,7 +148,7 @@ public class ChatService {
     }
 
     private ChatResponse askGemini(List<ChatMessage> messages, Caller caller, Intent hint, boolean correction) {
-        String systemPrompt = promptBuilder.build(hint, correction);
+        String systemPrompt = promptBuilder.build(hint, correction, caller.loggedIn());
         ArrayNode contents = toContents(messages);
         ArrayNode tools = ToolDefinitions.declarations(mapper);
         int maxRounds = properties.maxToolRounds();
