@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Check, PawPrint, Search, UserPlus } from "lucide-react";
 import { ApiError, authApi, bookingApi, clinicServiceApi, petLookupApi } from "@/lib/api";
-import { formatDate, formatTime } from "@/lib/utils/format";
+import { formatDate, formatTime, phoneError } from "@/lib/utils/format";
 import type { CurrentUser, Pet } from "@/types";
 import { PageHeader } from "@/components/layout/DashboardShell";
 import {
@@ -276,6 +276,26 @@ function CustomerStep({ onPick }: { onPick: (c: CurrentUser) => void }) {
   const [applied, setApplied] = useState("");
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState({ firstName: "", lastName: "", email: "", password: "", phone: "" });
+  // Chỉ hiện lỗi "bắt buộc" sau khi bấm Mở tài khoản; số điện thoại sai thì báo ngay khi gõ.
+  const [submitted, setSubmitted] = useState(false);
+  const [serverErrors, setServerErrors] = useState<Record<string, string>>({});
+  const formErrors: Record<string, string | undefined> = {
+    firstName: form.firstName.trim() ? undefined : "Nhập họ của khách",
+    lastName: form.lastName.trim() ? undefined : "Nhập tên của khách",
+    email: !form.email.trim()
+      ? "Nhập email của khách"
+      : /^\S+@\S+\.\S+$/.test(form.email.trim())
+        ? undefined
+        : "Email chưa đúng định dạng (ví dụ khach@gmail.com)",
+    password: form.password.length >= 8 ? undefined : "Mật khẩu tạm cần ít nhất 8 ký tự",
+    phone: phoneError(form.phone),
+  };
+  const errorOf = (key: string) => serverErrors[key] ?? (submitted || key === "phone" ? formErrors[key] : undefined);
+  const setField = (key: keyof typeof form, value: string) => {
+    setForm({ ...form, [key]: value });
+    if (serverErrors[key]) setServerErrors({ ...serverErrors, [key]: "" });
+  };
+  const hasFormError = Object.values(formErrors).some(Boolean);
 
   const found = useQuery({
     queryKey: ["counter-customers", applied],
@@ -288,7 +308,13 @@ function CustomerStep({ onPick }: { onPick: (c: CurrentUser) => void }) {
       toast.success(`Đã mở tài khoản cho ${saved.firstName} ${saved.lastName}`.trim());
       onPick(saved);
     },
-    onError: (err) => toast.error(err instanceof ApiError ? err.message : "Không mở được tài khoản."),
+    onError: (err) => {
+      if (err instanceof ApiError && err.fieldErrors && Object.keys(err.fieldErrors).length > 0) {
+        setServerErrors(err.fieldErrors);
+        return;
+      }
+      toast.error(err instanceof ApiError ? err.message : "Không mở được tài khoản.");
+    },
   });
 
   if (creating) {
@@ -297,37 +323,48 @@ function CustomerStep({ onPick }: { onPick: (c: CurrentUser) => void }) {
         <div className="grid gap-4 sm:grid-cols-2">
           <TextField
             label="Họ"
+            error={errorOf("firstName")}
             value={form.firstName}
-            onChange={(e) => setForm({ ...form, firstName: e.target.value })}
+            onChange={(e) => setField("firstName", e.target.value)}
           />
           <TextField
             label="Tên"
+            error={errorOf("lastName")}
             value={form.lastName}
-            onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+            onChange={(e) => setField("lastName", e.target.value)}
           />
           <TextField
             label="Email"
             type="email"
             hint="Khách cần email để sau này tự đăng nhập xem lịch và bệnh án."
+            error={errorOf("email")}
             value={form.email}
-            onChange={(e) => setForm({ ...form, email: e.target.value })}
+            onChange={(e) => setField("email", e.target.value)}
           />
           <TextField
             label="Số điện thoại"
             inputMode="numeric"
             placeholder="0912345678"
+            error={errorOf("phone")}
             value={form.phone}
-            onChange={(e) => setForm({ ...form, phone: e.target.value })}
+            onChange={(e) => setField("phone", e.target.value)}
           />
           <TextField
             label="Mật khẩu tạm"
             hint="Ít nhất 8 ký tự. Đọc lại cho khách và nhắc họ đổi khi đăng nhập lần đầu."
+            error={errorOf("password")}
             value={form.password}
-            onChange={(e) => setForm({ ...form, password: e.target.value })}
+            onChange={(e) => setField("password", e.target.value)}
           />
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button loading={create.isPending} onClick={() => create.mutate()}>
+          <Button
+            loading={create.isPending}
+            onClick={() => {
+              setSubmitted(true);
+              if (!hasFormError) create.mutate();
+            }}
+          >
             Mở tài khoản
           </Button>
           <Button variant="secondary" onClick={() => setCreating(false)}>

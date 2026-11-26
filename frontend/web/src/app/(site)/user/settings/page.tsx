@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Eye, EyeOff, MapPin, Pencil, Plus, Trash2 } from "lucide-react";
 import { ApiError, authApi, customerApi } from "@/lib/api";
-import { formatAddress } from "@/lib/utils/format";
+import { formatAddress, phoneError } from "@/lib/utils/format";
 import type { Address, AddressRequest, CustomerGender } from "@/types";
 import { useAuth } from "@/lib/auth/context";
 import { useToast } from "@/components/ui";
@@ -135,6 +135,9 @@ function ProfileSection() {
             value={value.phone}
             onChange={(e) => setForm({ ...value, phone: e.target.value })}
           />
+          {phoneError(value.phone) && (
+            <span className="mt-1.5 block text-sm text-[#d93025]">{phoneError(value.phone)}</span>
+          )}
         </label>
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block">
@@ -166,7 +169,7 @@ function ProfileSection() {
             {defaultAddress ? formatAddress(defaultAddress) : "Chưa có địa chỉ — thêm ở tab Sổ địa chỉ"}
           </p>
         </div>
-        <button type="submit" disabled={save.isPending || form === null} className={cn(btnPrimary, "mt-2 h-12 w-full")}>
+        <button type="submit" disabled={save.isPending || form === null || !!phoneError(value.phone)} className={cn(btnPrimary, "mt-2 h-12 w-full")}>
           {save.isPending ? "Đang lưu…" : "Lưu thay đổi"}
         </button>
       </form>

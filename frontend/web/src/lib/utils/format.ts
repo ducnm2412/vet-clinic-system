@@ -75,3 +75,10 @@ export function formatAddress(a: {
 }): string {
   return [a.line1, a.line2, a.ward, a.city].filter((p) => p && p.trim()).join(", ");
 }
+
+/** Thông báo lỗi khi số điện thoại nhập sai (10 chữ số, bắt đầu bằng 0); để trống thì không báo. */
+export function phoneError(value: string): string | undefined {
+  const v = value.trim();
+  if (!v) return undefined;
+  return /^0\d{9}$/.test(v) ? undefined : "Số điện thoại gồm 10 chữ số, bắt đầu bằng 0 (ví dụ 0912345678).";
+}

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Map as MapIcon, MapPin, Pencil, Plus, Trash2 } from "lucide-react";
 import { ApiError, customerApi } from "@/lib/api";
-import { formatAddress, formatDate } from "@/lib/utils/format";
+import { formatAddress, formatDate, phoneError } from "@/lib/utils/format";
 import type { Address, AddressRequest, CustomerGender } from "@/types";
 import { useAuth } from "@/lib/auth/context";
 import { useToast } from "@/components/ui";
@@ -159,7 +159,7 @@ function ProfileSection() {
             <SiteButton variant="outline" onClick={() => setEditing(false)}>
               Huỷ
             </SiteButton>
-            <SiteButton loading={save.isPending} onClick={() => save.mutate()}>
+            <SiteButton loading={save.isPending} disabled={!!phoneError(form.phone)} onClick={() => save.mutate()}>
               Lưu
             </SiteButton>
           </>
@@ -170,6 +170,7 @@ function ProfileSection() {
             label="Số điện thoại"
             inputMode="numeric"
             placeholder="0912345678"
+            error={phoneError(form.phone)}
             value={form.phone}
             onChange={(e) => setForm({ ...form, phone: e.target.value })}
           />

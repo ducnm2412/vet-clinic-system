@@ -34,7 +34,14 @@ const schema = z.object({
     .string()
     .optional()
     .refine((v) => !v || v <= todayLocal(), "Ngày sinh không được sau ngày hôm nay"),
-  weightKg: z.coerce.number().positive("Cân nặng phải lớn hơn 0").optional(),
+  weightKg: z.preprocess(
+    (v) => (v === "" || v === null || (typeof v === "number" && Number.isNaN(v)) ? undefined : v),
+    z.coerce
+      .number({ error: "Cân nặng phải là số, tính bằng kg (ví dụ 4.5)" })
+      .positive("Cân nặng phải lớn hơn 0 kg")
+      .max(200, "Cân nặng quá lớn, hãy kiểm tra lại (đơn vị là kg)")
+      .optional(),
+  ),
   allergies: z.string().max(2000).optional(),
   notes: z.string().max(2000).optional(),
 });
