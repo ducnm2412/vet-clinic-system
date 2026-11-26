@@ -353,9 +353,6 @@ export function ChatWidget() {
                 <Send aria-hidden className="size-4" />
               </button>
             </div>
-            <p className="mt-2 text-[11px] leading-snug text-stone">
-              Trợ lý AI có thể chưa chính xác, giá chỉ là tham khảo. Trường hợp khẩn cấp xin gọi {CLINIC.phone}.
-            </p>
           </form>
         </section>
       )}
